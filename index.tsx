@@ -3,26 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// User-provided function to robustly load Creatomate CSS
-function loadCreatomateCss() {
-  const hasVite = typeof import.meta !== 'undefined' && (import.meta as any).env;
-  if (hasVite) {
-    import('@creatomate/editor/styles.css').catch(() => {
-      const l = document.createElement('link');
-      l.rel = 'stylesheet';
-      l.href = 'https://cdn.creatomate.com/editor/latest/styles.css';
-      document.head.appendChild(l);
-    });
-  } else {
-    const l = document.createElement('link');
-    l.rel = 'stylesheet';
-    l.href = 'https://cdn.creatomate.com/editor/latest/styles.css';
-    document.head.appendChild(l);
-  }
-}
-loadCreatomateCss();
-
-
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
