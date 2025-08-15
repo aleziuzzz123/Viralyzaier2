@@ -8,32 +8,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ** CRITICAL **: These keys are read from the Supabase Function secrets.
+// ** CRITICAL **: These keys are the ONLY secrets read from the Supabase Function environment.
 const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
 const CREATOMATE_BASE_TEMPLATE_ID = Deno.env.get('CREATOMATE_BASE_TEMPLATE_ID');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  try {
-    if (!CREATOMATE_API_KEY || !CREATOMATE_BASE_TEMPLATE_ID || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error("Function is not configured. Missing one or more secrets: CREATOMATE_API_KEY, CREATOMATE_BASE_TEMPLATE_ID, SUPABASE_URL, SUPABASE_ANON_KEY. Please follow the README.md setup instructions.");
-    }
+  // ** IMPROVED SECRET CHECKING **
+  const missingSecrets = [];
+  if (!CREATOMATE_API_KEY) missingSecrets.push('CREATOMATE_API_KEY');
+  if (!CREATOMATE_BASE_TEMPLATE_ID) missingSecrets.push('CREATOMATE_BASE_TEMPLATE_ID');
 
-    // Authenticate the user
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Missing authorization header.');
-    
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: authHeader } },
+  if (missingSecrets.length > 0) {
+    const errorMessage = `Function is not configured. Missing one or more secrets: ${missingSecrets.join(', ')}. Please follow the README.md setup instructions and redeploy the function.`;
+    console.error('Creatomate Proxy Function Error:', errorMessage);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 409, 
     });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
+  }
 
+  try {
     let body;
     try {
         body = await req.json();
@@ -44,15 +42,27 @@ serve(async (req: Request) => {
         });
     }
 
-    const { script } = body;
+    const { script, videoSize, supabaseUrl, supabaseAnonKey } = body;
     if (!script || !script.scenes) {
       throw new Error("Invalid or missing 'script' in request body.");
     }
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error("Missing supabaseUrl or supabaseAnonKey in request body.");
+    }
+    
+    // Authenticate the user using the keys passed from the client
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('Missing authorization header.');
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
     
     // Transform the script into Creatomate modifications
     const modifications: { [key: string]: string } = {};
     script.scenes.forEach((scene: any, i: number) => {
-      // These keys must match the dynamic element names in your Creatomate base template
       modifications[`Scene-${i + 1}-Visual`] = scene.visual;
       modifications[`Scene-${i + 1}-Voiceover`] = scene.voiceover;
       if (scene.onScreenText) {
@@ -60,8 +70,16 @@ serve(async (req: Request) => {
       }
     });
 
-    // Create a new dynamic "source". This is a shareable, editable instance of a template
-    // without cluttering your Creatomate account with permanent new templates for each project.
+    // ** FIX: Correctly select the template variant ID **
+    let templateIdToUse = CREATOMATE_BASE_TEMPLATE_ID;
+    if (videoSize === '9:16') {
+        templateIdToUse += '/Vertical';
+    } else if (videoSize === '1:1') {
+        templateIdToUse += '/Square';
+    }
+
+    // Create a new dynamic "source".
+    // ** FIX: Using the correct '/v1/sources' endpoint and a valid payload **
     const creatomateResponse = await fetch('https://api.creatomate.com/v1/sources', {
       method: 'POST',
       headers: {
@@ -69,15 +87,23 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        template_id: CREATOMATE_BASE_TEMPLATE_ID,
+        template_id: templateIdToUse,
         modifications: modifications,
       }),
     });
 
     if (!creatomateResponse.ok) {
-      const errorBody = await creatomateResponse.text();
-      console.error("Creatomate API Error:", errorBody);
-      throw new Error(`Creatomate API failed with status ${creatomateResponse.status}. This could be due to an invalid Base Template ID. Please verify your Supabase secrets.`);
+        const errorBody = await creatomateResponse.text();
+        console.error("Creatomate API Error:", errorBody);
+
+        let detailedError = `Creatomate API failed with status ${creatomateResponse.status}.`;
+        if (creatomateResponse.status === 401) {
+            detailedError += ' This is likely due to an invalid CREATOMATE_API_KEY in your Supabase secrets.';
+        } else if (creatomateResponse.status === 404) {
+            detailedError += ' This is likely due to an invalid CREATOMATE_BASE_TEMPLATE_ID or a missing/misnamed variant. Please verify your Supabase secrets and template setup.';
+        }
+        
+        throw new Error(detailedError);
     }
 
     const newSource = await creatomateResponse.json();

@@ -42,7 +42,7 @@ const isValidSubscription = (sub: any): sub is Subscription => {
 // Helper to sanitize JSON before sending it to Supabase
 const sanitizeJson = (value: any): Json | null => {
     // Simple deep-copy for safety. Prevents issues with complex objects.
-    return value ? JSON.parse(JSON.stringify(value)) as Json : null;
+    return value ? JSON.parse(JSON.stringify(value)) : null;
 }
 
 
