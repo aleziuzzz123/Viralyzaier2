@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Project } from '../types';
 import { useAppContext } from '../contexts/AppContext';
-import { SparklesIcon } from './Icons';
+import { SparklesIcon, WarningIcon } from './Icons';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import type { EditorOptions } from '@creatomate/editor';
 import CreatomateEditor from './CreatomateEditor'; // The new wrapper
+import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
 
 const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
     const { t, handleUpdateProject, addToast } = useAppContext();
@@ -28,7 +29,13 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
             setIsLoading(true);
             try {
                 addToast("Preparing your video timeline...", "info");
-                const response = await invokeEdgeFunction<{ sourceId: string }>('creatomate-proxy', { script: project.script });
+                // ** IMPROVEMENT: Pass public keys directly to the function **
+                const response = await invokeEdgeFunction<{ sourceId: string }>('creatomate-proxy', { 
+                    script: project.script,
+                    videoSize: project.videoSize || '16:9',
+                    supabaseUrl,
+                    supabaseAnonKey
+                });
                 
                 if (!response.sourceId) {
                     throw new Error("Backend did not return a valid sourceId. Check the creatomate-proxy function logs and ensure your Base Template ID is correct in Supabase secrets.");
@@ -39,7 +46,7 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
 
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'An unknown error occurred';
-                setError(`Failed to initialize editor: ${message}`);
+                setError(message);
                 addToast(`Failed to initialize editor: ${message}`, 'error');
             } finally {
                 setIsLoading(false);
@@ -48,12 +55,12 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
 
         initialize();
         
-    }, [project.id, project.script, sourceId, handleUpdateProject, addToast, t]);
+    }, [project.id, project.script, project.videoSize, sourceId, handleUpdateProject, addToast, t]);
     
     const editorOptions = useMemo((): EditorOptions | null => {
         const publicToken = (import.meta as any).env?.VITE_CREATOMATE_PUBLIC_TOKEN || (window as any).ENV?.VITE_CREATOMATE_PUBLIC_TOKEN;
         if (!publicToken || publicToken.includes('YOUR_')) {
-            setError('Creatomate Public Token is not configured. Please follow the instructions in README.md.');
+            setError('Configuration Error: VITE_CREATOMATE_PUBLIC_TOKEN is missing. Please set this in your Vercel Environment Variables.');
             return null;
         }
         if (!sourceId) return null;
@@ -92,6 +99,27 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
         );
     }
     
+    const renderErrorState = () => (
+        <div className="absolute inset-0 bg-red-900/50 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-4 text-center">
+            <WarningIcon className="w-12 h-12 text-red-300 mb-4" />
+            <h3 className="text-2xl font-bold text-red-200">Initialization Failed</h3>
+            <div className="mt-4 text-left bg-gray-900 p-4 rounded-md max-w-xl w-full">
+                <p className="text-sm text-gray-400 font-semibold">Error Details:</p>
+                <p className="mt-2 text-sm text-red-300 font-mono bg-red-900/50 p-2 rounded">{error}</p>
+                 <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
+                    <p className="font-bold">How to fix a "Function is not configured" error:</p>
+                    <p className="mt-2 text-amber-200 text-xs">This is the most common setup issue and is easy to solve! It means the backend function is missing its secret keys.</p>
+                    <ol className="list-decimal list-inside mt-2 text-amber-200 text-xs space-y-1">
+                        <li>Go to your Supabase project and verify your secrets: `CREATOMATE_API_KEY` and `CREATOMATE_BASE_TEMPLATE_ID`.</li>
+                        <li>Navigate to **Edge Functions** in Supabase.</li>
+                        <li>Click on the `creatomate-proxy` function.</li>
+                        <li className="font-bold">Click the **Redeploy** button in the top right to apply your secrets.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <header className="text-center">
@@ -105,12 +133,7 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
                         <p className="mt-4 text-white font-semibold">Initializing Creative Studio...</p>
                     </div>
                 )}
-                 {error && !isLoading && (
-                    <div className="absolute inset-0 bg-red-900/50 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-4">
-                        <h3 className="text-2xl font-bold text-red-300">Initialization Failed</h3>
-                        <p className="mt-2 text-red-200 text-center max-w-md">{error}</p>
-                    </div>
-                )}
+                 {error && !isLoading && renderErrorState()}
                 {editorOptions && !error && <CreatomateEditor options={editorOptions} />}
             </div>
         </div>
