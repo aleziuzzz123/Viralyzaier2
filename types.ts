@@ -6,7 +6,13 @@ export type WorkflowStep = 1 | 2 | 3 | 4 | 5;
 export type VideoStyle = 'High-Energy Viral' | 'Cinematic Documentary' | 'Clean & Corporate' | 'Animation' | 'Historical Documentary' | 'Vlog' | 'Whiteboard';
 export type AiVideoModel = 'runwayml' | 'kling' | 'minimax' | 'seedance';
 
-export type Json = any;
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
@@ -74,6 +80,7 @@ export interface Project {
   voiceoverVoiceId: string | null;
   last_performance_check: string | null;
   final_video_url?: string | null;
+  creatomateTemplateId?: string | null;
 }
 
 export interface Scene { timecode: string; visual: string; voiceover: string; onScreenText?: string; storyboardImageUrl?: string; sceneIndex: number; }
@@ -317,6 +324,7 @@ export type Database = {
           analysis: Json | null
           assets: Json | null
           competitor_analysis: Json | null
+          creatomateTemplateId: string | null
           final_video_url: string | null
           id: string
           last_performance_check: string | null
@@ -342,6 +350,7 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
+          creatomateTemplateId?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null
@@ -367,6 +376,7 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
+          creatomateTemplateId?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null

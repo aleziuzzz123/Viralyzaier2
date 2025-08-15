@@ -42,7 +42,7 @@ const isValidSubscription = (sub: any): sub is Subscription => {
 // Helper to sanitize JSON before sending it to Supabase
 const sanitizeJson = (value: any): Json | null => {
     // Simple deep-copy for safety. Prevents issues with complex objects.
-    return value ? JSON.parse(JSON.stringify(value)) : null;
+    return value ? JSON.parse(JSON.stringify(value)) as Json : null;
 }
 
 
@@ -91,6 +91,7 @@ export const projectRowToProject = (row: any): Project => ({
     voiceoverVoiceId: row.voiceover_voice_id || null,
     last_performance_check: row.last_performance_check || null,
     final_video_url: row.final_video_url || null,
+    creatomateTemplateId: row.creatomateTemplateId || null,
 });
 
 
@@ -279,6 +280,7 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
         last_performance_check: projectData.last_performance_check,
         voiceover_voice_id: projectData.voiceoverVoiceId,
         final_video_url: projectData.final_video_url,
+        creatomateTemplateId: projectData.creatomateTemplateId,
     };
     
     const { data, error } = await supabase
@@ -313,6 +315,7 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
     if (updates.publishedUrl !== undefined) dbUpdates.published_url = updates.publishedUrl;
     if (updates.voiceoverVoiceId !== undefined) dbUpdates.voiceover_voice_id = updates.voiceoverVoiceId;
     if (updates.final_video_url !== undefined) dbUpdates.final_video_url = updates.final_video_url;
+    if (updates.creatomateTemplateId !== undefined) dbUpdates.creatomateTemplateId = updates.creatomateTemplateId;
     
     const { data, error } = await supabase.from('projects').update(dbUpdates).eq('id', projectId).select('*').single();
     if (error) {

@@ -7,6 +7,9 @@
 
     <!-- Use Tailwind CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Creatomate Editor Styles -->
+    <link rel="stylesheet" href="https://esm.sh/@creatomate/editor@3.7.0/styles.css">
 
     <style>
       body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
@@ -18,7 +21,7 @@
         {
           VITE_SUPABASE_URL: 'https://wpgrfukcnpcoyruymxdd.supabase.co',
           VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwZ3JmdWtjbnBjb3lydXlteGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3MzQ5MjgsImV4cCI6MjA2OTMxMDkyOH0.-b5KHzKWk2N3VEY_K5CzYZfszRRL6GY-MivOVUAL1Z4',
-          VITE_IMGLY_LICENSE_KEY: 'cYExDFENi4zkFuyr0XaosyVkOgTEf_1ty5PfS0wTidJp5ffmwEVWcr4zYyqLJaic'
+          VITE_CREATOMATE_PUBLIC_TOKEN: 'public-gk1s8zzskcjp69qxfh1knoxw',
         },
         window.ENV || {}
       );
@@ -30,11 +33,11 @@
     "react-dom/": "https://esm.sh/react-dom@18.2.0/",
     "react/": "https://esm.sh/react@18.2.0/",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "@creatomate/editor": "https://esm.sh/@creatomate/editor@3.7.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.54.0",
     "uuid": "https://esm.sh/uuid@^9.0.1",
     "@google/genai": "https://esm.sh/@google/genai@^1.13.0",
     "vite": "https://esm.sh/vite@^5.2.0",
-    "@cesdk/cesdk-js": "https://esm.sh/@cesdk/cesdk-js@^1.57.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.0"
   }
 }
