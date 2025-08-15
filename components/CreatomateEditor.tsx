@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Editor, EditorOptions } from 'creatomate';
+import type { Editor, EditorOptions } from '@creatomate/editor';
 
 export default function CreatomateEditor({ options }: { options: EditorOptions }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -8,11 +8,11 @@ export default function CreatomateEditor({ options }: { options: EditorOptions }
 
   useEffect(() => {
     // Dynamic import of the Editor class to allow for code splitting
-    import('creatomate')
-      .then(({ Editor: CreatomateEditor }) => {
+    import('@creatomate/editor')
+      .then(({ Editor }) => {
         if (containerRef.current && !editorRef.current) {
           try {
-            const editor = new CreatomateEditor(containerRef.current, options);
+            const editor = new Editor(containerRef.current, options);
             editorRef.current = editor;
             // Expose for debugging if needed
             (window as any).__creatomateEditor = editor;
