@@ -11,8 +11,8 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+  | { [key: string]: any }
+  | any[];
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
@@ -260,7 +260,6 @@ export type Database = {
           visual_style_guide?: string | null
           writing_style_guide?: string | null
         }
-        Relationships: []
       }
       notifications: {
         Row: {
@@ -287,7 +286,6 @@ export type Database = {
           project_id?: string | null
           user_id?: string
         }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -320,7 +318,6 @@ export type Database = {
           stripe_customer_id?: string | null
           subscription?: Json | null
         }
-        Relationships: []
       }
       projects: {
         Row: {
@@ -401,7 +398,6 @@ export type Database = {
           voiceover_voice_id?: string | null
           workflow_step?: number
         }
-        Relationships: []
       }
       user_youtube_tokens: {
         Row: {
@@ -428,7 +424,6 @@ export type Database = {
           scope?: string
           user_id?: string
         }
-        Relationships: []
       }
       video_jobs: {
         Row: {
@@ -464,7 +459,6 @@ export type Database = {
           error_message?: string | null
           output_url?: string | null
         }
-        Relationships: []
       }
     }
     Views: {

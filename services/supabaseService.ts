@@ -215,7 +215,7 @@ export const createProfileForUser = async (userId: string, email: string | null 
         subscription: sanitizeJson({ planId: 'free', status: 'active', endDate: null }),
         ai_credits: freePlan.creditLimit,
     };
-    const { data, error } = await supabase.from('profiles').insert(newUserProfile).select('*').single();
+    const { data, error } = await supabase.from('profiles').insert([newUserProfile]).select('*').single();
     if (error) throw new Error(getErrorMessage(error));
     if (!data) throw new Error("Failed to create profile: no data returned.");
     return profileRowToUser(data, false);
@@ -285,7 +285,7 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
     
     const { data, error } = await supabase
         .from('projects')
-        .insert(newProjectData)
+        .insert([newProjectData])
         .select('*')
         .single();
     if (error) throw new Error(getErrorMessage(error));
@@ -409,7 +409,7 @@ export const createBrandIdentity = async (identityData: Omit<BrandIdentity, 'id'
         channel_mission: identityData.channelMission,
         logo_url: identityData.logoUrl ?? null
     };
-    const { data, error } = await supabase.from('brand_identities').insert(newIdentityData).select('*').single();
+    const { data, error } = await supabase.from('brand_identities').insert([newIdentityData]).select('*').single();
     if (error) throw new Error(getErrorMessage(error));
     if (!data) throw new Error("Failed to create brand identity: no data returned.");
     return brandIdentityRowToBrandIdentity(data);
