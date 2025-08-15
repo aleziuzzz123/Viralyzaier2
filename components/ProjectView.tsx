@@ -2,7 +2,7 @@ import React from 'react';
 import { Project, WorkflowStep } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 import ScriptGenerator from './ScriptGenerator';
-import FinalEditStep from './FinalEditStep';
+import CreativeStudio from './CreativeStudio';
 import Launchpad from './Launchpad';
 import TutorialCallout from './TutorialCallout';
 import { TranslationKey } from '../translations';
@@ -45,7 +45,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
             case 2:
                 return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
             case 3:
-                return <FinalEditStep project={project} />;
+                return <CreativeStudio project={project} />;
             case 4:
                 return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 5:
