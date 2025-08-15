@@ -3,7 +3,7 @@ import { Project } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 import { SparklesIcon, WarningIcon } from './Icons';
 import { invokeEdgeFunction } from '../services/supabaseService';
-import type { EditorOptions } from '@creatomate/editor';
+import type { EditorOptions } from 'creatomate';
 import CreatomateEditor from './CreatomateEditor'; // The new wrapper
 import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
 
