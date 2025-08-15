@@ -11,6 +11,7 @@ const corsHeaders = {
 // ** CRITICAL **: These keys are the ONLY secrets read from the Supabase Function environment.
 const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
 const CREATOMATE_BASE_TEMPLATE_ID = Deno.env.get('CREATOMATE_BASE_TEMPLATE_ID');
+const CREATOMATE_API_URL = 'https://api.creatomate.com/v1/sources';
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -70,17 +71,18 @@ serve(async (req: Request) => {
       }
     });
 
-    // ** FIX: Correctly select the template variant ID **
-    let templateIdToUse = CREATOMATE_BASE_TEMPLATE_ID;
+    // Construct the full template ID including the variant
+    let templateIdToUse = CREATOMATE_BASE_TEMPLATE_ID as string;
     if (videoSize === '9:16') {
         templateIdToUse += '/Vertical';
     } else if (videoSize === '1:1') {
         templateIdToUse += '/Square';
     }
 
+    console.log(`[Creatomate Proxy] Attempting to create source with Template ID: ${templateIdToUse}`);
+
     // Create a new dynamic "source".
-    // ** FIX: Using the correct '/v1/sources' endpoint and a valid payload **
-    const creatomateResponse = await fetch('https://api.creatomate.com/v1/sources', {
+    const creatomateResponse = await fetch(CREATOMATE_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${CREATOMATE_API_KEY}`,
@@ -96,11 +98,16 @@ serve(async (req: Request) => {
         const errorBody = await creatomateResponse.text();
         console.error("Creatomate API Error:", errorBody);
 
-        let detailedError = `Creatomate API failed with status ${creatomateResponse.status}.`;
+        let detailedError = `Creatomate API request failed with status ${creatomateResponse.status}.`;
+        
         if (creatomateResponse.status === 401) {
             detailedError += ' This is likely due to an invalid CREATOMATE_API_KEY in your Supabase secrets.';
         } else if (creatomateResponse.status === 404) {
-            detailedError += ' This is likely due to an invalid CREATOMATE_BASE_TEMPLATE_ID or a missing/misnamed variant. Please verify your Supabase secrets and template setup.';
+             const errorHint = `This "404 Not Found" error from Creatomate almost always means the 'template_id' is wrong. Please check these two things:
+1. Your 'CREATOMATE_BASE_TEMPLATE_ID' secret in Supabase matches the ID from your Creatomate template URL.
+2. Your template has variants named EXACTLY 'Vertical' and 'Square' (case-sensitive).
+The full Template ID we tried to use was: '${templateIdToUse}'.`;
+            detailedError = `Creatomate API Error: Template or variant not found. HINT: ${errorHint}`;
         }
         
         throw new Error(detailedError);

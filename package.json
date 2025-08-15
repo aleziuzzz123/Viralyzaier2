@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "creatomate": "^3.6.4",
+    "@creatomate/editor": "^3.0.0",
     "@google/genai": "^1.13.0",
     "@supabase/supabase-js": "^2.54.0",
     "react": "18.2.0",
