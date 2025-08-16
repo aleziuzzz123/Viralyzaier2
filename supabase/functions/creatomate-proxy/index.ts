@@ -13,6 +13,8 @@ const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
 const T169_ID = Deno.env.get('CREATOMATE_TEMPLATE_169_ID');
 const T916_ID = Deno.env.get('CREATOMATE_TEMPLATE_916_ID');
 const T11_ID = Deno.env.get('CREATOMATE_TEMPLATE_11_ID');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
 const CREATOMATE_API_URL = 'https://api.creatomate.com/v1/sources';
 
@@ -21,12 +23,13 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // ** IMPROVED SECRET CHECKING **
   const missingSecrets = [];
   if (!CREATOMATE_API_KEY) missingSecrets.push('CREATOMATE_API_KEY');
   if (!T169_ID) missingSecrets.push('CREATOMATE_TEMPLATE_169_ID');
   if (!T916_ID) missingSecrets.push('CREATOMATE_TEMPLATE_916_ID');
   if (!T11_ID) missingSecrets.push('CREATOMATE_TEMPLATE_11_ID');
+  if (!SUPABASE_URL) missingSecrets.push('SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missingSecrets.push('SUPABASE_ANON_KEY');
 
   if (missingSecrets.length > 0) {
     const errorMessage = `Function is not configured. Missing secrets: ${missingSecrets.join(', ')}. Follow README.md and redeploy.`;
@@ -37,7 +40,19 @@ serve(async (req: Request) => {
     });
   }
 
+  let templateIdToUse;
+  let templateSecretName;
+  
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) throw new Error('Missing authorization header.');
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
+
     let body;
     try {
         body = await req.json();
@@ -48,27 +63,11 @@ serve(async (req: Request) => {
         });
     }
 
-    const { script, videoSize, supabaseUrl, supabaseAnonKey } = body;
+    const { script, videoSize } = body;
     if (!script || !script.scenes) {
       throw new Error("Invalid or missing 'script' in request body.");
     }
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error("Missing supabaseUrl or supabaseAnonKey in request body.");
-    }
     
-    // Authenticate the user using the keys passed from the client
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) throw new Error('Missing authorization header.');
-    
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
-    
-    // ** NEW LOGIC: Select the correct template ID based on videoSize **
-    let templateIdToUse;
-    let templateSecretName;
     switch (videoSize) {
         case '9:16':
             templateIdToUse = T916_ID;
@@ -85,7 +84,6 @@ serve(async (req: Request) => {
             break;
     }
 
-    // Transform the script into Creatomate modifications
     const modifications: { [key: string]: string } = {};
     script.scenes.forEach((scene: any, i: number) => {
       modifications[`Scene-${i + 1}-Visual`] = scene.visual;
@@ -95,9 +93,8 @@ serve(async (req: Request) => {
       }
     });
 
-    console.log(`[Creatomate Proxy] Attempting to create source with Template ID: ${templateIdToUse} for size: ${videoSize}`);
+    console.log(`[Creatomate Proxy] User: ${user.id}, Attempting to create source with Template ID: ${templateIdToUse}`);
 
-    // Create a new dynamic "source".
     const creatomateResponse = await fetch(CREATOMATE_API_URL, {
       method: 'POST',
       headers: {
@@ -115,20 +112,33 @@ serve(async (req: Request) => {
         console.error("Creatomate API Error:", errorBody);
         let detailedError = `Creatomate API request failed with status ${creatomateResponse.status}.`;
         
-        if (creatomateResponse.status === 401) {
-            detailedError += ' HINT: This is likely due to an invalid CREATOMATE_API_KEY secret.';
-        } else if (creatomateResponse.status === 404) {
-            const maskedApiKey = `${CREATOMATE_API_KEY?.substring(0, 4)}...${CREATOMATE_API_KEY?.slice(-4)}`;
-            detailedError = `Creatomate API Error (404 Not Found): The template with ID '${templateIdToUse}' was not found.
-            
-DEBUG INFO:
-- Template ID Used: ${templateIdToUse}
-- From Secret: ${templateSecretName}
-- API Key Used (masked): ${maskedApiKey}
+        const maskedApiKey = `${CREATOMATE_API_KEY?.substring(0, 4)}...${CREATOMATE_API_KEY?.slice(-4)}`;
 
-This confirms the function IS reading your secrets. The values are incorrect in Creatomate. Please CAREFULLY check:
-1. The Template ID in Supabase exactly matches the one in Creatomate.
-2. The API Key and Template ID belong to the same Creatomate project.`;
+        if (creatomateResponse.status === 401) {
+            detailedError = `Creatomate API Error (401 Unauthorized): The API key is invalid.\n\n[DEBUG INFO]\n- API Key Used (masked): ${maskedApiKey}\n\nPlease double-check that the 'CREATOMATE_API_KEY' secret in Supabase is correct.`;
+        } else if (creatomateResponse.status === 404) {
+            let verificationMessage = "";
+            try {
+                const templatesResponse = await fetch('https://api.creatomate.com/v1/templates', {
+                    headers: { 'Authorization': `Bearer ${CREATOMATE_API_KEY}` },
+                });
+                if (templatesResponse.ok) {
+                    const availableTemplates = await templatesResponse.json();
+                    const templateIds = availableTemplates.map((t: any) => t.id);
+                    const found = templateIds.includes(templateIdToUse);
+                    verificationMessage = `\n- Verification Result: Your API key has access to ${templateIds.length} templates. The required ID was **${found ? 'FOUND' : 'NOT FOUND'}** in the list.`;
+                    if (templateIds.length > 0) {
+                         verificationMessage += `\n- Available Template IDs: [${templateIds.slice(0, 5).join(', ')}${templateIds.length > 5 ? ', ...' : ''}]`;
+                    } else {
+                         verificationMessage += `\n- This API key has access to ZERO templates. This strongly suggests you are using an API key from a different Creatomate project.`;
+                    }
+                } else {
+                    verificationMessage = "\n- Verification Failed: Could not fetch a list of available templates to help debug.";
+                }
+            } catch (e) {
+                verificationMessage = `\n- Verification Error: ${e.message}`;
+            }
+            detailedError = `Creatomate API Error (404 Not Found): The template with ID '${templateIdToUse}' was not found.\n\n[DEBUG INFO]\n- Template ID Used: ${templateIdToUse}\n- From Secret: ${templateSecretName}\n- API Key Used (masked): ${maskedApiKey}${verificationMessage}\n\n[SOLUTION]\nThis error confirms the function IS reading your secrets, but the values are incorrect. Please double-check that your Template ID and API Key are from the EXACT same Creatomate project and have no typos. Then, redeploy this function.`;
         }
         
         throw new Error(detailedError);

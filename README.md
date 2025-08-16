@@ -4,17 +4,15 @@ Getting the Creatomate video editor working involves a few critical setup steps.
 
 ---
 
-## 🚨 ATTENTION: The Final, Most Important Step 🚨
+## 🚨 ATTENTION: Final Setup Checklist (Do This Last!) 🚨
 
-**Your secrets will not work until you do this!**
+This is the most important part of the setup. **Your integration will not work until you complete this checklist.**
 
-After you have set all your secrets in the Supabase Dashboard, you **MUST** redeploy the `creatomate-proxy` function. Secrets are only loaded when a function is deployed.
+- [ ] **Have you created all 3 separate templates (16:9, 9:16, 1:1) in Creatomate?**
+- [ ] **Have you set all 4 `CREATOMATE_...` secrets in your Supabase function?**
+- [ ] **Most Importantly: Have you redeployed the `creatomate-proxy` function AFTER setting the secrets?**
 
-1.  Go to your Supabase Dashboard → **Edge Functions**.
-2.  Click on the `creatomate-proxy` function.
-3.  Click the **"Redeploy"** button in the top right corner.
-
-This single step is the most common reason for setup failure.
+> **Why redeploy?** Supabase Edge Functions **only load secrets when they are deployed.** If you set secrets but don't redeploy, the running function will still have the old (or empty) values, causing an error.
 
 ---
 
@@ -65,7 +63,7 @@ The backend function (`creatomate-proxy`) needs your API Key and the three Templ
     -   `CREATOMATE_TEMPLATE_916_ID`: Paste your **9:16 Vertical** template ID.
     -   `CREATOMATE_TEMPLATE_11_ID`: Paste your **1:1 Square** template ID.
 
-**Remember to redeploy the function after setting these!**
+**Remember to complete the Final Checklist at the top after setting these!**
 
 ---
 
@@ -76,5 +74,8 @@ The backend function (`creatomate-proxy`) needs your API Key and the three Templ
     -   **Solution:** You forgot to click **"Redeploy"** after setting the secrets.
 
 -   **Error: "404 Not Found" or "The template with ID '...' was not found"**
-    -   This means the Template ID is wrong, OR you haven't redeployed the function since setting it.
-    -   **Solution:** 1) Double-check that your template ID is correct in Supabase secrets. 2) **Redeploy the function.** This is almost always the solution.
+    -   You have already redeployed, but the error persists. This means there is a mistake in your secret values. The function is running, but Creatomate is rejecting your keys.
+    -   **Solution:**
+        1.  **Check for Typos:** Carefully re-copy and re-paste your `CREATOMATE_API_KEY` and all three `CREATOMATE_TEMPLATE_*_ID` values into Supabase. Make sure there are no extra spaces or invisible characters at the beginning or end.
+        2.  **Check Project Mismatch (Most Common Cause):** Confirm that the API Key and all three Template IDs come from the **EXACT SAME** project in Creatomate. An API key from "Project A" cannot access templates in "Project B".
+        3.  **Redeploy the function again** after you have verified your secrets. The function's error message will now give you detailed debug info to help you find the mismatch.
