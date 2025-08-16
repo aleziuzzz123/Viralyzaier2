@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Project } from '../types';
 import { useAppContext } from '../contexts/AppContext';
@@ -65,41 +66,40 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
         let title = "Failed to Initialize Editor";
         let solution = <p>Please check the troubleshooting steps in the README.md file and your Supabase function logs.</p>;
 
-        if (error.includes('404 Not Found') && error.includes('template with ID')) {
-            title = "Configuration Error: Template Not Found";
+        if (error.includes('Sanity Probe Failed')) {
+            title = "Configuration Error: Invalid Template or API Key";
             solution = (
                 <div>
                     <p className="font-extrabold text-sm mb-2">SOLUTION:</p>
-                    <p>This 404 error means the function is running but Creatomate rejected the request. Please carefully check the DEBUG INFO in the error details above and then follow these steps:</p>
+                    <p>The function's sanity check failed. This means your `CREATOMATE_API_KEY` or Template ID secrets are incorrect.</p>
                     <ul className="list-decimal list-inside text-left mt-2 text-xs space-y-1">
-                        <li>Confirm your API Key and Template ID are from the SAME Creatomate project.</li>
-                        <li>Carefully re-copy your secrets into Supabase to check for typos or extra spaces.</li>
-                        <li>Go to your Supabase function and click 'Redeploy'. This is the most common fix.</li>
+                        <li>Confirm your API Key and all three Template IDs are from the **SAME** Creatomate project.</li>
+                        <li>Carefully re-copy your secrets into Supabase to check for typos.</li>
+                        <li>Go to your Supabase function and click 'Redeploy'. This is required after changing secrets.</li>
                     </ul>
                 </div>
             );
-        } else if (error.includes('Missing secrets')) {
+        } else if (error.includes('Function Configuration Error')) {
             title = "Configuration Error: Missing Secrets";
             solution = (
                 <div>
                      <p className="font-extrabold text-sm mb-2">SOLUTION:</p>
-                     <p>The function is missing required secrets. Please set all 'CREATOMATE_...' secrets in Supabase and then **redeploy the function**.</p>
+                     <p>The function is missing required secrets. Please set all 'CREATOMATE_...' secrets in your Supabase Dashboard and then redeploy the function.</p>
                 </div>
             );
-        } else if (error.includes('Missing supabaseUrl or supabaseAnonKey')) {
-            title = "Deployment Mismatch: Your Code is Out of Sync!";
+        } else if (error.includes('after a successful sanity probe')) {
+            title = "Creatomate API Error: Invalid Request Data";
             solution = (
                  <div className="text-left">
-                    <p className="font-extrabold text-sm mb-2">SOLUTION (This is a required manual step):</p>
-                    <p className="mb-3 text-xs">This error confirms your local code is correct, but the deployed version of the 'creatomate-proxy' function on Supabase is outdated and insecure.</p>
-                    <div className="mt-4 pt-3 border-t border-red-400/30 text-xs">
-                        <p className="font-bold mb-2">The best solution is to use the new automated deployment workflow:</p>
-                        <ol className="list-decimal list-inside space-y-2">
-                           <li>Go to the `README.md` file in your project.</li>
-                           <li>Follow the steps in **Section 4: GitHub & Supabase: Set Up Automated Deployment**.</li>
-                           <li>Once set up, push a small change to any file to trigger the automatic update.</li>
-                        </ol>
-                    </div>
+                    <p className="font-extrabold text-sm mb-2">DETAILS:</p>
+                    <p className="mb-3 text-xs">Your API keys and Template ID are correct! However, Creatomate rejected the data sent to it. This is almost always caused by a misconfiguration in your template.</p>
+                    <p className="font-bold mb-2">TOP SOLUTIONS:</p>
+                    <ul className="list-decimal list-inside text-xs space-y-1">
+                        <li className="font-bold text-amber-300"><strong>MOST LIKELY:</strong> Check that your key elements (`Scene-1-Visual`, `Scene-1-Voiceover`, etc.) are marked as **"Dynamic"**. Select each element in the editor and find the "Dynamic" checkbox in the Properties panel on the right.</li>
+                        <li>Double-check all element names for typos (e.g., 'Scene-1-Vusual' instead of 'Scene-1-Visual').</li>
+                        <li>Ensure your `Voiceover` element is a **"Text-to-Speech"** type, not a standard "Audio" type.</li>
+                        <li>If the problem persists, try duplicating the template in Creatomate and using the new ID.</li>
+                    </ul>
                 </div>
             );
         }
