@@ -4,6 +4,19 @@ Getting the Creatomate video editor working involves a few critical setup steps.
 
 ---
 
+## 0. Update Your Database Schema
+
+A recent update requires a database change. Please run this command in your Supabase SQL Editor before proceeding.
+
+1.  Go to your Supabase project dashboard → **Database** → **SQL Editor**.
+2.  Click **"+ New query"**.
+3.  Copy and paste the entire content of the `supabase/database_setup.sql` file into the editor.
+4.  Click **"RUN"**.
+
+This will add the necessary columns to your `projects` table without affecting existing data.
+
+---
+
 ## 🚨 Final Setup Checklist (Most Common Errors)
 
 Before you deploy, quickly check these common failure points:
@@ -71,7 +84,7 @@ The backend function (`creatomate-proxy`) needs your API Key and Template ID.
 
 ---
 
-## 🚀 The Final Step: Redeploy Your Function!
+## 4. 🚀 The Final Step: Redeploy Your Function!
 
 **This is the most common reason for setup failure.** Secrets are only applied when a function is deployed.
 
@@ -81,3 +94,24 @@ The backend function (`creatomate-proxy`) needs your API Key and Template ID.
 4.  Click the **"Redeploy"** button in the top right corner.
 
 This will resolve most initialization errors. If problems persist, check the function's **Logs** tab in Supabase for specific error messages.
+
+---
+
+## 🚨 Troubleshooting Common Errors
+
+### Error: "404 Not Found" from `creatomate-proxy` function
+
+If you see an error in your Supabase function logs like: `Creatomate API Error: Template or variant not found`, it means the **Template ID** you provided is incorrect.
+
+**This is almost always the problem.** Please double-check these two things:
+
+1.  **Check your `CREATOMATE_BASE_TEMPLATE_ID` secret:**
+    - Go to your Supabase project → Edge Functions → `creatomate-proxy` → Secrets.
+    - Go to your Creatomate Template editor.
+    - Copy the ID from the URL (e.g., `.../editor/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
+    - Ensure the ID in Supabase **exactly** matches the one from the URL.
+
+2.  **Check your Template Variants:**
+    - In the Creatomate editor, look at the "Template" panel on the right.
+    - Click "Manage Variants".
+    - You **MUST** have variants named exactly `Vertical` and `Square` (case-sensitive). If they are named `vertical` or `My Vertical Variant`, it will fail.

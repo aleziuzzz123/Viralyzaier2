@@ -1,10 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 import CreatomatePlayer from './CreatomatePlayer';
+import Loader from './Loader';
+import { invokeEdgeFunction } from '../services/supabaseService';
+import { getErrorMessage } from '../utils';
 
 const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
-    const { t } = useAppContext();
+    const { t, handleUpdateProject, addToast } = useAppContext();
+    const [sourceId, setSourceId] = useState<string | null>(project.creatomateTemplateId || null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const initializeCreatomateSource = async () => {
+            if (!project.script) return;
+
+            setIsLoading(true);
+            setError(null);
+            try {
+                // These env vars are needed by the proxy function to authenticate the user
+                const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || (window as any).ENV?.VITE_SUPABASE_URL;
+                const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (window as any).ENV?.VITE_SUPABASE_ANON_KEY;
+
+                const { sourceId: newSourceId } = await invokeEdgeFunction<{ sourceId: string }>('creatomate-proxy', {
+                    script: project.script,
+                    videoSize: project.videoSize,
+                    supabaseUrl,
+                    supabaseAnonKey
+                });
+                
+                if (!newSourceId) throw new Error("Creatomate proxy did not return a source ID.");
+
+                // Save the new ID to the database for this project
+                await handleUpdateProject({ id: project.id, creatomateTemplateId: newSourceId });
+                setSourceId(newSourceId);
+
+            } catch (err) {
+                const message = getErrorMessage(err);
+                setError(message);
+                addToast(message, 'error');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        // If the project doesn't have a creatomate ID yet, create one.
+        if (!project.creatomateTemplateId) {
+            initializeCreatomateSource();
+        } else {
+            // If it already exists, just use it.
+            setSourceId(project.creatomateTemplateId);
+        }
+    }, [project.id, project.creatomateTemplateId, project.script, project.videoSize, handleUpdateProject, addToast]);
+
 
     if (!project.script) {
         return (
@@ -14,9 +63,19 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
             </div>
         );
     }
+    
+    if (isLoading) {
+        return <div className="flex flex-col items-center justify-center h-96"><Loader /> <p className="mt-4">Initializing video editor...</p></div>;
+    }
 
-    // This component now renders the minimal player to fix the build.
-    // The player will show a blank Creatomate interface, ready to be connected to a data source.
+    if (error) {
+        return <div className="flex flex-col items-center justify-center h-96 bg-red-900/20 text-red-300 p-8 rounded-lg">
+            <h3 className="font-bold text-lg">Failed to Initialize Editor</h3>
+            <p className="mt-2 text-sm text-center">{error}</p>
+            <p className="mt-4 text-xs text-red-400">Please check the troubleshooting steps in the README.md file and your Supabase function logs.</p>
+        </div>;
+    }
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <header className="text-center">
@@ -24,7 +83,7 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
                 <p className="mt-2 text-lg text-gray-400">{t('final_edit.subtitle')}</p>
             </header>
             <div className="h-[75vh] w-full bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden relative">
-                <CreatomatePlayer />
+                {sourceId ? <CreatomatePlayer sourceId={sourceId} /> : <div className="flex items-center justify-center h-full text-gray-500">Initializing editor...</div>}
             </div>
         </div>
     );
