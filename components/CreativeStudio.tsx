@@ -19,15 +19,9 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
             setIsLoading(true);
             setError(null);
             try {
-                // These env vars are needed by the proxy function to authenticate the user
-                const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || (window as any).ENV?.VITE_SUPABASE_URL;
-                const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (window as any).ENV?.VITE_SUPABASE_ANON_KEY;
-
                 const { sourceId: newSourceId } = await invokeEdgeFunction<{ sourceId: string }>('creatomate-proxy', {
                     script: project.script,
                     videoSize: project.videoSize,
-                    supabaseUrl,
-                    supabaseAnonKey
                 });
                 
                 if (!newSourceId) throw new Error("Creatomate proxy did not return a source ID.");
@@ -39,10 +33,6 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
             } catch (err) {
                 const message = getErrorMessage(err);
                 setError(message);
-                // Don't show a toast for config errors, as the main screen will show the error.
-                if (!message.includes('secret') && !message.includes('404')) {
-                    addToast(message, 'error');
-                }
             } finally {
                 setIsLoading(false);
             }
@@ -72,23 +62,65 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
     }
 
     if (error) {
-        const isMissingSecretError = error.toLowerCase().includes('missing secrets');
-        const isTemplateNotFoundError = error.toLowerCase().includes('404 not found') && error.toLowerCase().includes('template with id');
-        
-        let hint = "Please check the troubleshooting steps in the README.md file and your Supabase function logs.";
-        if (isMissingSecretError) {
-            hint = "Your function is missing one or more secrets. Please go to your Supabase dashboard, set all required CREATOMATE... secrets, and then **you must redeploy the function**.";
-        } else if (isTemplateNotFoundError) {
-            hint = "This 404 error almost always means one of two things: 1) The template ID is incorrect in your Supabase secrets, OR 2) **You have not redeployed the function since setting the secrets.** Please go to your Supabase function and click 'Redeploy'.";
+        let title = "Failed to Initialize Editor";
+        let solution = <p>Please check the troubleshooting steps in the README.md file and your Supabase function logs.</p>;
+
+        if (error.includes('404 Not Found') && error.includes('template with ID')) {
+            title = "Configuration Error: Template Not Found";
+            solution = (
+                <div>
+                    <p className="font-extrabold text-sm mb-2">SOLUTION:</p>
+                    <p>This 404 error means the function is running but Creatomate rejected the request. Please carefully check the DEBUG INFO in the error details above and then follow these steps:</p>
+                    <ul className="list-decimal list-inside text-left mt-2 text-xs space-y-1">
+                        <li>Confirm your API Key and Template ID are from the SAME Creatomate project.</li>
+                        <li>Carefully re-copy your secrets into Supabase to check for typos or extra spaces.</li>
+                        <li>Go to your Supabase function and click 'Redeploy'. This is the most common fix.</li>
+                    </ul>
+                </div>
+            );
+        } else if (error.includes('Missing secrets')) {
+            title = "Configuration Error: Missing Secrets";
+            solution = (
+                <div>
+                     <p className="font-extrabold text-sm mb-2">SOLUTION:</p>
+                     <p>The function is missing required secrets. Please set all 'CREATOMATE_...' secrets in Supabase and then **redeploy the function**.</p>
+                </div>
+            );
+        } else if (error.includes('Missing supabaseUrl or supabaseAnonKey')) {
+            title = "Deployment Mismatch: Your Code is Out of Sync!";
+            solution = (
+                 <div className="text-left">
+                    <p className="font-extrabold text-sm mb-2">SOLUTION (This is a required manual step):</p>
+                    <p className="mb-3 text-xs">This error confirms your local code is correct, but the deployed version of the 'creatomate-proxy' function on Supabase is outdated and insecure.</p>
+                    <ol className="list-decimal list-inside space-y-3 text-xs">
+                        <li>
+                            <strong>Open your project in a terminal.</strong>
+                        </li>
+                        <li>
+                            <strong>Run this exact command to upload the new function code:</strong>
+                            <code className="block bg-gray-950 text-indigo-300 p-2 rounded-md my-2 text-center text-sm">
+                                supabase functions deploy creatomate-proxy --no-verify-jwt
+                            </code>
+                        </li>
+                        <li>
+                            <strong>Wait for the deployment to complete in the terminal.</strong>
+                        </li>
+                        <li>
+                            <strong>Go to your Supabase Dashboard</strong>, find the function, and click <strong>"Redeploy"</strong> one last time to ensure it's active.
+                        </li>
+                    </ol>
+                     <p className="mt-3 text-xs">This will update the cloud function to the latest secure version, which fixes this error.</p>
+                </div>
+            );
         }
 
         return (
-            <div className="flex flex-col items-center justify-center h-96 bg-red-900/20 text-red-300 p-8 rounded-lg">
-                <h3 className="font-bold text-lg">Failed to Initialize Editor</h3>
-                <p className="mt-2 text-sm text-left whitespace-pre-wrap font-mono bg-red-900/30 p-4 rounded-md">{error}</p>
-                <p className="mt-4 text-xs text-red-400 font-bold text-center bg-gray-900/50 p-3 rounded-lg">
-                    {hint}
-                </p>
+            <div className="flex flex-col items-center justify-center h-auto min-h-96 bg-red-900/20 text-red-300 p-8 rounded-lg">
+                <h3 className="font-bold text-lg">{title}</h3>
+                <p className="mt-2 text-sm text-left whitespace-pre-wrap font-mono bg-red-900/30 p-4 rounded-md w-full">{error}</p>
+                <div className="mt-4 text-xs text-red-300 font-bold text-center bg-gray-900/50 p-4 rounded-lg whitespace-pre-wrap w-full">
+                    {solution}
+                </div>
             </div>
         );
     }
