@@ -1,0 +1,21 @@
+name: Deploy creatomate-proxy
+
+on:
+  workflow_dispatch:        # allow manual run
+  push:
+    paths:
+      - 'supabase/functions/creatomate-proxy/**'   # auto-deploy when the function changes
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Deploy Edge Function
+        run: supabase functions deploy creatomate-proxy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
