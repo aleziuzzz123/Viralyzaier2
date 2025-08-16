@@ -39,7 +39,10 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
             } catch (err) {
                 const message = getErrorMessage(err);
                 setError(message);
-                addToast(message, 'error');
+                // Don't show a toast for config errors, as the main screen will show the error.
+                if (!message.includes('secret') && !message.includes('404')) {
+                    addToast(message, 'error');
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -69,11 +72,25 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
     }
 
     if (error) {
-        return <div className="flex flex-col items-center justify-center h-96 bg-red-900/20 text-red-300 p-8 rounded-lg">
-            <h3 className="font-bold text-lg">Failed to Initialize Editor</h3>
-            <p className="mt-2 text-sm text-center">{error}</p>
-            <p className="mt-4 text-xs text-red-400">Please check the troubleshooting steps in the README.md file and your Supabase function logs.</p>
-        </div>;
+        const isMissingSecretError = error.toLowerCase().includes('missing secrets');
+        const isTemplateNotFoundError = error.toLowerCase().includes('404 not found') && error.toLowerCase().includes('template with id');
+        
+        let hint = "Please check the troubleshooting steps in the README.md file and your Supabase function logs.";
+        if (isMissingSecretError) {
+            hint = "Your function is missing one or more secrets. Please go to your Supabase dashboard, set all required CREATOMATE... secrets, and then **you must redeploy the function**.";
+        } else if (isTemplateNotFoundError) {
+            hint = "This 404 error almost always means one of two things: 1) The template ID is incorrect in your Supabase secrets, OR 2) **You have not redeployed the function since setting the secrets.** Please go to your Supabase function and click 'Redeploy'.";
+        }
+
+        return (
+            <div className="flex flex-col items-center justify-center h-96 bg-red-900/20 text-red-300 p-8 rounded-lg">
+                <h3 className="font-bold text-lg">Failed to Initialize Editor</h3>
+                <p className="mt-2 text-sm text-left whitespace-pre-wrap font-mono bg-red-900/30 p-4 rounded-md">{error}</p>
+                <p className="mt-4 text-xs text-red-400 font-bold text-center bg-gray-900/50 p-3 rounded-lg">
+                    {hint}
+                </p>
+            </div>
+        );
     }
 
     return (
