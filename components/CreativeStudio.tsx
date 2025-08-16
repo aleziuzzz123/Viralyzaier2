@@ -92,24 +92,14 @@ const CreativeStudio: React.FC<{ project: Project }> = ({ project }) => {
                  <div className="text-left">
                     <p className="font-extrabold text-sm mb-2">SOLUTION (This is a required manual step):</p>
                     <p className="mb-3 text-xs">This error confirms your local code is correct, but the deployed version of the 'creatomate-proxy' function on Supabase is outdated and insecure.</p>
-                    <ol className="list-decimal list-inside space-y-3 text-xs">
-                        <li>
-                            <strong>Open your project in a terminal.</strong>
-                        </li>
-                        <li>
-                            <strong>Run this exact command to upload the new function code:</strong>
-                            <code className="block bg-gray-950 text-indigo-300 p-2 rounded-md my-2 text-center text-sm">
-                                supabase functions deploy creatomate-proxy --no-verify-jwt
-                            </code>
-                        </li>
-                        <li>
-                            <strong>Wait for the deployment to complete in the terminal.</strong>
-                        </li>
-                        <li>
-                            <strong>Go to your Supabase Dashboard</strong>, find the function, and click <strong>"Redeploy"</strong> one last time to ensure it's active.
-                        </li>
-                    </ol>
-                     <p className="mt-3 text-xs">This will update the cloud function to the latest secure version, which fixes this error.</p>
+                    <div className="mt-4 pt-3 border-t border-red-400/30 text-xs">
+                        <p className="font-bold mb-2">The best solution is to use the new automated deployment workflow:</p>
+                        <ol className="list-decimal list-inside space-y-2">
+                           <li>Go to the `README.md` file in your project.</li>
+                           <li>Follow the steps in **Section 4: GitHub & Supabase: Set Up Automated Deployment**.</li>
+                           <li>Once set up, push a small change to any file to trigger the automatic update.</li>
+                        </ol>
+                    </div>
                 </div>
             );
         }
