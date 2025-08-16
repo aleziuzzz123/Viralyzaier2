@@ -11,8 +11,8 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: any }
-  | any[];
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
@@ -333,12 +333,12 @@ export type Database = {
           moodboard: string[] | null
           name: string
           performance: Json | null
-          platform: string
+          platform: "youtube_long" | "youtube_short" | "tiktok" | "instagram"
           published_url: string | null
           scheduled_date: string | null
           script: Json | null
           sound_design: Json | null
-          status: string
+          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
           title: string | null
           topic: string
           user_id: string
@@ -359,12 +359,12 @@ export type Database = {
           moodboard?: string[] | null
           name: string
           performance?: Json | null
-          platform: string
+          platform: "youtube_long" | "youtube_short" | "tiktok" | "instagram"
           published_url?: string | null
           scheduled_date?: string | null
           script?: Json | null
           sound_design?: Json | null
-          status: string
+          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
           title?: string | null
           topic: string
           user_id: string
@@ -385,12 +385,12 @@ export type Database = {
           moodboard?: string[] | null
           name?: string
           performance?: Json | null
-          platform?: string
+          platform?: "youtube_long" | "youtube_short" | "tiktok" | "instagram"
           published_url?: string | null
           scheduled_date?: string | null
           script?: Json | null
           sound_design?: Json | null
-          status?: string
+          status?: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
           title?: string | null
           topic?: string
           user_id?: string
@@ -468,7 +468,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      platform: "youtube_long" | "youtube_short" | "tiktok" | "instagram"
+      project_status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
     }
     CompositeTypes: {
       [_ in never]: never

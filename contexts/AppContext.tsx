@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import * as supabase from '../services/supabaseService';
@@ -314,26 +315,28 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const handleCreateProjectForBlueprint = useCallback(async (topic: string, platform: Platform, title: string, voiceoverVoiceId: string, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint): Promise<string | null> => {
         if (!user) return null;
         try {
-            const newProjectData: Omit<Project, 'id' | 'lastUpdated'> = {
-                name: title,
-                status: 'Scripting',
-                platform, videoSize, topic, title,
-                script: blueprint.script,
-                moodboard: [],
-                workflowStep: 2,
-                analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null,
-                launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId,
-                last_performance_check: null, final_video_url: null,
-            };
-            const newProject = await supabase.createProject(newProjectData, user.id);
+            // First, create a temporary project to get an ID for asset storage
+            const tempProjectData: Omit<Project, 'id' | 'lastUpdated'> = { name: title, topic, platform, videoSize, status: 'Scripting', workflowStep: 2, title, script: blueprint.script, moodboard: [], analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null, launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId, last_performance_check: null, final_video_url: null };
+            const tempProject = await supabase.createProject(tempProjectData, user.id);
+
+            // Now, upload moodboard images using the new project's ID
             const moodboardUrls = await Promise.all(
                 blueprint.moodboard.map(async (base64Img: string, index: number) => {
                     const blob = await supabase.dataUrlToBlob(base64Img);
-                    const path = `${user!.id}/${newProject.id}/moodboard_${index}.jpg`;
+                    const path = `${user!.id}/${tempProject.id}/moodboard_${index}.jpg`;
                     return supabase.uploadFile(blob, path);
                 })
             );
-            const finalProject = await supabase.updateProject(newProject.id, { moodboard: moodboardUrls });
+            
+            // The moodboard URLs are saved, but we no longer link them directly in the script
+            // to simplify the Creatomate request. The user can add visuals in the editor.
+
+            // Finally, update the project with the final moodboard URLs
+            const finalProject = await supabase.updateProject(tempProject.id, { 
+                moodboard: moodboardUrls,
+                script: blueprint.script // Script no longer has storyboardImageUrl
+            });
+
             setProjects(prev => [finalProject, ...prev]);
             addToast(t('toast.project_created_blueprint'), 'success');
             return finalProject.id;
