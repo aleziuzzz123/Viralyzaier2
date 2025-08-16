@@ -4,27 +4,17 @@ Getting the Creatomate video editor working involves a few critical setup steps.
 
 ---
 
-## 0. Update Your Database Schema
+## 🚨 ATTENTION: The Final, Most Important Step 🚨
 
-A recent update requires a database change. Please run this command in your Supabase SQL Editor before proceeding.
+**Your secrets will not work until you do this!**
 
-1.  Go to your Supabase project dashboard → **Database** → **SQL Editor**.
-2.  Click **"+ New query"**.
-3.  Copy and paste the entire content of the `supabase/database_setup.sql` file into the editor.
-4.  Click **"RUN"**.
+After you have set all your secrets in the Supabase Dashboard, you **MUST** redeploy the `creatomate-proxy` function. Secrets are only loaded when a function is deployed.
 
-This will add the necessary columns to your `projects` table without affecting existing data.
+1.  Go to your Supabase Dashboard → **Edge Functions**.
+2.  Click on the `creatomate-proxy` function.
+3.  Click the **"Redeploy"** button in the top right corner.
 
----
-
-## 🚨 Final Setup Checklist (Most Common Errors)
-
-Before you deploy, quickly check these common failure points:
-
-1.  [ ] **`VITE_CREATOMATE_PUBLIC_TOKEN`**: Is it set correctly in your **Vercel** Environment Variables?
-2.  [ ] **Creatomate Template Variants**: Does your template have variants named **exactly** `Vertical` and `Square` (case-sensitive)?
-3.  [ ] **Supabase Secrets**: Are `CREATOMATE_API_KEY` and `CREATOMATE_BASE_TEMPLATE_ID` set in your Supabase project's secrets?
-4.  [ ] **Function Redeployment (CRITICAL!)**: Did you **redeploy the `creatomate-proxy` function** in Supabase *after* setting the secrets? If you forget this step, your function will fail.
+This single step is the most common reason for setup failure.
 
 ---
 
@@ -39,79 +29,52 @@ The frontend editor needs your Public Token to load.
     - **Name**: `VITE_CREATOMATE_PUBLIC_TOKEN`
     - **Value**: Paste your token here.
 
-## 2. Creatomate: Configure Your Base Template
+## 2. Creatomate: Create Three Base Templates
 
-The app works by programmatically changing a "base template" that you design.
+This is the simplest and most reliable setup. Instead of using "Variants", you will create one template for each video format.
 
-### Step 2A: Name Your Dynamic Elements
-1.  In your Creatomate project, open your main template (e.g., in 16:9 format).
-2.  For each scene, you need placeholders. **The names must be exact.**
-3.  Select an element, go to the "Properties" panel, and set its **Name**.
+1.  **Create Your Main Template (16:9 Landscape):**
+    -   Design your main video template in a **1280x720** or **1920x1080** format.
+    -   For each scene, add placeholder elements and **name them exactly** as follows in the "Properties" panel:
+        -   **Visuals:** `Scene-1-Visual`, `Scene-2-Visual`, etc.
+        -   **Voiceovers:** `Scene-1-Voiceover`, `Scene-2-Voiceover`, etc.
+        -   **On-Screen Text:** `Scene-1-OnScreenText`, `Scene-2-OnScreenText`, etc.
+    -   Copy the **Template ID** from the URL bar. This is your `16:9` ID.
 
-    - **Visuals (Required):** Use `video` or `image` elements.
-        - `Scene-1-Visual`, `Scene-2-Visual`, ..., `Scene-10-Visual`
+2.  **Duplicate for Vertical (9:16):**
+    -   Duplicate your main template.
+    -   Open the new copy and change its size to **1080x1920**.
+    -   Adjust the layout of the elements to look good in a vertical format.
+    -   Copy the **Template ID** from the URL bar. This is your `9:16` ID.
 
-    - **Voiceovers (Required):** Use `text` elements (you can place these off-screen).
-        - `Scene-1-Voiceover`, `Scene-2-Voiceover`, ..., `Scene-10-Voiceover`
-        
-    - **On-Screen Text (Recommended):** Use `text` elements.
-        - `Scene-1-OnScreenText`, `Scene-2-OnScreenText`, ..., `Scene-10-OnScreenText`
-
-### Step 2B: Create Template Variants (CRITICAL)
-For vertical and square videos, you must create variants.
-
-1.  In your template editor, find the **Template** section in the right-hand panel.
-2.  Click **Manage Variants** next to the template size.
-3.  Create a new variant for the **9:16 vertical format** (1080x1920) and name it **exactly `Vertical`**.
-4.  Create another variant for the **1:1 square format** (1080x1080) and name it **exactly `Square`**.
-5.  Adjust the layouts for the 'Vertical' and 'Square' variants to look good.
-6.  Save the template.
+3.  **Duplicate for Square (1:1):**
+    -   Duplicate your main template again.
+    -   Open the new copy and change its size to **1080x1080**.
+    -   Adjust the layout for a square format.
+    -   Copy the **Template ID** from the URL bar. This is your `1:1` ID.
 
 ## 3. Supabase: Set Your Backend Secrets
 
-The backend function (`creatomate-proxy`) needs your API Key and Template ID.
+The backend function (`creatomate-proxy`) needs your API Key and the three Template IDs.
 
-1.  From your Creatomate editor, copy the **Template ID** from the URL bar.
-2.  From Creatomate Project Settings, copy your **API Key**.
-3.  Go to your Supabase project dashboard → **Edge Functions** → **Secrets**.
-4.  Add two secrets:
-    - **Name**: `CREATOMATE_BASE_TEMPLATE_ID`
-    - **Value**: Paste your template ID.
-    - **Name**: `CREATOMATE_API_KEY`
-    - **Value**: Paste your API key.
+1.  From Creatomate Project Settings, copy your **API Key**.
+2.  Go to your Supabase project dashboard → **Edge Functions** → `creatomate-proxy` → **Secrets**.
+3.  Add **four** secrets:
+    -   `CREATOMATE_API_KEY`: Paste your API key.
+    -   `CREATOMATE_TEMPLATE_169_ID`: Paste your **16:9 Landscape** template ID.
+    -   `CREATOMATE_TEMPLATE_916_ID`: Paste your **9:16 Vertical** template ID.
+    -   `CREATOMATE_TEMPLATE_11_ID`: Paste your **1:1 Square** template ID.
 
-> **💡 Important Note:** You recently provided a new API key (`d879c80a...`). Please ensure this is the exact key you have set for `CREATOMATE_API_KEY` in your Supabase secrets. An incorrect key will cause a `401 Unauthorized` error.
-
----
-
-## 4. 🚀 The Final Step: Redeploy Your Function!
-
-**This is the most common reason for setup failure.** Secrets are only applied when a function is deployed.
-
-1.  Go to your Supabase Dashboard.
-2.  Navigate to the **Edge Functions** section.
-3.  Click on the `creatomate-proxy` function.
-4.  Click the **"Redeploy"** button in the top right corner.
-
-This will resolve most initialization errors. If problems persist, check the function's **Logs** tab in Supabase for specific error messages.
+**Remember to redeploy the function after setting these!**
 
 ---
 
-## 🚨 Troubleshooting Common Errors
+## Troubleshooting
 
-### Error: "404 Not Found" from `creatomate-proxy` function
+-   **Error: "Missing one or more secrets..."**
+    -   This means you haven't set all four `CREATOMATE_...` secrets in Supabase for the function.
+    -   **Solution:** You forgot to click **"Redeploy"** after setting the secrets.
 
-If you see an error in your Supabase function logs like: `Creatomate API Error: Template or variant not found`, it means the **Template ID** you provided is incorrect.
-
-**This is almost always the problem.** Please double-check these two things:
-
-1.  **Check your `CREATOMATE_BASE_TEMPLATE_ID` secret:**
-    - Go to your Supabase project → Edge Functions → `creatomate-proxy` → Secrets.
-    - Go to your Creatomate Template editor.
-    - Copy the ID from the URL (e.g., `.../editor/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
-    - Ensure the ID in Supabase **exactly** matches the one from the URL.
-
-2.  **Check your Template Variants:**
-    - In the Creatomate editor, look at the "Template" panel on the right.
-    - Click "Manage Variants".
-    - You **MUST** have variants named exactly `Vertical` and `Square` (case-sensitive). If they are named `vertical` or `My Vertical Variant`, it will fail.
+-   **Error: "404 Not Found" or "The template with ID '...' was not found"**
+    -   This means the Template ID is wrong, OR you haven't redeployed the function since setting it.
+    -   **Solution:** 1) Double-check that your template ID is correct in Supabase secrets. 2) **Redeploy the function.** This is almost always the solution.

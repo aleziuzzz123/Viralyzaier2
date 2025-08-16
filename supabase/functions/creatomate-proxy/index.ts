@@ -8,9 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ** CRITICAL **: These keys are the ONLY secrets read from the Supabase Function environment.
+// ** CRITICAL **: These secrets MUST be set in your Supabase project.
 const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
-const CREATOMATE_BASE_TEMPLATE_ID = Deno.env.get('CREATOMATE_BASE_TEMPLATE_ID');
+const T169_ID = Deno.env.get('CREATOMATE_TEMPLATE_169_ID');
+const T916_ID = Deno.env.get('CREATOMATE_TEMPLATE_916_ID');
+const T11_ID = Deno.env.get('CREATOMATE_TEMPLATE_11_ID');
+
 const CREATOMATE_API_URL = 'https://api.creatomate.com/v1/sources';
 
 serve(async (req: Request) => {
@@ -21,10 +24,12 @@ serve(async (req: Request) => {
   // ** IMPROVED SECRET CHECKING **
   const missingSecrets = [];
   if (!CREATOMATE_API_KEY) missingSecrets.push('CREATOMATE_API_KEY');
-  if (!CREATOMATE_BASE_TEMPLATE_ID) missingSecrets.push('CREATOMATE_BASE_TEMPLATE_ID');
+  if (!T169_ID) missingSecrets.push('CREATOMATE_TEMPLATE_169_ID');
+  if (!T916_ID) missingSecrets.push('CREATOMATE_TEMPLATE_916_ID');
+  if (!T11_ID) missingSecrets.push('CREATOMATE_TEMPLATE_11_ID');
 
   if (missingSecrets.length > 0) {
-    const errorMessage = `Function is not configured. Missing one or more secrets: ${missingSecrets.join(', ')}. Please follow the README.md setup instructions and redeploy the function.`;
+    const errorMessage = `Function is not configured. Missing secrets: ${missingSecrets.join(', ')}. Follow README.md and redeploy.`;
     console.error('Creatomate Proxy Function Error:', errorMessage);
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -61,6 +66,25 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
     
+    // ** NEW LOGIC: Select the correct template ID based on videoSize **
+    let templateIdToUse;
+    let templateSecretName;
+    switch (videoSize) {
+        case '9:16':
+            templateIdToUse = T916_ID;
+            templateSecretName = 'CREATOMATE_TEMPLATE_916_ID';
+            break;
+        case '1:1':
+            templateIdToUse = T11_ID;
+            templateSecretName = 'CREATOMATE_TEMPLATE_11_ID';
+            break;
+        case '16:9':
+        default:
+            templateIdToUse = T169_ID;
+            templateSecretName = 'CREATOMATE_TEMPLATE_169_ID';
+            break;
+    }
+
     // Transform the script into Creatomate modifications
     const modifications: { [key: string]: string } = {};
     script.scenes.forEach((scene: any, i: number) => {
@@ -71,15 +95,7 @@ serve(async (req: Request) => {
       }
     });
 
-    // Construct the full template ID including the variant
-    let templateIdToUse = CREATOMATE_BASE_TEMPLATE_ID as string;
-    if (videoSize === '9:16') {
-        templateIdToUse += '/Vertical';
-    } else if (videoSize === '1:1') {
-        templateIdToUse += '/Square';
-    }
-
-    console.log(`[Creatomate Proxy] Attempting to create source with Template ID: ${templateIdToUse}`);
+    console.log(`[Creatomate Proxy] Attempting to create source with Template ID: ${templateIdToUse} for size: ${videoSize}`);
 
     // Create a new dynamic "source".
     const creatomateResponse = await fetch(CREATOMATE_API_URL, {
@@ -97,17 +113,22 @@ serve(async (req: Request) => {
     if (!creatomateResponse.ok) {
         const errorBody = await creatomateResponse.text();
         console.error("Creatomate API Error:", errorBody);
-
         let detailedError = `Creatomate API request failed with status ${creatomateResponse.status}.`;
         
         if (creatomateResponse.status === 401) {
-            detailedError += ' This is likely due to an invalid CREATOMATE_API_KEY in your Supabase secrets.';
+            detailedError += ' HINT: This is likely due to an invalid CREATOMATE_API_KEY secret.';
         } else if (creatomateResponse.status === 404) {
-             const errorHint = `This "404 Not Found" error from Creatomate almost always means the 'template_id' is wrong. Please check these two things:
-1. Your 'CREATOMATE_BASE_TEMPLATE_ID' secret in Supabase matches the ID from your Creatomate template URL.
-2. Your template has variants named EXACTLY 'Vertical' and 'Square' (case-sensitive).
-The full Template ID we tried to use was: '${templateIdToUse}'.`;
-            detailedError = `Creatomate API Error: Template or variant not found. HINT: ${errorHint}`;
+            const maskedApiKey = `${CREATOMATE_API_KEY?.substring(0, 4)}...${CREATOMATE_API_KEY?.slice(-4)}`;
+            detailedError = `Creatomate API Error (404 Not Found): The template with ID '${templateIdToUse}' was not found.
+            
+DEBUG INFO:
+- Template ID Used: ${templateIdToUse}
+- From Secret: ${templateSecretName}
+- API Key Used (masked): ${maskedApiKey}
+
+This confirms the function IS reading your secrets. The values are incorrect in Creatomate. Please CAREFULLY check:
+1. The Template ID in Supabase exactly matches the one in Creatomate.
+2. The API Key and Template ID belong to the same Creatomate project.`;
         }
         
         throw new Error(detailedError);
