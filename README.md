@@ -1,18 +1,16 @@
 # Viralyzer 5.0 - Creatomate Integration Setup
 
-Getting the Creatomate video editor working involves a few critical setup steps. Please follow these carefully to avoid common errors.
+This guide will walk you through setting up the Creatomate and Supabase integrations. Please follow these steps carefully to avoid common errors.
 
 ---
 
-## 🚨 ATTENTION: Final Setup Checklist (Do This Last!) 🚨
+## 🚨 Final Setup Checklist (Do This Last!) 🚨
 
 This is the most important part of the setup. **Your integration will not work until you complete this checklist.**
 
 - [ ] **Have you created all 3 separate templates (16:9, 9:16, 1:1) in Creatomate?**
 - [ ] **Have you set all 4 `CREATOMATE_...` secrets in your Supabase function?**
-- [ ] **Most Importantly: Have you redeployed the `creatomate-proxy` function AFTER setting the secrets?**
-
-> **Why redeploy?** Supabase Edge Functions **only load secrets when they are deployed.** If you set secrets but don't redeploy, the running function will still have the old (or empty) values, causing an error.
+- [ ] **Most Importantly: Have you successfully run the GitHub Action to deploy your functions AFTER setting the secrets?**
 
 ---
 
@@ -63,19 +61,36 @@ The backend function (`creatomate-proxy`) needs your API Key and the three Templ
     -   `CREATOMATE_TEMPLATE_916_ID`: Paste your **9:16 Vertical** template ID.
     -   `CREATOMATE_TEMPLATE_11_ID`: Paste your **1:1 Square** template ID.
 
-**Remember to complete the Final Checklist at the top after setting these!**
+## 4. GitHub & Supabase: Set Up Automated Deployment
+
+To fix the "Deployment Mismatch" error, you must deploy the latest version of your Supabase functions. This GitHub Action does it for you automatically and securely.
+
+1.  **Create a Supabase Access Token:**
+    -   Go to your Supabase Account -> [Access Tokens](https://supabase.com/dashboard/account/tokens).
+    -   Generate a new token with a descriptive name (e.g., "GitHub Actions Deploy") and copy it.
+
+2.  **Get Your Supabase Project ID:**
+    -   Go to your Supabase project's **Settings** -> **General**.
+    -   Copy the **Project ID**.
+
+3.  **Add GitHub Secrets:**
+    -   In your GitHub repository, go to **Settings** -> **Secrets and variables** -> **Actions**.
+    -   Click **"New repository secret"** and create two secrets:
+        -   `SUPABASE_ACCESS_TOKEN`: Paste your Supabase Access Token.
+        -   `SUPABASE_PROJECT_ID`: Paste your Supabase Project ID.
+
+4.  **Trigger the Deployment:**
+    -   Commit and push any change to your `main` branch (or just push the new `.github/workflows/deploy.yml` file).
+    -   Go to the **Actions** tab in your GitHub repository. You should see the "Deploy Supabase Functions" workflow running.
+    -   Once it completes successfully, your functions will be up to date.
 
 ---
 
 ## Troubleshooting
 
--   **Error: "Missing one or more secrets..."**
-    -   This means you haven't set all four `CREATOMATE_...` secrets in Supabase for the function.
-    -   **Solution:** You forgot to click **"Redeploy"** after setting the secrets.
-
 -   **Error: "404 Not Found" or "The template with ID '...' was not found"**
-    -   You have already redeployed, but the error persists. This means there is a mistake in your secret values. The function is running, but Creatomate is rejecting your keys.
+    -   This means there is a mistake in your secret values. The function is running, but Creatomate is rejecting your keys.
     -   **Solution:**
-        1.  **Check for Typos:** Carefully re-copy and re-paste your `CREATOMATE_API_KEY` and all three `CREATOMATE_TEMPLATE_*_ID` values into Supabase. Make sure there are no extra spaces or invisible characters at the beginning or end.
+        1.  **Check for Typos:** Carefully re-copy and re-paste your `CREATOMATE_API_KEY` and all three `CREATOMATE_TEMPLATE_*_ID` values into Supabase. Make sure there are no extra spaces.
         2.  **Check Project Mismatch (Most Common Cause):** Confirm that the API Key and all three Template IDs come from the **EXACT SAME** project in Creatomate. An API key from "Project A" cannot access templates in "Project B".
-        3.  **Redeploy the function again** after you have verified your secrets. The function's error message will now give you detailed debug info to help you find the mismatch.
+        3.  **Trigger the GitHub Action again** by pushing a small change to a file. The function's error message will now give you detailed debug info to help you find the mismatch.
