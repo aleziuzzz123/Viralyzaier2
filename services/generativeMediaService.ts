@@ -1,4 +1,4 @@
-import { Platform, SceneAssets } from "../types";
+import { Platform, SceneAssets, SoundDesign, Script, Json } from "../types";
 import { invokeEdgeFunction } from './supabaseService';
 
 // This service is now secure. API keys are handled by backend proxy functions.
@@ -14,7 +14,7 @@ export const ELEVENLABS_VOICES = [
     { id: 'CYw3kZ02Hs0563khs1Fj', name: 'Fin - Deep, Authoritative' },
     { id: 'D38z5RcWu1voky8WS1ja', name: 'Glinda - Warm, Gentle' },
     { id: 'SOYHLrjzK2X1ezoPC6cr', name: 'Nicole - Confident, Engaging' },
-    { id: 'ThT5KcBeYPX3keUQqHPh', name: 'Gigi - Playful, Bubbly' },
+    { id: 'ThT5KcBeYPX3keUQqHPh', name: 'Gigi - Playful, B bubbly' },
     { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'James - Formal, Announcer' },
     { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam - Deep, Narrative' }
 ];
@@ -178,17 +178,4 @@ export const generateAiMusic = async (prompt: string, durationInSeconds: number)
  */
 export const generateSfx = async (prompt: string): Promise<Blob> => {
     return await invokeEdgeFunction<Blob>('elevenlabs-proxy', { type: 'sfx', text: prompt }, 'blob');
-};
-
-
-/**
- * Calls the backend to stitch all assets into a final video.
- */
-export const stitchAndRenderVideo = async (payload: {
-    scenes: SceneAssets[];
-    musicUrl: string | null;
-    voiceoverVolume: number;
-    musicVolume: number;
-}): Promise<{ finalVideoUrl: string }> => {
-    return await invokeEdgeFunction('video-stitcher', payload);
 };

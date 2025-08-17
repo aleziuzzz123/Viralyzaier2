@@ -1,7 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+  ],
+  resolve: {
+    dedupe: ['@shotstack/shotstack-studio'],
+  },
+  optimizeDeps: {
+    include: [],
+    exclude: []
+  },
+  build: {
+    rollupOptions: { external: [] },
+    commonjsOptions: { include: [/node_modules/] }
+  }
 });

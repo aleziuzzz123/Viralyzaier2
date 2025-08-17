@@ -17,9 +17,8 @@ import {
     ClonedVoice,
     Subscription,
     BrandIdentity,
-    Json,
 } from '../types';
-import { type Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { PLANS } from './paymentService';
 import { getErrorMessage } from '../utils';
 
@@ -40,7 +39,7 @@ const isValidSubscription = (sub: any): sub is Subscription => {
 };
 
 // Helper to sanitize JSON before sending it to Supabase
-const sanitizeJson = (value: any): Json | null => {
+const sanitizeJson = (value: any): any | null => {
     // Simple deep-copy for safety. Prevents issues with complex objects.
     return value ? JSON.parse(JSON.stringify(value)) : null;
 }
@@ -91,7 +90,10 @@ export const projectRowToProject = (row: any): Project => ({
     voiceoverVoiceId: row.voiceover_voice_id || null,
     last_performance_check: row.last_performance_check || null,
     final_video_url: row.final_video_url || null,
-    creatomateTemplateId: row.creatomateTemplateId || null,
+    shotstack_edit_json: row.shotstack_edit_json || null,
+    shotstack_render_id: row.shotstack_render_id || null,
+    voiceover_urls: row.voiceover_urls || null,
+    video_url: row.video_url || null,
 });
 
 
@@ -159,7 +161,7 @@ export const getSession = async () => {
 };
 
 export const onAuthStateChange = (callback: (event: string, session: Session | null) => void) => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(callback);
+    const { data: authListener } = supabase.auth.onAuthStateChange(callback as any);
     return authListener;
 };
 
@@ -170,7 +172,7 @@ export const signInWithPassword = async (email: string, password: string): Promi
 };
 
 export const signUp = async (email: string, password: string): Promise<void> => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(getErrorMessage(error));
 };
 
@@ -223,7 +225,7 @@ export const createProfileForUser = async (userId: string, email: string | null 
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User> => {
     const dbUpdates: ProfileUpdate = userToProfileUpdate(updates);
-    const { data, error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId).select('*').single();
+    const { data, error } = await supabase.from('profiles').update(dbUpdates as any).eq('id', userId).select('*').single();
     if (error) throw new Error(getErrorMessage(error));
     if (!data) throw new Error("Failed to update profile: no data returned.");
     const { data: tokenData } = await supabase.from('user_youtube_tokens').select('user_id').eq('user_id', userId).maybeSingle();
@@ -280,7 +282,6 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
         last_performance_check: projectData.last_performance_check,
         voiceover_voice_id: projectData.voiceoverVoiceId,
         final_video_url: projectData.final_video_url,
-        creatomateTemplateId: projectData.creatomateTemplateId,
     };
     
     const { data, error } = await supabase
@@ -296,28 +297,16 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
 export const updateProject = async (projectId: string, updates: Partial<Project>): Promise<Project> => {
     const dbUpdates: ProjectUpdate = { last_updated: new Date().toISOString() };
     
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.topic !== undefined) dbUpdates.topic = updates.topic;
-    if (updates.platform !== undefined) dbUpdates.platform = updates.platform;
-    if (updates.videoSize !== undefined) dbUpdates.video_size = updates.videoSize;
-    if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if (updates.workflowStep !== undefined) dbUpdates.workflow_step = updates.workflowStep;
-    if (updates.title !== undefined) dbUpdates.title = updates.title;
-    if (updates.script !== undefined) dbUpdates.script = sanitizeJson(updates.script);
-    if (updates.analysis !== undefined) dbUpdates.analysis = sanitizeJson(updates.analysis);
-    if (updates.competitorAnalysis !== undefined) dbUpdates.competitor_analysis = sanitizeJson(updates.competitorAnalysis);
-    if (updates.moodboard !== undefined) dbUpdates.moodboard = updates.moodboard;
-    if (updates.assets !== undefined) dbUpdates.assets = sanitizeJson(updates.assets);
-    if (updates.soundDesign !== undefined) dbUpdates.sound_design = sanitizeJson(updates.soundDesign);
-    if (updates.launchPlan !== undefined) dbUpdates.launch_plan = sanitizeJson(updates.launchPlan);
-    if (updates.performance !== undefined) dbUpdates.performance = sanitizeJson(updates.performance);
-    if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate;
-    if (updates.publishedUrl !== undefined) dbUpdates.published_url = updates.publishedUrl;
-    if (updates.voiceoverVoiceId !== undefined) dbUpdates.voiceover_voice_id = updates.voiceoverVoiceId;
-    if (updates.final_video_url !== undefined) dbUpdates.final_video_url = updates.final_video_url;
-    if (updates.creatomateTemplateId !== undefined) dbUpdates.creatomateTemplateId = updates.creatomateTemplateId;
+    // This dynamically maps fields from the updates object to the snake_case database columns.
+    for (const key in updates) {
+        if (Object.prototype.hasOwnProperty.call(updates, key)) {
+            const dbKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`) as keyof ProjectUpdate;
+            const value = (updates as any)[key];
+            (dbUpdates as any)[dbKey] = (typeof value === 'object' && value !== null) ? sanitizeJson(value) : value;
+        }
+    }
     
-    const { data, error } = await supabase.from('projects').update(dbUpdates).eq('id', projectId).select('*').single();
+    const { data, error } = await supabase.from('projects').update(dbUpdates as any).eq('id', projectId).select('*').single();
     if (error) {
         throw new Error(getErrorMessage(error));
     }
@@ -352,13 +341,13 @@ export const getNotifications = async (userId: string): Promise<Notification[]> 
 
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
     const updates: NotificationUpdate = { is_read: true };
-    const { error } = await supabase.from('notifications').update(updates).eq('id', notificationId);
+    const { error } = await supabase.from('notifications').update(updates as any).eq('id', notificationId);
     if (error) throw new Error(getErrorMessage(error));
 };
 
 export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
     const updates: NotificationUpdate = { is_read: true };
-    const { error } = await supabase.from('notifications').update(updates).eq('user_id', userId);
+    const { error } = await supabase.from('notifications').update(updates as any).eq('user_id', userId);
     if (error) throw new Error(getErrorMessage(error));
 };
 
@@ -401,7 +390,7 @@ export const createBrandIdentity = async (identityData: Omit<BrandIdentity, 'id'
         name: identityData.name,
         tone_of_voice: identityData.toneOfVoice,
         writing_style_guide: identityData.writingStyleGuide,
-        color_palette: identityData.colorPalette as Json,
+        color_palette: identityData.colorPalette,
         font_selection: identityData.fontSelection,
         thumbnail_formula: identityData.thumbnailFormula,
         visual_style_guide: identityData.visualStyleGuide,
@@ -420,7 +409,7 @@ export const updateBrandIdentity = async (identityId: string, updates: Partial<O
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.toneOfVoice !== undefined) dbUpdates.tone_of_voice = updates.toneOfVoice;
     if (updates.writingStyleGuide !== undefined) dbUpdates.writing_style_guide = updates.writingStyleGuide;
-    if (updates.colorPalette !== undefined) dbUpdates.color_palette = updates.colorPalette as Json;
+    if (updates.colorPalette !== undefined) dbUpdates.color_palette = updates.colorPalette;
     if (updates.fontSelection !== undefined) dbUpdates.font_selection = updates.fontSelection;
     if (updates.thumbnailFormula !== undefined) dbUpdates.thumbnail_formula = updates.thumbnailFormula;
     if (updates.visualStyleGuide !== undefined) dbUpdates.visual_style_guide = updates.visualStyleGuide;
@@ -430,7 +419,7 @@ export const updateBrandIdentity = async (identityId: string, updates: Partial<O
 
     const { data, error } = await supabase
         .from('brand_identities')
-        .update(dbUpdates)
+        .update(dbUpdates as any)
         .eq('id', identityId)
         .select('*')
         .single();

@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset } from '../types.ts';
+import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset, JamendoTrack, GiphyAsset } from '../types.ts';
 import * as supabase from './supabaseService.ts';
 
 const parseGeminiJson = <T>(res: { text: string | null | undefined }, fallback: T | null = null): T => {
@@ -50,7 +50,8 @@ export const generateVideoBlueprint = async (
     style: VideoStyle,
     onProgress: (message: string) => void,
     desiredLengthInSeconds: number,
-    brandIdentity?: BrandIdentity | null
+    brandIdentity?: BrandIdentity | null,
+    shouldGenerateMoodboard: boolean = true
 ): Promise<Blueprint> => {
     onProgress("Consulting AI strategist for core concepts...");
     
@@ -86,7 +87,7 @@ Your output MUST be a JSON object with the following structure:
 1. "strategicSummary": A concise summary explaining WHY this video concept, in this style and for this brand, will perform well.
 2. "suggestedTitles": An array of 5 S-Tier titles, tailored to the chosen style and brand identity.
 3. "script": A full script object, with hooks, scenes, and a CTA, all written in the chosen style and brand voice. The total duration should match the desired length.
-4. "moodboardDescription": An array of 3 descriptive prompts for an AI image generator, each evoking the specific visual aesthetic of the chosen style and brand.`;
+4. "moodboardDescription": An array of descriptive prompts for an AI image generator. CRITICAL: This array MUST have the exact same number of elements as the "script.scenes" array. Each prompt must correspond to the "visual" description of its respective scene.`;
     
     const systemInstruction = `You are a world-class viral video strategist and your response MUST be a valid JSON object that strictly adheres to the provided schema. Ensure all fields, especially arrays like 'scenes' and 'suggestedTitles', are populated with high-quality, relevant content and are never empty. The output must reflect the chosen video style, desired length, and brand identity.`;
 
@@ -119,7 +120,7 @@ Your output MUST be a JSON object with the following structure:
                             },
                             required: ["hooks", "scenes", "cta"]
                         },
-                        moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 descriptive prompts for generating moodboard images." }
+                        moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of descriptive prompts for an AI image generator. There must be one prompt per scene." }
                     },
                     required: ["strategicSummary", "suggestedTitles", "script", "moodboardDescription"]
                 }
@@ -131,8 +132,13 @@ Your output MUST be a JSON object with the following structure:
     
     onProgress("Strategic plan and script generated successfully!");
 
+    if (!shouldGenerateMoodboard) {
+        onProgress("Skipping moodboard generation as requested.");
+        return { ...blueprintContent, moodboard: [], platform };
+    }
+
     const moodboardUrls: string[] = [];
-    const aspectRatio = platform === 'youtube_long' ? '16:9' : '9:16';
+    const aspectRatio = platform === 'youtube_long' ? '16:9' : '16:9';
 
     for (let i = 0; i < blueprintContent.moodboardDescription.length; i++) {
         const prompt = blueprintContent.moodboardDescription[i];
@@ -230,7 +236,7 @@ Your response **MUST** be a JSON array containing exactly 3 blueprint objects. E
     });
 
     const blueprintContents = parseGeminiJson<(Omit<Blueprint, 'moodboard' | 'platform'> & { moodboardDescription: string[] })[]>(response);
-    const aspectRatio = platform === 'youtube_long' ? '16:9' : '9:16';
+    const aspectRatio = platform === 'youtube_long' ? '16:9' : '16:9';
 
     const allMoodboardPrompts = blueprintContents.flatMap(b => b.moodboardDescription);
     const allImagePromises = allMoodboardPrompts.map(prompt =>
@@ -765,7 +771,7 @@ export const analyzeAndGenerateThumbnails = async (title: string, platform: Plat
         }
     });
     const { prompts } = parseGeminiJson<{ prompts: string[] }>(promptResponse);
-    const aspectRatio = platform === 'youtube_long' ? '16:9' : '9:16';
+    const aspectRatio = platform === 'youtube_long' ? '16:9' : '16:9';
     const imagePromises = prompts.slice(0, 2).map(p =>
         supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
             type: 'generateImages',
@@ -846,7 +852,7 @@ export const getAiBrollSuggestion = async (scriptText: string): Promise<{ type: 
     return await supabase.invokeEdgeFunction('ai-broll-generator', { scriptText });
 };
 
-export const searchStockMedia = async (query: string, type: 'videos' | 'photos'): Promise<NormalizedStockAsset[]> => {
+export const searchPexels = async (query: string, type: 'videos' | 'photos'): Promise<NormalizedStockAsset[]> => {
     const response = await supabase.invokeEdgeFunction<{ photos?: StockAsset[], videos?: StockAsset[] }>('pexels-proxy', { query, type });
     const assets = type === 'videos' ? response.videos : response.photos;
     return (assets || []).map((asset: any) => ({
@@ -870,5 +876,30 @@ export const searchPixabay = async (query: string, type: 'videos' | 'photos'): P
         description: `By ${hit.user}`,
         duration: hit.duration,
         provider: 'pixabay'
+    }));
+};
+
+export const searchJamendoMusic = async (query: string): Promise<NormalizedStockAsset[]> => {
+    const response = await supabase.invokeEdgeFunction<{ results: JamendoTrack[] }>('jamendo-proxy', { query });
+    return (response.results || []).map(track => ({
+        id: track.id,
+        previewImageUrl: track.image,
+        downloadUrl: track.audio,
+        type: 'audio',
+        description: `${track.name} by ${track.artist_name}`,
+        duration: track.duration,
+        provider: 'jamendo'
+    }));
+};
+
+export const searchGiphy = async (query: string, type: 'stickers' | 'gifs' = 'stickers'): Promise<NormalizedStockAsset[]> => {
+    const response = await supabase.invokeEdgeFunction<GiphyAsset[]>('giphy-proxy', { query, type });
+    return (response || []).map(gif => ({
+        id: gif.id,
+        previewImageUrl: gif.images.fixed_height.webp || gif.images.fixed_height.url,
+        downloadUrl: gif.images.original.webp || gif.images.original.url,
+        type: 'sticker',
+        description: gif.title,
+        provider: 'giphy'
     }));
 };

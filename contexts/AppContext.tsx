@@ -1,6 +1,5 @@
-
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode, useRef } from 'react';
-import { Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import * as supabase from '../services/supabaseService';
 import { getErrorMessage } from '../utils';
 import { translations, Language, TranslationKey } from '../translations';
@@ -69,7 +68,7 @@ interface AppContextType {
     lockAndExecute: <T>(asyncFunction: () => Promise<T>) => Promise<T | undefined>;
 
     // Project Actions
-    handleUpdateProject: (updates: Partial<Project> & { id: string }) => Promise<boolean>;
+    handleUpdateProject: (projectId: string, updates: Partial<Project>) => Promise<boolean>;
     handleDeleteProject: (projectId: string) => void;
     handleCreateProjectForBlueprint: (topic: string, platform: Platform, title: string, voiceId: string, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint) => Promise<string | null>;
     handleCreateProjectFromIdea: (idea: Opportunity | ContentGapSuggestion, platform: Platform) => void;
@@ -298,11 +297,11 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         }
     }, [user, addToast, t]);
 
-    const handleUpdateProject = useCallback(async (updates: Partial<Project> & { id: string }) => {
+    const handleUpdateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
         try {
-            const updatedProject = await supabase.updateProject(updates.id, updates);
-            setProjects(prev => prev.map(p => p.id === updates.id ? { ...p, ...updatedProject } : p));
-            if (activeProjectId === updates.id) {
+            const updatedProject = await supabase.updateProject(projectId, updates);
+            setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
+            if (activeProjectId === projectId) {
                 setActiveProjectDetails(prev => prev ? { ...prev, ...updatedProject } : null);
             }
             return true;
@@ -315,11 +314,9 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const handleCreateProjectForBlueprint = useCallback(async (topic: string, platform: Platform, title: string, voiceoverVoiceId: string, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint): Promise<string | null> => {
         if (!user) return null;
         try {
-            // First, create a temporary project to get an ID for asset storage
             const tempProjectData: Omit<Project, 'id' | 'lastUpdated'> = { name: title, topic, platform, videoSize, status: 'Scripting', workflowStep: 2, title, script: blueprint.script, moodboard: [], analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null, launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId, last_performance_check: null, final_video_url: null };
             const tempProject = await supabase.createProject(tempProjectData, user.id);
 
-            // Now, upload moodboard images using the new project's ID
             const moodboardUrls = await Promise.all(
                 blueprint.moodboard.map(async (base64Img: string, index: number) => {
                     const blob = await supabase.dataUrlToBlob(base64Img);
@@ -328,13 +325,16 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 })
             );
             
-            // The moodboard URLs are saved, but we no longer link them directly in the script
-            // to simplify the Creatomate request. The user can add visuals in the editor.
+            const enrichedScript = { ...blueprint.script };
+            enrichedScript.scenes.forEach((scene, index) => {
+                if (moodboardUrls[index]) {
+                    scene.storyboardImageUrl = moodboardUrls[index];
+                }
+            });
 
-            // Finally, update the project with the final moodboard URLs
             const finalProject = await supabase.updateProject(tempProject.id, { 
                 moodboard: moodboardUrls,
-                script: blueprint.script // Script no longer has storyboardImageUrl
+                script: enrichedScript
             });
 
             setProjects(prev => [finalProject, ...prev]);
@@ -385,7 +385,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 title: newName,
                 script: null, analysis: null, competitorAnalysis: null, moodboard: null, assets: {},
                 soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
-                voiceoverVoiceId: null, last_performance_check: null,
+                voiceoverVoiceId: null, last_performance_check: null
             };
             const newProject = await supabase.createProject(newProjectData, user.id);
             setProjects(prev => [newProject, ...prev]);

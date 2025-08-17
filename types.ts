@@ -1,18 +1,13 @@
 // --- Core Types ---
 export type PlanId = 'free' | 'pro' | 'viralyzaier';
-export type ProjectStatus = 'Autopilot' | 'Idea' | 'Scripting' | 'Rendering' | 'Scheduled' | 'Published';
+export type ProjectStatus = 'Autopilot' | 'Idea' | 'Scripting' | 'Rendering' | 'Scheduled' | 'Published' | 'Failed' | 'Rendered';
 export type Platform = 'youtube_long' | 'youtube_short' | 'tiktok' | 'instagram';
 export type WorkflowStep = 1 | 2 | 3 | 4 | 5;
 export type VideoStyle = 'High-Energy Viral' | 'Cinematic Documentary' | 'Clean & Corporate' | 'Animation' | 'Historical Documentary' | 'Vlog' | 'Whiteboard';
 export type AiVideoModel = 'runwayml' | 'kling' | 'minimax' | 'seedance';
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+// Using `any` for the Json type resolves complex type inference issues with the Supabase client.
+export type Json = any;
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
@@ -59,6 +54,7 @@ export interface BrandIdentity {
 // --- Project & Content Types ---
 export interface Project {
   id: string;
+  user_id?: string;
   name: string;
   topic: string;
   platform: Platform;
@@ -80,11 +76,28 @@ export interface Project {
   voiceoverVoiceId: string | null;
   last_performance_check: string | null;
   final_video_url?: string | null;
-  creatomateTemplateId?: string | null;
+  shotstack_edit_json?: object | null;
+  shotstack_render_id?: string | null;
+  video_url?: string | null;
+  voiceover_urls?: { [key: number]: string } | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Scene { timecode: string; visual: string; voiceover: string; onScreenText?: string; storyboardImageUrl?: string; sceneIndex: number; }
-export interface Script { id?: any; hooks: string[]; scenes: Scene[]; cta: string; selectedHookIndex?: number; tone?: string; isNew?: boolean;}
+export interface Scene {
+  visual: string;
+  voiceover?: string;
+  onScreenText?: string;
+  timecode: string;
+  storyboardImageUrl?: string;
+}
+export interface Script {
+  hook?: string;
+  hooks?: string[];
+  scenes: Scene[];
+  cta?: string;
+  selectedHookIndex?: number;
+}
 export interface MoodboardImage { prompt: string; url: string; }
 export interface Blueprint { suggestedTitles: string[]; script: Script; moodboard: string[]; strategicSummary: string; platform: Platform; }
 export interface SceneAssets { visualUrl: string | null; voiceoverUrl: string | null; }
@@ -180,10 +193,10 @@ export interface NormalizedStockAsset {
   id: number | string;
   previewImageUrl: string;
   downloadUrl: string;
-  type: 'video' | 'image' | 'audio';
+  type: 'video' | 'image' | 'audio' | 'sticker';
   description: string;
   duration?: number;
-  provider: 'pexels' | 'pixabay' | 'jamendo';
+  provider: 'pexels' | 'pixabay' | 'jamendo' | 'giphy';
 }
 
 export interface JamendoTrack {
@@ -324,7 +337,6 @@ export type Database = {
           analysis: Json | null
           assets: Json | null
           competitor_analysis: Json | null
-          creatomateTemplateId: string | null
           final_video_url: string | null
           id: string
           last_performance_check: string | null
@@ -337,12 +349,16 @@ export type Database = {
           published_url: string | null
           scheduled_date: string | null
           script: Json | null
+          shotstack_edit_json: Json | null
+          shotstack_render_id: string | null
           sound_design: Json | null
-          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
+          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published" | "Failed" | "Rendered"
           title: string | null
           topic: string
           user_id: string
           video_size: string | null
+          video_url: string | null
+          voiceover_urls: Json | null
           voiceover_voice_id: string | null
           workflow_step: number
         }
@@ -350,7 +366,6 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
-          creatomateTemplateId?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null
@@ -363,12 +378,16 @@ export type Database = {
           published_url?: string | null
           scheduled_date?: string | null
           script?: Json | null
+          shotstack_edit_json?: Json | null
+          shotstack_render_id?: string | null
           sound_design?: Json | null
-          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
+          status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published" | "Failed" | "Rendered"
           title?: string | null
           topic: string
           user_id: string
           video_size?: string | null
+          video_url?: string | null
+          voiceover_urls?: Json | null
           voiceover_voice_id?: string | null
           workflow_step: number
         }
@@ -376,7 +395,6 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
-          creatomateTemplateId?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null
@@ -389,12 +407,16 @@ export type Database = {
           published_url?: string | null
           scheduled_date?: string | null
           script?: Json | null
+          shotstack_edit_json?: Json | null
+          shotstack_render_id?: string | null
           sound_design?: Json | null
-          status?: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
+          status?: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published" | "Failed" | "Rendered"
           title?: string | null
           topic?: string
           user_id?: string
           video_size?: string | null
+          video_url?: string | null
+          voiceover_urls?: Json | null
           voiceover_voice_id?: string | null
           workflow_step?: number
         }
@@ -469,7 +491,7 @@ export type Database = {
     }
     Enums: {
       platform: "youtube_long" | "youtube_short" | "tiktok" | "instagram"
-      project_status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published"
+      project_status: "Autopilot" | "Idea" | "Scripting" | "Rendering" | "Scheduled" | "Published" | "Failed" | "Rendered"
     }
     CompositeTypes: {
       [_ in never]: never
