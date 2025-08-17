@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, Script } from '../types';
+import { Project, Script, Scene } from '../types';
 import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { rewriteScriptScene, generateStoryboardImage } from '../services/geminiService';
@@ -35,14 +35,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
     const handleScriptChange = (
         type: 'hook' | 'scene' | 'cta',
         index: number,
-        field: 'visual' | 'voiceover' | 'onScreenText' | 'storyboardImageUrl',
+        field: 'visual' | 'voiceover' | 'onScreenText' | 'storyboardImageUrl' | 'cta',
         value: string
     ) => {
         if (!script) return;
 
         const newScript = { ...script };
         if (type === 'hook') {
-            const newHooks = [...newScript.hooks];
+            const newHooks = [...(newScript.hooks || [])];
             newHooks[index] = value;
             newScript.hooks = newHooks;
         } else if (type === 'cta') {
@@ -60,12 +60,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
     
     const addHook = () => {
         if (!script) return;
-        const newHooks = [...script.hooks, ''];
+        const newHooks = [...(script.hooks || []), ''];
         setScript({ ...script, hooks: newHooks });
     };
 
     const removeHook = (index: number) => {
-        if (!script || script.hooks.length <= 1) return;
+        if (!script || !script.hooks || script.hooks.length <= 1) return;
         const newHooks = script.hooks.filter((_: string, i: number) => i !== index);
         const newSelectedHookIndex = script.selectedHookIndex === index 
             ? 0 
@@ -144,7 +144,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                 <div>
                     <h4 className="font-bold text-indigo-400 mb-2">{t('script_generator.hooks_title')}</h4>
                      <div className="space-y-3">
-                        {script?.hooks.map((hook: string, index: number) => (
+                        {script?.hooks?.map((hook: string, index: number) => (
                             <div key={index} className={`flex items-center gap-3 p-1 rounded-lg border transition-all ${script.selectedHookIndex === index ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-800/50 border-gray-700'}`}>
                                 <button 
                                     onClick={() => handleSelectHook(index)}
@@ -160,7 +160,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                                     placeholder={`Hook option ${index + 1}`}
                                     className="w-full bg-transparent text-gray-300 focus:outline-none"
                                 />
-                                {script.hooks.length > 1 && (
+                                {script.hooks && script.hooks.length > 1 && (
                                     <button onClick={() => removeHook(index)} className="p-1 text-gray-500 hover:text-red-400">
                                         <TrashIcon className="w-4 h-4" />
                                     </button>
@@ -176,7 +176,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                 <div>
                     <h4 className="font-bold text-indigo-400 mb-2">{t('script_generator.script_title')}</h4>
                     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4 -mr-4">
-                        {script?.scenes.map((scene: any, i: number) => (
+                        {script?.scenes.map((scene: Scene, i: number) => (
                             <div key={i} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700 space-y-4">
                                 <div className="flex justify-between items-center">
                                     <p className="font-bold text-gray-200">Scene {i+1} ({scene.timecode})</p>
@@ -227,7 +227,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                     <h4 className="font-bold text-indigo-400 mb-2">{t('script_generator.cta_title')}</h4>
                     <textarea
                         value={script?.cta || ''}
-                        onChange={e => handleScriptChange('cta', 0, 'visual', e.target.value)}
+                        onChange={e => handleScriptChange('cta', 0, 'cta', e.target.value)}
                         rows={2}
                         className="w-full bg-gray-800/50 rounded-lg p-3 text-gray-300 border border-gray-700 focus:ring-indigo-500 focus:border-indigo-500"
                     />

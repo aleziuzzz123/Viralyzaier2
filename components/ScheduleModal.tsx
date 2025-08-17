@@ -22,8 +22,7 @@ const ScheduleModal: React.FC = () => {
             return;
         }
         
-        handleUpdateProject({ 
-            id: projectToSchedule, 
+        handleUpdateProject(projectToSchedule, { 
             status: 'Scheduled', 
             scheduledDate: new Date(scheduleDate).toISOString() 
         });

@@ -45,7 +45,7 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
                 ...(project.launchPlan || { thumbnails: null, promotionPlan: null, seo: { description: '', tags: [] } }),
                 seo 
             };
-            await handleUpdateProject({ id: project.id, launchPlan: updatedLaunchPlan });
+            await handleUpdateProject(project.id, { launchPlan: updatedLaunchPlan });
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to generate SEO.');
         } finally {
@@ -63,7 +63,7 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
                 ...(project.launchPlan || { seo: { description: '', tags: [] }, thumbnails: null, promotionPlan: null }),
                 thumbnails 
             };
-            await handleUpdateProject({ id: project.id, launchPlan: updatedLaunchPlan });
+            await handleUpdateProject(project.id, { launchPlan: updatedLaunchPlan });
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to generate thumbnails.');
         } finally {
@@ -86,26 +86,23 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
     });
 
     const handlePublishToYouTube = () => lockAndExecute(async () => {
-        // The project.publishedUrl here is the URL to the video file in Supabase storage,
-        // which was set during the "Assemble & Analyze" step.
-        if (!project.publishedUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title) {
+        if (!project.final_video_url || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title) {
             addToast("Missing video file, SEO, or thumbnail for publishing.", 'error');
             return;
         }
         setIsPublishing(true);
         try {
             const videoUrl = await publishVideo(
-                project.publishedUrl,
+                project.final_video_url,
                 project.title,
                 project.launchPlan.seo.description,
                 project.launchPlan.seo.tags,
                 project.launchPlan.thumbnails[0]
             );
             
-            await handleUpdateProject({
-                id: project.id,
+            await handleUpdateProject(project.id, {
                 status: 'Published',
-                publishedUrl: videoUrl, // This now stores the final YouTube URL.
+                publishedUrl: videoUrl,
             });
 
             addToast("Video successfully published to YouTube!", 'success');
@@ -123,12 +120,11 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
         addToast(`Repurposing for ${targetPlatform}... this may take a moment.`, 'info');
         try {
             const repurposedScript = await repurposeProject(project.script, project.title, project.platform, targetPlatform);
-            // Re-using this context function is a clean way to create a new project
             await handleCreateProjectFromIdea({
                 idea: `Repurposed: ${project.topic}`,
                 reason: `Repurposed from ${project.platform} video.`,
                 suggestedTitle: `Shorts Cut: ${project.title}`,
-                potentialTitles: [], // Add this to satisfy the type
+                potentialTitles: [], 
                 type: 'Experimental'
             }, targetPlatform);
             addToast('Repurposed project created! You can find it on your dashboard.', 'success');
@@ -139,7 +135,7 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
         }
     });
 
-    const isPublishingDisabled = isPublishing || !project.publishedUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title;
+    const isPublishingDisabled = isPublishing || !project.final_video_url || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title;
 
 
     return (

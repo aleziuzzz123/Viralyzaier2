@@ -31,7 +31,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
                 setAnalysisAttempted(true); // Mark that we're trying, to prevent loops
                 try {
                     // The `publishedUrl` at this stage is the temporary URL of the assembled preview video.
-                    if (!project.publishedUrl) {
+                    if (!project.final_video_url) {
                         throw new Error("Cannot analyze video without a rendered preview. Please return to the studio and try assembling again.");
                     }
                     
@@ -42,7 +42,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
                     
                     const result = await geminiService.analyzeVideo(frames.slice(0, 3), project.title || project.topic || 'Untitled Video', project.platform);
                     
-                    const updateSuccess = await handleUpdateProject({ id: project.id, analysis: result });
+                    const updateSuccess = await handleUpdateProject(project.id, { analysis: result });
                     
                     if (!updateSuccess) {
                         addToast("Could not save analysis results to the server. Results are shown locally.", "error");
@@ -63,7 +63,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
             setAnalysisResult(project.analysis);
             setIsLoading(false);
         }
-    }, [project.id, project.analysis, project.status, project.moodboard, project.title, project.topic, project.platform, project.publishedUrl, handleUpdateProject, addToast, onReturnToStudio, analysisAttempted]);
+    }, [project.id, project.analysis, project.status, project.moodboard, project.title, project.topic, project.platform, project.final_video_url, handleUpdateProject, addToast, onReturnToStudio, analysisAttempted]);
 
     if (isLoading || project.status === 'Rendering') {
         return <AnalysisLoader frames={project.moodboard || []} />;
@@ -73,7 +73,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
         return <AnalysisResult 
                     result={analysisResult} 
                     onReset={onReturnToStudio}
-                    videoPreviewUrl={project.publishedUrl} 
+                    videoPreviewUrl={project.final_video_url} 
                     onProceedToLaunchpad={onProceedToLaunchpad}
                 />;
     }

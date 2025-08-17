@@ -15,8 +15,10 @@ const statusConfig: { [key in ProjectStatus]: { color: string; bg: string; } } =
     'Idea': { color: 'border-sky-500', bg: 'bg-sky-900/20' },
     'Scripting': { color: 'border-amber-500', bg: 'bg-amber-900/20' },
     'Rendering': { color: 'border-pink-500', bg: 'bg-pink-900/20' },
+    'Rendered': { color: 'border-cyan-500', bg: 'bg-cyan-900/20' },
     'Scheduled': { color: 'border-indigo-500', bg: 'bg-indigo-900/20' },
-    'Published': { color: 'border-green-500', bg: 'bg-green-900/20' }
+    'Published': { color: 'border-green-500', bg: 'bg-green-900/20' },
+    'Failed': { color: 'border-red-500', bg: 'bg-red-900/20' },
 };
 
 interface ProjectCardProps {
@@ -38,7 +40,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onViewProject }) => 
             return;
         }
         if (trimmedUrl !== (project.publishedUrl || '')) {
-             handleUpdateProject({ id: project.id, publishedUrl: trimmedUrl });
+             handleUpdateProject(project.id, { publishedUrl: trimmedUrl });
              addToast(t('kanban.url_updated'), "success");
         }
         setIsEditingUrl(false);
@@ -151,16 +153,18 @@ interface KanbanBoardProps {
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, onViewProject }) => {
     const { addToast, handleUpdateProject, t, openScheduleModal } = useAppContext();
-    const statuses: ProjectStatus[] = ['Autopilot', 'Idea', 'Scripting', 'Rendering', 'Scheduled', 'Published'];
+    const statuses: ProjectStatus[] = ['Autopilot', 'Idea', 'Scripting', 'Rendering', 'Rendered', 'Scheduled', 'Published', 'Failed'];
 
     const getStatusName = (status: ProjectStatus) => {
         switch(status) {
             case 'Autopilot': return t('kanban.status_autopilot');
             case 'Idea': return t('kanban.status_idea');
             case 'Scripting': return t('kanban.status_scripting');
-            case 'Rendering': return "Rendering"; // New status
+            case 'Rendering': return "Rendering"; 
+            case 'Rendered': return "Rendered";
             case 'Scheduled': return t('kanban.status_scheduled');
             case 'Published': return t('kanban.status_published');
+            case 'Failed': return "Failed";
         }
     }
 
@@ -172,14 +176,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ projects, onViewProject }) =>
             if (newStatus === 'Scheduled') {
                 openScheduleModal(projectId);
             } else {
-                handleUpdateProject({ id: project.id, status: newStatus, scheduledDate: null });
+                handleUpdateProject(project.id, { status: newStatus, scheduledDate: null });
                 addToast(t('kanban.project_moved', {status: getStatusName(newStatus)}), 'success');
             }
         }
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-6">
             {statuses.map(status => (
                 <div 
                     key={status}

@@ -17,23 +17,20 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
 
     const handleScriptSaved = (script: Project['script']) => {
         if (!script) return;
-        handleUpdateProject({
-            id: project.id,
+        handleUpdateProject(project.id, {
             script: script,
             workflowStep: 3,
         });
     };
     
     const handleProceedToLaunchpad = () => {
-        handleUpdateProject({
-            id: project.id,
+        handleUpdateProject(project.id, {
             workflowStep: 5,
         });
     };
 
     const handleReturnToStudio = () => {
-        handleUpdateProject({
-            id: project.id,
+        handleUpdateProject(project.id, {
             workflowStep: 3
         });
     };
@@ -45,7 +42,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
             case 2:
                 return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
             case 3:
-                return <CreativeStudio project={project} />;
+                return <CreativeStudio />;
             case 4:
                 return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 5:

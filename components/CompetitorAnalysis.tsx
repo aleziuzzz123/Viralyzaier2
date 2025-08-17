@@ -32,7 +32,7 @@ const CompetitorAnalysis: React.FC<CompetitorAnalysisProps> = ({ project, onAppl
             const analysisResult = await analyzeCompetitorVideo(url);
             setResult(analysisResult);
             // Also update the project's topic based on the competitor's actual title
-            handleUpdateProject({ id: project.id, competitorAnalysis: analysisResult, topic: analysisResult.videoTitle });
+            handleUpdateProject(project.id, { competitorAnalysis: analysisResult, topic: analysisResult.videoTitle });
         } catch (e) {
             setError(e instanceof Error ? e.message : 'An unknown error occurred.');
         } finally {
