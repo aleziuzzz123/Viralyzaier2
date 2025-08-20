@@ -6,7 +6,6 @@ import { getErrorMessage } from '../utils';
 import Loader from './Loader';
 import { SparklesIcon } from './Icons';
 import AssetAndInspectorPanel from './AssetAndInspectorPanel';
-import { customEditorTheme } from '../themes/customEditorTheme';
 import * as supabase from '../services/supabaseService';
 
 // Hardcoded soundtrack URL as requested
@@ -46,7 +45,7 @@ const CreativeStudio: React.FC = () => {
                 format: "mp4",
                 resolution: "sd"
             },
-            theme: customEditorTheme,
+            theme: 'dark',
         };
         
         console.log("Final soundtrack src:", starterEdit.timeline.soundtrack.src);
