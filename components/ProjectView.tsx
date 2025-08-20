@@ -36,8 +36,6 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     };
     
     const renderContent = () => {
-        // Since blueprint creation is now a separate view, the project view starts at step 2.
-        // If a project somehow ends up at step 1, we show a message.
         switch (project.workflowStep) {
             case 2:
                 return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
@@ -48,13 +46,14 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
             case 5:
                 return <Launchpad project={project} />;
             default:
-                return <div className="text-center text-gray-500">This project's blueprint has not been generated. Please start a new project.</div>;
+                 // Default to the blueprint step if the project is in an early stage (e.g., step 1)
+                return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
         }
     };
     
     const steps: { nameKey: TranslationKey, step: WorkflowStep }[] = [
-        { nameKey: 'project_view.stepper_blueprint', step: 1 },
-        { nameKey: 'project_view.stepper_script_editor', step: 2 },
+        { nameKey: 'project_view.stepper_spark', step: 1 },
+        { nameKey: 'project_view.stepper_blueprint', step: 2 },
         { nameKey: 'project_view.stepper_creative_studio', step: 3 },
         { nameKey: 'project_view.stepper_analysis', step: 4 },
         { nameKey: 'project_view.stepper_launchpad', step: 5 },

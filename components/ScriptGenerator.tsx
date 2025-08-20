@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, Script, Scene } from '../types';
-import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon } from './Icons';
+import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice } from '../types';
+import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
-import { rewriteScriptScene, generateStoryboardImage } from '../services/geminiService';
+import { rewriteScriptScene, generateVideoBlueprint } from '../services/geminiService';
 import { getErrorMessage } from '../utils';
+import { ELEVENLABS_VOICES, generateVoiceover } from '../services/generativeMediaService';
+import { uploadFile, saveVoiceovers } from '../services/supabaseService';
 
 interface ScriptEditorProps {
     project: Project;
@@ -11,13 +13,26 @@ interface ScriptEditorProps {
 }
 
 const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) => {
-    const { t, consumeCredits, lockAndExecute, addToast } = useAppContext();
+    const { t, user, consumeCredits, lockAndExecute, addToast, brandIdentities, handleUpdateProject } = useAppContext();
     const [script, setScript] = useState<Script | null>(project.script);
     const [activeCopilot, setActiveCopilot] = useState<number | null>(null);
     const [isRewriting, setIsRewriting] = useState(false);
-    const [isGeneratingStoryboard, setIsGeneratingStoryboard] = useState<number | null>(null);
     const copilotRef = useRef<HTMLDivElement>(null);
+    const [isSavingScript, setIsSavingScript] = useState(false);
+    const [voiceoverProgress, setVoiceoverProgress] = useState<string | null>(null);
 
+    // New state for Blueprint generation
+    const [isGeneratingBlueprint, setIsLoadingBlueprint] = useState(false);
+    const [progressMessage, setProgressMessage] = useState('');
+    const [videoStyle, setVideoStyle] = useState<VideoStyle>('High-Energy Viral');
+    const [videoSize, setVideoSize] = useState<'16:9' | '9:16' | '1:1'>(project.videoSize || '16:9');
+    const [videoLength, setVideoLength] = useState(60);
+    const [isNarratorEnabled, setIsNarratorEnabled] = useState(true);
+    const [narrator, setNarrator] = useState('pNInz6obpgDQGcFmaJgB');
+    const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
+    const [shouldGenerateMoodboard, setShouldGenerateMoodboard] = useState(true);
+    const selectedBrand = brandIdentities.find((b: BrandIdentity) => b.id === selectedBrandId);
+    
     useEffect(() => {
         setScript(project.script);
     }, [project.script]);
@@ -31,6 +46,39 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleGenerateBlueprint = () => lockAndExecute(async () => {
+        if (!project.topic) { addToast("Project topic is missing.", "error"); return; }
+        if (!await consumeCredits(5)) return;
+        setIsLoadingBlueprint(true);
+        setProgressMessage('Kicking off the creative process...');
+        try {
+            const blueprint = await generateVideoBlueprint(
+                project.topic, 
+                videoSize === '16:9' ? 'youtube_long' : 'youtube_short', 
+                videoStyle, 
+                (message) => setProgressMessage(message), 
+                videoLength, 
+                selectedBrand, 
+                shouldGenerateMoodboard,
+                isNarratorEnabled
+            );
+            const narratorVoiceId = isNarratorEnabled ? narrator : null;
+            await handleUpdateProject(project.id, {
+                script: blueprint.script,
+                moodboard: blueprint.moodboard,
+                title: blueprint.suggestedTitles[0],
+                voiceoverVoiceId: narratorVoiceId,
+                videoSize: videoSize,
+            });
+            setScript(blueprint.script); // Update local state
+        } catch (e) {
+            addToast(`Blueprint generation failed: ${getErrorMessage(e)}`, 'error');
+        } finally {
+            setIsLoadingBlueprint(false);
+            setProgressMessage('');
+        }
+    });
 
     const handleScriptChange = (
         type: 'hook' | 'scene' | 'cta',
@@ -92,46 +140,163 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
             setIsRewriting(false);
         }
     };
-
-    const handleGenerateStoryboard = (sceneIndex: number) => lockAndExecute(async () => {
-        if (!script || !await consumeCredits(1)) return;
-        const visualDescription = script.scenes[sceneIndex].visual;
-        if (!visualDescription) {
-            addToast("Please write a visual description for the scene first.", "error");
+    
+    const handleSave = () => lockAndExecute(async () => {
+        if (!script || !user) {
+            if (script) onScriptSaved(script);
             return;
         }
 
-        setIsGeneratingStoryboard(sceneIndex);
+        if (!project.voiceoverVoiceId) {
+            addToast("Saving script without voiceovers.", "info");
+            onScriptSaved(script);
+            return;
+        }
+
+        setIsSavingScript(true);
+        setVoiceoverProgress('Preparing scenes...');
         try {
-            const imageUrl = await generateStoryboardImage(visualDescription);
-            handleScriptChange('scene', sceneIndex, 'storyboardImageUrl', imageUrl);
+            const voiceoverUrls: { [key: number]: string } = {};
+            const scriptWithMergedHook = JSON.parse(JSON.stringify(script));
+            
+            if (script.hooks && script.hooks.length > 0) {
+                const hookText = script.hooks[script.selectedHookIndex ?? 0];
+                if (hookText && scriptWithMergedHook.scenes[0]) {
+                    scriptWithMergedHook.scenes[0].voiceover = hookText + " " + scriptWithMergedHook.scenes[0].voiceover;
+                }
+            }
+            
+            const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover && project.voiceoverVoiceId);
+            let processedCount = 0;
+
+            for (const scene of scriptWithMergedHook.scenes) {
+                const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
+                if (scene.voiceover && project.voiceoverVoiceId) {
+                    processedCount++;
+                    setVoiceoverProgress(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
+                    
+                    const sceneBlob = await generateVoiceover(scene.voiceover, project.voiceoverVoiceId);
+                    const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
+                    voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+                }
+            }
+
+            if (Object.keys(voiceoverUrls).length > 0) {
+                setVoiceoverProgress('Saving voiceover URLs...');
+                await saveVoiceovers(project.id, voiceoverUrls);
+            }
+
+            addToast("Voiceovers generated and saved!", "success");
+            onScriptSaved(scriptWithMergedHook);
+
         } catch (e) {
-            addToast(`Storyboard generation failed: ${getErrorMessage(e)}`, 'error');
+            addToast(`Failed to save script & generate voiceovers: ${getErrorMessage(e)}`, 'error');
         } finally {
-            setIsGeneratingStoryboard(null);
+            setIsSavingScript(false);
+            setVoiceoverProgress(null);
         }
     });
 
-    const handleSave = () => {
-        if (script) {
-            onScriptSaved(script);
-        }
-    };
-
-    if (!project.script) {
-        return (
-             <div className="text-center py-16 px-6 bg-gray-800/50 rounded-2xl">
-                <h2 className="text-2xl font-bold text-white mb-3">{t('script_editor.blueprint_required_title')}</h2>
-                <p className="text-gray-400 mb-6 max-w-md mx-auto">{t('script_editor.blueprint_required_subtitle')}</p>
-            </div>
-        )
-    }
+    const styleOptions: { id: VideoStyle, name: string, icon: React.FC<{className?:string}> }[] = [
+        { id: 'High-Energy Viral', name: t('style.viral_name'), icon: SparklesIcon },
+        { id: 'Cinematic Documentary', name: t('style.cinematic_name'), icon: FilmIcon },
+        { id: 'Clean & Corporate', name: t('style.corporate_name'), icon: TypeIcon },
+        { id: 'Animation', name: 'Animation', icon: PaintBrushIcon },
+        { id: 'Vlog', name: 'Vlog Style', icon: FilmIcon },
+    ];
     
     const copilotActions = [
         { key: 'action_concise', label: t('script_editor.copilot.action_concise') },
         { key: 'action_engaging', label: t('script_editor.copilot.action_engaging') },
         { key: 'action_visual', label: t('script_editor.copilot.action_visual') }
     ];
+
+    if (!project.script) {
+        if (isGeneratingBlueprint) {
+            return (
+                <div className="text-center py-20 px-6 bg-gray-800/50 rounded-2xl max-w-2xl mx-auto space-y-6 animate-fade-in">
+                    <h2 className="text-3xl font-bold text-white">Generating Your Blueprint</h2>
+                    <p className="text-gray-400">Our AI is crafting your script and visual plan. This may take a moment.</p>
+                    <div className="flex justify-center items-center space-x-4">
+                        <SparklesIcon className="w-8 h-8 text-indigo-400 animate-pulse" />
+                        <p className="text-lg font-semibold text-white">{progressMessage}</p>
+                    </div>
+                </div>
+            );
+        }
+        
+        return (
+             <div className="text-center py-10 px-6 bg-gray-800/50 rounded-2xl max-w-4xl mx-auto space-y-8 animate-fade-in-up">
+                <h2 className="text-3xl font-bold text-white mb-3">Build Your Blueprint</h2>
+                <p className="text-gray-400 mb-6 max-w-xl mx-auto">Define the creative direction for your video. Our AI will use these settings to generate a tailored script and visual plan.</p>
+                <div className="space-y-6 text-left">
+                    <div>
+                        <h3 className="text-xl font-bold text-white mb-3">1. Define Your Video</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="font-semibold text-white">Video Style</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div>
+                            </div>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="font-semibold text-white">Brand Identity (Optional)</label>
+                                    <select value={selectedBrandId || ''} onChange={e => setSelectedBrandId(e.target.value || undefined)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white"><option value="">No Brand Identity</option>{brandIdentities.map((brand: BrandIdentity) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select>
+                                </div>
+                                <div>
+                                    <label className="font-semibold text-white">Video Length: {videoLength}s</label>
+                                    <input type="range" min="10" max="300" step="10" value={videoLength} onChange={e => setVideoLength(parseInt(e.target.value))} className="w-full mt-2" />
+                                </div>
+                                <div>
+                                    <label className="font-semibold text-white">Video Size</label>
+                                    <div className="flex gap-2 mt-2">
+                                        <button onClick={() => setVideoSize('16:9')} className={`flex-1 text-xs py-2 rounded ${videoSize === '16:9' ? 'bg-indigo-600' : 'bg-gray-700'}`}>16:9 (Horizontal)</button>
+                                        <button onClick={() => setVideoSize('9:16')} className={`flex-1 text-xs py-2 rounded ${videoSize === '9:16' ? 'bg-indigo-600' : 'bg-gray-700'}`}>9:16 (Vertical)</button>
+                                        <button onClick={() => setVideoSize('1:1')} className={`flex-1 text-xs py-2 rounded ${videoSize === '1:1' ? 'bg-indigo-600' : 'bg-gray-700'}`}>1:1 (Square)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-white mb-3">2. Audio & Visuals</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <div>
+                                <label className="font-semibold text-white">Add AI Narrator (Voice-over)</label>
+                                <div className="flex items-center justify-between mt-2 bg-gray-900 rounded-lg p-3">
+                                    <p className="text-sm text-gray-400">Enable AI voice-over for your video?</p>
+                                    <button onClick={() => setIsNarratorEnabled(!isNarratorEnabled)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isNarratorEnabled ? 'bg-indigo-600' : 'bg-gray-600'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isNarratorEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                                {isNarratorEnabled && (
+                                <div className="mt-4">
+                                    <label className="font-semibold text-white">Narrator Voice</label>
+                                    <select value={narrator} onChange={e => setNarrator(e.target.value)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white">
+                                        <optgroup label="Your Voices">{user?.cloned_voices.map((v: ClonedVoice) => <option key={v.id} value={v.id} disabled={v.status !== 'ready'}>{v.name} ({v.status})</option>)}</optgroup>
+                                        <optgroup label="Standard Voices">{ELEVENLABS_VOICES.map((v: { id: string; name: string; }) => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>
+                                    </select>
+                                </div>
+                                )}
+                            </div>
+                             <div>
+                                <label className="font-semibold text-white">Generate Visual Moodboard</label>
+                                <div className="flex items-center justify-between mt-2 bg-gray-900 rounded-lg p-3">
+                                    <p className="text-sm text-gray-400">Generate AI images for each scene?</p>
+                                    <button onClick={() => setShouldGenerateMoodboard(!shouldGenerateMoodboard)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${shouldGenerateMoodboard ? 'bg-indigo-600' : 'bg-gray-600'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${shouldGenerateMoodboard ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <button onClick={handleGenerateBlueprint} disabled={isGeneratingBlueprint} className="mt-8 inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-gray-600">
+                    <SparklesIcon className="w-6 h-6 mr-3" />
+                    {isGeneratingBlueprint ? 'Generating...' : 'Generate Blueprint (5 Credits)'}
+                </button>
+            </div>
+        )
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-fade-in-up">
@@ -146,30 +311,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                      <div className="space-y-3">
                         {script?.hooks?.map((hook: string, index: number) => (
                             <div key={index} className={`flex items-center gap-3 p-1 rounded-lg border transition-all ${script.selectedHookIndex === index ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-800/50 border-gray-700'}`}>
-                                <button 
-                                    onClick={() => handleSelectHook(index)}
-                                    className={`p-2 rounded-md ${script.selectedHookIndex === index ? 'text-green-400' : 'text-gray-500 hover:text-white'}`}
-                                    title="Select this hook"
-                                >
-                                    {script.selectedHookIndex === index ? <CheckCircleIcon className="w-5 h-5"/> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
-                                </button>
-                                <input
-                                    type="text"
-                                    value={hook}
-                                    onChange={e => handleScriptChange('hook', index, 'visual', e.target.value)}
-                                    placeholder={`Hook option ${index + 1}`}
-                                    className="w-full bg-transparent text-gray-300 focus:outline-none"
-                                />
-                                {script.hooks && script.hooks.length > 1 && (
-                                    <button onClick={() => removeHook(index)} className="p-1 text-gray-500 hover:text-red-400">
-                                        <TrashIcon className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <button onClick={() => handleSelectHook(index)} className={`p-2 rounded-md ${script.selectedHookIndex === index ? 'text-green-400' : 'text-gray-500 hover:text-white'}`} title="Select this hook"><CheckCircleIcon className="w-5 h-5"/></button>
+                                <input type="text" value={hook} onChange={e => handleScriptChange('hook', index, 'visual', e.target.value)} placeholder={`Hook option ${index + 1}`} className="w-full bg-transparent text-gray-300 focus:outline-none" />
+                                {script.hooks && script.hooks.length > 1 && (<button onClick={() => removeHook(index)} className="p-1 text-gray-500 hover:text-red-400"><TrashIcon className="w-4 h-4" /></button>)}
                             </div>
                         ))}
-                        <button onClick={addHook} className="flex items-center gap-1 text-sm font-semibold text-indigo-400 hover:text-indigo-300 mt-2">
-                            <PlusIcon className="w-4 h-4" /> Add Hook Option
-                        </button>
+                        <button onClick={addHook} className="flex items-center gap-1 text-sm font-semibold text-indigo-400 hover:text-indigo-300 mt-2"><PlusIcon className="w-4 h-4" /> Add Hook Option</button>
                     </div>
                 </div>
                 
@@ -181,37 +328,16 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                                 <div className="flex justify-between items-center">
                                     <p className="font-bold text-gray-200">Scene {i+1} ({scene.timecode})</p>
                                     <div className="relative" ref={activeCopilot === i ? copilotRef : null}>
-                                        <button onClick={() => setActiveCopilot(activeCopilot === i ? null : i)} disabled={isRewriting} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
-                                            {isRewriting ? <SparklesIcon className="w-5 h-5 animate-pulse"/> : <MagicWandIcon className="w-5 h-5"/>}
-                                        </button>
+                                        <button onClick={() => setActiveCopilot(activeCopilot === i ? null : i)} disabled={isRewriting} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:opacity-50">{isRewriting ? <SparklesIcon className="w-5 h-5 animate-pulse"/> : <MagicWandIcon className="w-5 h-5"/>}</button>
                                         {activeCopilot === i && (
-                                            <div className="absolute top-full right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-10 p-2">
-                                                <p className="text-xs font-bold text-indigo-300 px-2 py-1">{t('script_editor.copilot.title')}</p>
-                                                {copilotActions.map(action => (
-                                                     <button key={action.key} onClick={() => handleCopilotAction(i, action.label)} className="w-full text-left px-2 py-1.5 text-sm text-gray-200 rounded-md hover:bg-gray-700">
-                                                        {action.label}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            <div className="absolute top-full right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-10 p-2"><p className="text-xs font-bold text-indigo-300 px-2 py-1">{t('script_editor.copilot.title')}</p>{copilotActions.map(action => (<button key={action.key} onClick={() => handleCopilotAction(i, action.label)} className="w-full text-left px-2 py-1.5 text-sm text-gray-200 rounded-md hover:bg-gray-700">{action.label}</button>))}</div>
                                         )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                      <div className="space-y-2">
-                                        {scene.storyboardImageUrl || isGeneratingStoryboard === i ? (
-                                            <div className="w-full aspect-video bg-black rounded-lg flex items-center justify-center">
-                                                {isGeneratingStoryboard === i 
-                                                    ? <SparklesIcon className="w-8 h-8 text-indigo-400 animate-pulse"/> 
-                                                    : <img src={scene.storyboardImageUrl} alt={`Storyboard for scene ${i+1}`} className="w-full h-full object-cover rounded-lg"/>
-                                                }
-                                            </div>
-                                        ) : null}
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-sm font-bold text-gray-400">{t('script_generator.table_visual')}</label>
-                                            <button onClick={() => handleGenerateStoryboard(i)} disabled={isGeneratingStoryboard === i} className="p-1 text-indigo-400 hover:text-indigo-300 disabled:opacity-50 text-xs flex items-center gap-1 font-semibold">
-                                                <PhotoIcon className="w-4 h-4"/> Generate Storyboard
-                                            </button>
-                                        </div>
+                                        {scene.storyboardImageUrl && (<div className="w-full aspect-video bg-black rounded-lg flex items-center justify-center"><img src={scene.storyboardImageUrl} alt={`Storyboard for scene ${i+1}`} className="w-full h-full object-cover rounded-lg"/></div>)}
+                                        <label className="text-sm font-bold text-gray-400">{t('script_generator.table_visual')}</label>
                                         <textarea value={scene.visual} onChange={e => handleScriptChange('scene', i, 'visual', e.target.value)} rows={4} className="w-full text-sm bg-gray-700/50 rounded p-2 mt-1 text-gray-300 border border-gray-600 focus:ring-indigo-500 focus:border-indigo-500"/>
                                     </div>
                                     <div>
@@ -225,18 +351,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                 </div>
                 <div>
                     <h4 className="font-bold text-indigo-400 mb-2">{t('script_generator.cta_title')}</h4>
-                    <textarea
-                        value={script?.cta || ''}
-                        onChange={e => handleScriptChange('cta', 0, 'cta', e.target.value)}
-                        rows={2}
-                        className="w-full bg-gray-800/50 rounded-lg p-3 text-gray-300 border border-gray-700 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
+                    <textarea value={script?.cta || ''} onChange={e => handleScriptChange('cta', 0, 'cta', e.target.value)} rows={2} className="w-full bg-gray-800/50 rounded-lg p-3 text-gray-300 border border-gray-700 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
             </div>
             <div className="text-center">
-                <button onClick={handleSave} className="w-full max-w-sm inline-flex items-center justify-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg">
+                <button 
+                    onClick={handleSave} 
+                    disabled={isSavingScript}
+                    className="w-full max-w-sm inline-flex items-center justify-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-gray-600 disabled:cursor-wait"
+                >
                     <CheckBadgeIcon className="w-6 h-6 mr-3" />
-                    {t('script_editor.save_button')}
+                    {isSavingScript ? (voiceoverProgress || 'Generating Voiceovers...') : t('script_editor.save_button')}
                 </button>
             </div>
         </div>
