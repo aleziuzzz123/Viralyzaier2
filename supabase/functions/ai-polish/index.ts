@@ -2,7 +2,7 @@
 declare const Deno: any;
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4';
-import { GoogleGenAI, Type } from 'https://esm.sh/@google/genai@^1.11.0';
+import { GoogleGenAI, Type } from 'https://esm.sh/@google/genai@^1.13.0';
 import { generate as uuidv4 } from 'https://deno.land/std@0.100.0/uuid/v4.ts';
 
 const corsHeaders = {
@@ -18,7 +18,6 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
 const BUCKET_NAME = Deno.env.get('SUPABASE_ASSETS_BUCKET') || 'assets';
 
-// Helper to parse Gemini JSON robustly
 const parseGeminiJson = (res: { text: string | undefined | null }) => {
     try {
         const rawText = res.text || '';
@@ -37,8 +36,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    // --- Configuration & Authentication ---
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !GEMINI_API_KEY || !ELEVENLABS_API_KEY) {
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !GEMINI_API_KEY || !ELEVENLABS_API_KEY || !SUPABASE_ANON_KEY) {
       throw new Error("Function is not configured with necessary secrets.");
     }
     const authHeader = req.headers.get('Authorization');
@@ -50,17 +48,7 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error(authError?.message || 'Authentication failed.');
 
-    let body;
-    try {
-        body = await req.json();
-    } catch (e) {
-        return new Response(JSON.stringify({ error: `Invalid JSON body: ${e.message}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400
-        });
-    }
-
-    const { timeline, script, projectId } = body;
+    const { timeline, script, projectId } = await req.json();
 
     if (!timeline || !script || !projectId) {
       throw new Error("Missing 'timeline', 'script', or 'projectId' in request body.");
@@ -69,14 +57,10 @@ serve(async (req: Request) => {
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // --- 1. Use Gemini to suggest SFX placements ---
-    const scriptSummary = script.scenes.map((s: any, i: number) => `Scene ${i+1} (${s.visual}): ${s.voiceover}`).join('\n');
-    const prompt = `You are an expert sound designer for viral videos. Based on the following script, suggest 3-5 subtle, impactful sound effects (SFX) to enhance key moments.
-    
-    Script:
-    ${scriptSummary}
-
-    Your output MUST be a JSON array of objects, each with "time" (the precise time in seconds for the SFX to start, inferred from scene progression) and "prompt" (a short text description for an SFX generation AI, e.g., "a subtle whoosh", "a camera shutter click", "a gentle pop").`;
+    const scriptSummary = script.scenes.map((s: any, i: number) => `Scene ${i+1} (${s.timecode}, visual: ${s.visual}): ${s.voiceover}`).join('\n');
+    const prompt = `You are a sound designer for viral videos. Based on the script, suggest 3-5 subtle, impactful sound effects (SFX).
+    Script: ${scriptSummary}
+    Your output MUST be a JSON array of objects, each with "time" (the precise start time in seconds, inferred from scene timecodes) and "prompt" (a short description for an SFX AI, e.g., "a subtle whoosh").`;
     
     const sfxSuggestionsResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -86,11 +70,7 @@ serve(async (req: Request) => {
             responseSchema: {
                 type: Type.ARRAY,
                 items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        time: { type: Type.NUMBER },
-                        prompt: { type: Type.STRING }
-                    },
+                    type: Type.OBJECT, properties: { time: { type: Type.NUMBER }, prompt: { type: Type.STRING } },
                     required: ["time", "prompt"]
                 }
             }
@@ -98,55 +78,34 @@ serve(async (req: Request) => {
     });
 
     const sfxSuggestions = parseGeminiJson(sfxSuggestionsResponse);
+    const sfxTrack = timeline.tracks.find((t: any) => t.name === 'SFX');
+    if (sfxTrack && sfxSuggestions.length > 0) {
+        for (const sfx of sfxSuggestions) {
+          try {
+            const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/sound-effects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'xi-api-key': ELEVENLABS_API_KEY, 'Accept': 'audio/mpeg' },
+                body: JSON.stringify({ text: sfx.prompt }),
+            });
+            if (!elevenLabsResponse.ok) continue;
+            const audioBlob = await elevenLabsResponse.blob();
 
-    // --- 2. Generate, Upload, and Add SFX clips to timeline ---
-    const sfxTrack = timeline.tracks.find((t: any) => t.type === 'sfx');
-    if (!sfxTrack) throw new Error("Timeline is missing an SFX track.");
-
-    for (const sfx of sfxSuggestions) {
-      try {
-        const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/sound-effects', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'xi-api-key': ELEVENLABS_API_KEY,
-                'Accept': 'audio/mpeg',
-            },
-            body: JSON.stringify({ text: sfx.prompt }),
-        });
-        if (!elevenLabsResponse.ok) continue;
-        const audioBlob = await elevenLabsResponse.blob();
-
-        const path = `${user.id}/${projectId}/sfx/${uuidv4()}.mp3`;
-        const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET_NAME).upload(path, audioBlob, { upsert: true });
-        if (uploadError) continue;
-        
-        const { data: { publicUrl } } = supabaseAdmin.storage.from(BUCKET_NAME).getPublicUrl(path);
-
-        sfxTrack.clips.push({
-          id: uuidv4(),
-          type: 'audio',
-          url: publicUrl,
-          sceneIndex: -1,
-          startTime: sfx.time,
-          endTime: sfx.time + 1.5,
-          sourceDuration: 1.5,
-        });
-      } catch (e) {
-        console.error(`Failed to process SFX '${sfx.prompt}': ${e.message}`);
-      }
+            const path = `${user.id}/${projectId}/sfx/${uuidv4()}.mp3`;
+            const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET_NAME).upload(path, audioBlob, { upsert: true });
+            if (uploadError) continue;
+            
+            const { data: { publicUrl } } = supabaseAdmin.storage.from(BUCKET_NAME).getPublicUrl(path);
+            sfxTrack.clips.push({ asset: { type: 'audio', src: publicUrl }, start: sfx.time, length: 1.5 });
+          } catch (e) { console.error(`Failed to process SFX '${sfx.prompt}': ${e.message}`); }
+        }
     }
 
-    // --- 3. Apply Ken Burns effect to all images on A-Roll ---
-    const aRollTrack = timeline.tracks.find((t: any) => t.type === 'a-roll');
+    const aRollTrack = timeline.tracks.find((t: any) => t.name === 'A-Roll');
     if (aRollTrack) {
         aRollTrack.clips.forEach((clip: any, index: number) => {
-            if (clip.type === 'image') {
-                if (!clip.effects) {
-                    clip.effects = {};
-                }
-                // Alternate direction for variety
-                clip.effects.kenBurns = { direction: index % 2 === 0 ? 'in' : 'out' };
+            if (clip.asset.type === 'image') {
+                if (!clip.effect) clip.effect = {};
+                clip.effect.motion = { in: index % 2 === 0 ? 'zoomIn' : 'zoomOut' };
             }
         });
     }
@@ -155,7 +114,6 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-
   } catch (error) {
     console.error('AI Polish Function Error:', error.message);
     return new Response(JSON.stringify({ error: error.message }), {

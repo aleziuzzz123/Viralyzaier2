@@ -2,7 +2,7 @@
 declare const Deno: any;
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4';
-import { GoogleGenAI, Type } from 'https://esm.sh/@google/genai@^1.11.0';
+import { GoogleGenAI, Type } from 'https://esm.sh/@google/genai@^1.13.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,17 +31,7 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('Authentication failed.');
 
-    let body;
-    try {
-        body = await req.json();
-    } catch (e) {
-        return new Response(JSON.stringify({ error: `Invalid JSON body: ${e.message}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400
-        });
-    }
-
-    const { scriptText } = body;
+    const { scriptText } = await req.json();
 
     if (!scriptText) {
       throw new Error("Missing 'scriptText' in request body.");

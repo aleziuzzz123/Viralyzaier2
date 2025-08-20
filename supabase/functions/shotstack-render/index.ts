@@ -26,24 +26,39 @@ serve(async (req: Request) => {
   }
 
   try {
-    const editData = await req.json();  // the JSON body containing the Shotstack edit
-    if (!editData || !editData.timeline) {
+    const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
+    if (!apiKey) {
+      throw new Error("Function is not configured. Go to Supabase project -> Edge Functions -> shotstack-render -> Secrets, and set SHOTSTACK_API_KEY.");
+    }
+    
+    const { edit, projectId } = await req.json();
+    if (!edit || !edit.timeline) {
       throw new Error("Invalid edit data provided");
+    }
+    if (!projectId) {
+      throw new Error("Project ID is missing from the request");
     }
 
     // Prepare the request to Shotstack Render API
-    const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
     let apiBase = Deno.env.get("SHOTSTACK_API_BASE"); // Read the base URL from secrets
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
 
+    if (!supabaseUrl) {
+      throw new Error("Function is not configured. Go to Supabase project -> Edge Functions -> shotstack-render -> Secrets, and set SUPABASE_URL.");
+    }
+    
     // **ROBUSTNESS FIX**: Validate the base URL and fallback to the stage environment if it's missing or invalid.
     if (!apiBase || !apiBase.startsWith('http')) {
         console.warn(`Invalid SHOTSTACK_API_BASE found. Falling back to default stage URL. Please set this secret to 'https://api.shotstack.io/stage' in your Supabase project settings.`);
         apiBase = "https://api.shotstack.io/stage";
     }
 
-    if (!apiKey) {
-      throw new Error("Shotstack API key not configured in secrets.");
-    }
+    const callbackUrl = `${supabaseUrl}/functions/v1/shotstack-webhook?projectId=${projectId}`;
+    
+    const renderPayload = {
+      ...edit,
+      callback: callbackUrl,
+    };
 
     const renderUrl = `${apiBase}/render`; // Construct the correct, full URL
 
@@ -54,7 +69,7 @@ serve(async (req: Request) => {
         "Accept": "application/json",
         "x-api-key": apiKey
       },
-      body: JSON.stringify(editData)
+      body: JSON.stringify(renderPayload)
     });
 
     if (!response.ok) {

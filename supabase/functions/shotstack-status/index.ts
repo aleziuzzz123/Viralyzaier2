@@ -15,40 +15,40 @@ serve(async (req: Request) => {
     return new Response("OK", { headers: corsHeaders });
   }
 
-  // We allow POST (with JSON body containing id) or GET with ?id= query
-  let renderId: string | null = null;
-  if (req.method === "POST") {
-    try {
-      const { id } = await req.json();
-      renderId = id;
-    } catch {
-      // If body parse fails
-      renderId = null;
-    }
-  } else if (req.method === "GET") {
-    const url = new URL(req.url);
-    renderId = url.searchParams.get("id");
-  }
-
-  if (!renderId) {
-    return new Response(JSON.stringify({ error: "No render ID provided" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-
   try {
     const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
+    if (!apiKey) {
+      throw new Error("Function is not configured. Go to Supabase project -> Edge Functions -> shotstack-status -> Secrets, and set SHOTSTACK_API_KEY.");
+    }
+
+    // We allow POST (with JSON body containing id) or GET with ?id= query
+    let renderId: string | null = null;
+    if (req.method === "POST") {
+      try {
+        const { id } = await req.json();
+        renderId = id;
+      } catch {
+        // If body parse fails
+        renderId = null;
+      }
+    } else if (req.method === "GET") {
+      const url = new URL(req.url);
+      renderId = url.searchParams.get("id");
+    }
+
+    if (!renderId) {
+      return new Response(JSON.stringify({ error: "No render ID provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     let apiBase = Deno.env.get("SHOTSTACK_API_BASE"); // Read the base URL from secrets
     
     // **ROBUSTNESS FIX**: Validate the base URL and fallback to the stage environment if it's missing or invalid.
     if (!apiBase || !apiBase.startsWith('http')) {
         console.warn(`Invalid SHOTSTACK_API_BASE found. Falling back to default stage URL. Please set this secret to 'https://api.shotstack.io/stage' in your Supabase project settings.`);
         apiBase = "https://api.shotstack.io/stage";
-    }
-
-    if (!apiKey) {
-      throw new Error("Shotstack API key not configured in secrets");
     }
 
     const statusUrl = `${apiBase}/render/${renderId}`; // Construct the correct, full URL

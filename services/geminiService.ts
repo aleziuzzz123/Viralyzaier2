@@ -871,19 +871,6 @@ export const searchPexels = async (query: string, type: 'videos' | 'photos'): Pr
     }));
 };
 
-export const searchPixabay = async (query: string, type: 'videos' | 'photos'): Promise<NormalizedStockAsset[]> => {
-    const response = await supabase.invokeEdgeFunction<{ hits: any[] }>('pixabay-proxy', { query, type });
-    return (response.hits || []).map(hit => ({
-        id: hit.id,
-        previewImageUrl: type === 'videos' ? `https://i.vimeocdn.com/video/${hit.picture_id}_295x166.jpg` : hit.previewURL,
-        downloadUrl: type === 'videos' ? hit.videos.medium.url : hit.largeImageURL,
-        type: type === 'videos' ? 'video' : 'image',
-        description: `By ${hit.user}`,
-        duration: hit.duration,
-        provider: 'pixabay'
-    }));
-};
-
 export const searchJamendoMusic = async (query: string): Promise<NormalizedStockAsset[]> => {
     const response = await supabase.invokeEdgeFunction<{ results: JamendoTrack[] }>('jamendo-proxy', { query });
     return (response.results || []).map(track => ({

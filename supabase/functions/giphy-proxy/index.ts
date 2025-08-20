@@ -22,7 +22,6 @@ serve(async (req: Request) => {
       throw new Error("Function is not configured. Missing GIPHY_API_KEY, SUPABASE_URL, or SUPABASE_ANON_KEY.");
     }
 
-    // Authenticate the user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Missing authorization header.');
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -31,18 +30,7 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('Authentication failed.');
     
-    // Parse request body
-    let body;
-    try {
-        body = await req.json();
-    } catch (e) {
-        return new Response(JSON.stringify({ error: `Invalid JSON body: ${e.message}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400
-        });
-    }
-
-    const { query, type = 'stickers' } = body;
+    const { query, type = 'stickers' } = await req.json();
 
     if (!query) {
       throw new Error("Missing 'query' in request body.");

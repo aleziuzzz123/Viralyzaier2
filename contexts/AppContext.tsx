@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode, useRef } from 'react';
-import * as supabase from '../services/supabaseService';
+import * as supabaseService from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 import { getErrorMessage } from '../utils';
 import { translations, Language, TranslationKey } from '../translations';
 import { 
@@ -145,7 +146,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const loadInitialData = useCallback(async (userId: string) => {
         setIsInitialLoading(true);
         try {
-            const { user: userData, projects: projectData, notifications: notificationData, brandIdentities: brandData } = await supabase.invokeEdgeFunction<{
+            const { user: userData, projects: projectData, notifications: notificationData, brandIdentities: brandData } = await supabaseService.invokeEdgeFunction<{
                 user: User,
                 projects: Project[],
                 notifications: Notification[],
@@ -164,8 +165,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, [setIsInitialLoading, setUser, setProjects, setNotifications, setBrandIdentities, setBackendError]);
 
     useEffect(() => {
-        supabase.getSession().then(({ session }) => setSession(session));
-        const authListener = supabase.onAuthStateChange((_event, session) => {
+        supabaseService.getSession().then(({ session }) => setSession(session));
+        const authListener = supabaseService.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) {
                 loadInitialData(session.user.id);
@@ -186,7 +187,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             }
             setIsProjectDetailsLoading(true);
             try {
-                const details = await supabase.getProjectDetails(activeProjectId);
+                const details = await supabaseService.getProjectDetails(activeProjectId);
                 setActiveProjectDetails(details);
             } catch (e) {
                 addToast(t('toast.failed_fetch_projects'), 'error');
@@ -196,6 +197,38 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         };
         fetchDetails();
     }, [activeProjectId, t, addToast]);
+
+    useEffect(() => {
+        // Realtime subscription for project updates
+        if (!user) return;
+
+        const channel = supabase.channel(`project-updates-${user.id}`);
+        
+        channel.on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'projects',
+                filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+                const updatedProjectData = supabaseService.projectRowToProject(payload.new);
+
+                // Update the main projects list
+                setProjects(prev => prev.map(p => p.id === updatedProjectData.id ? { ...p, ...updatedProjectData } : p));
+                
+                // If the updated project is the currently active one, update its details
+                if (activeProjectId === updatedProjectData.id) {
+                    setActiveProjectDetails(prev => prev ? { ...prev, ...updatedProjectData } : updatedProjectData);
+                }
+            }
+        ).subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, activeProjectId]);
     
     useEffect(() => {
         const storedDismissed = localStorage.getItem('dismissedTutorials');
@@ -216,7 +249,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleLogout = useCallback(() => {
         const confirmLogout = () => {
-            supabase.signOut().then(() => addToast(t('toast.logged_out'), 'success'));
+            supabaseService.signOut().then(() => addToast(t('toast.logged_out'), 'success'));
         };
         openConfirmationModal(t('confirmation_modal.logout_title'), t('confirmation_modal.logout_message'), confirmLogout);
     }, [t, addToast, openConfirmationModal]);
@@ -247,7 +280,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             return false;
         }
         try {
-            const { success, newCredits, message } = await supabase.invokeEdgeFunction<{success: boolean, newCredits: number, message?: string}>('consume-credits', { amount_to_consume: amount });
+            const { success, newCredits, message } = await supabaseService.invokeEdgeFunction<{success: boolean, newCredits: number, message?: string}>('consume-credits', { amount_to_consume: amount });
             if (success) {
                 setUser(prevUser => prevUser ? { ...prevUser, aiCredits: newCredits } : null);
                 return true;
@@ -302,10 +335,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             
             // If the update is ONLY for voiceoverUrls, use the dedicated, safe function.
             if (updates.voiceoverUrls && Object.keys(updates).length === 1) {
-                updatedProject = await supabase.saveVoiceovers(projectId, updates.voiceoverUrls);
+                updatedProject = await supabaseService.saveVoiceovers(projectId, updates.voiceoverUrls);
             } else {
                 // Otherwise, use the generic update function.
-                updatedProject = await supabase.updateProject(projectId, updates);
+                updatedProject = await supabaseService.updateProject(projectId, updates);
             }
 
             setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
@@ -323,13 +356,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         if (!user) return null;
         try {
             const tempProjectData: Omit<Project, 'id' | 'lastUpdated'> = { name: title, topic, platform, videoSize, status: 'Scripting', workflowStep: 2, title, script: blueprint.script, moodboard: [], analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null, launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId, lastPerformanceCheck: null, finalVideoUrl: null };
-            const tempProject = await supabase.createProject(tempProjectData, user.id);
+            const tempProject = await supabaseService.createProject(tempProjectData, user.id);
 
             const moodboardUrls = await Promise.all(
                 blueprint.moodboard.map(async (base64Img: string, index: number) => {
-                    const blob = await supabase.dataUrlToBlob(base64Img);
+                    const blob = await supabaseService.dataUrlToBlob(base64Img);
                     const path = `${user!.id}/${tempProject.id}/moodboard_${index}.jpg`;
-                    return supabase.uploadFile(blob, path);
+                    return supabaseService.uploadFile(blob, path);
                 })
             );
             
@@ -340,7 +373,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 }
             });
 
-            const finalProject = await supabase.updateProject(tempProject.id, { 
+            const finalProject = await supabaseService.updateProject(tempProject.id, { 
                 moodboard: moodboardUrls,
                 script: enrichedScript
             });
@@ -369,7 +402,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
                 voiceoverVoiceId: null, lastPerformanceCheck: null
             };
-            const newProject = await supabase.createProject(newProjectData, user.id);
+            const newProject = await supabaseService.createProject(newProjectData, user.id);
             setProjects(prev => [newProject, ...prev]);
             setActiveProjectId(newProject.id);
             addToast(t('toast.project_created_idea'), 'success');
@@ -395,7 +428,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
                 voiceoverVoiceId: null, lastPerformanceCheck: null
             };
-            const newProject = await supabase.createProject(newProjectData, user.id);
+            const newProject = await supabaseService.createProject(newProjectData, user.id);
             setProjects(prev => [newProject, ...prev]);
             setActiveProjectId(newProject.id);
             addToast(t('toast.project_created_idea'), 'success');
@@ -407,7 +440,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const handleDeleteProject = useCallback((projectId: string) => {
         const confirmDelete = async () => {
             try {
-                await supabase.deleteProject(projectId);
+                await supabaseService.deleteProject(projectId);
                 setProjects(prev => prev.filter(p => p.id !== projectId));
                 if (activeProjectId === projectId) setActiveProjectId(null);
                 addToast(t('toast.project_deleted'), 'success');
@@ -432,7 +465,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const handleCreateBrandIdentity = useCallback(async (identity: Omit<BrandIdentity, 'id'|'user_id'|'created_at'>) => {
         if (!user) return;
         try {
-            const newIdentity = await supabase.createBrandIdentity(identity, user.id);
+            const newIdentity = await supabaseService.createBrandIdentity(identity, user.id);
             setBrandIdentities(prev => [...prev, newIdentity]);
             addToast("Brand Identity created!", 'success');
         } catch (e) { addToast(getErrorMessage(e), 'error'); }
@@ -440,7 +473,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleUpdateBrandIdentity = useCallback(async (id: string, updates: Partial<BrandIdentity>) => {
         try {
-            const updatedIdentity = await supabase.updateBrandIdentity(id, updates);
+            const updatedIdentity = await supabaseService.updateBrandIdentity(id, updates);
             setBrandIdentities(prev => prev.map(b => b.id === id ? updatedIdentity : b));
             addToast("Brand Identity updated!", 'success');
         } catch (e) { addToast(getErrorMessage(e), 'error'); }
@@ -448,7 +481,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleDeleteBrandIdentity = useCallback(async (id: string) => {
         try {
-            await supabase.deleteBrandIdentity(id);
+            await supabaseService.deleteBrandIdentity(id);
             setBrandIdentities(prev => prev.filter(b => b.id !== id));
             addToast("Brand Identity deleted!", 'success');
         } catch (e) { addToast(getErrorMessage(e), 'error'); }
@@ -456,13 +489,13 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const markNotificationAsRead = useCallback(async (id: string) => {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-        try { await supabase.markNotificationAsRead(id); } catch (e) { console.error(e); }
+        try { await supabaseService.markNotificationAsRead(id); } catch (e) { console.error(e); }
     }, [setNotifications]);
 
     const markAllNotificationsAsRead = useCallback(async () => {
         if (!user) return;
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-        try { await supabase.markAllNotificationsAsRead(user.id); } catch (e) { console.error(e); }
+        try { await supabaseService.markAllNotificationsAsRead(user.id); } catch (e) { console.error(e); }
     }, [user, setNotifications]);
 
     return (
