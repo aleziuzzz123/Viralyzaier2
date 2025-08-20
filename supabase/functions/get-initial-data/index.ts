@@ -105,7 +105,13 @@ serve(async (req: Request) => {
     if (profileResult.error && profileResult.error.code !== 'PGRST116') throw profileResult.error;
     if (projectsResult.error) throw projectsResult.error;
     if (notificationsResult.error) throw notificationsResult.error;
-    if (brandIdentitiesResult.error) throw brandIdentitiesResult.error;
+    
+    // **ROBUSTNESS FIX**: Gracefully handle if brand_identities fails, as it's a non-critical feature.
+    // Instead of throwing an error and crashing, just log a warning and continue.
+    if (brandIdentitiesResult.error) {
+        console.warn('Could not fetch brand identities:', brandIdentitiesResult.error.message);
+    }
+    
     if (youtubeTokenResult.error) throw youtubeTokenResult.error;
 
     let userProfile = profileResult.data;

@@ -51,7 +51,8 @@ export const generateVideoBlueprint = async (
     onProgress: (message: string) => void,
     desiredLengthInSeconds: number,
     brandIdentity?: BrandIdentity | null,
-    shouldGenerateMoodboard: boolean = true
+    shouldGenerateMoodboard: boolean = true,
+    isNarratorEnabled: boolean = true
 ): Promise<Blueprint> => {
     onProgress("Consulting AI strategist for core concepts...");
     
@@ -71,6 +72,10 @@ export const generateVideoBlueprint = async (
 - **Thumbnail Formula:** ${brandIdentity.thumbnailFormula}
         `;
     }
+
+    const narratorInstruction = isNarratorEnabled
+        ? "The 'voiceover' field for each scene should contain the spoken script for the narrator."
+        : "CRITICAL: The narrator is disabled. All 'voiceover' fields in the 'scenes' array MUST be empty strings (''). The story must be told exclusively through compelling 'visual' descriptions and engaging 'onScreenText'.";
         
     const textPrompt = `You are a world-class viral video strategist for ${formatDescription}. Your task is to generate a complete video blueprint based on the following parameters:
 **Topic/URL:** "${topicOrUrl}"
@@ -86,7 +91,7 @@ ${brandIdentityPrompt}
 Your output MUST be a JSON object with the following structure:
 1. "strategicSummary": A concise summary explaining WHY this video concept, in this style and for this brand, will perform well.
 2. "suggestedTitles": An array of 5 S-Tier titles, tailored to the chosen style and brand identity.
-3. "script": A full script object, with hooks, scenes, and a CTA, all written in the chosen style and brand voice. The total duration should match the desired length.
+3. "script": A full script object, with hooks, scenes, and a CTA, all written in the chosen style and brand voice. The total duration should match the desired length. ${narratorInstruction}
 4. "moodboardDescription": An array of descriptive prompts for an AI image generator. CRITICAL: This array MUST have the exact same number of elements as the "script.scenes" array. Each prompt must correspond to the "visual" description of its respective scene.`;
     
     const systemInstruction = `You are a world-class viral video strategist and your response MUST be a valid JSON object that strictly adheres to the provided schema. Ensure all fields, especially arrays like 'scenes' and 'suggestedTitles', are populated with high-quality, relevant content and are never empty. The output must reflect the chosen video style, desired length, and brand identity.`;

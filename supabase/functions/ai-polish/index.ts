@@ -16,6 +16,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+const BUCKET_NAME = Deno.env.get('SUPABASE_ASSETS_BUCKET') || 'assets';
 
 // Helper to parse Gemini JSON robustly
 const parseGeminiJson = (res: { text: string | undefined | null }) => {
@@ -117,10 +118,10 @@ serve(async (req: Request) => {
         const audioBlob = await elevenLabsResponse.blob();
 
         const path = `${user.id}/${projectId}/sfx/${uuidv4()}.mp3`;
-        const { error: uploadError } = await supabaseAdmin.storage.from('assets').upload(path, audioBlob, { upsert: true });
+        const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET_NAME).upload(path, audioBlob, { upsert: true });
         if (uploadError) continue;
         
-        const { data: { publicUrl } } = supabaseAdmin.storage.from('assets').getPublicUrl(path);
+        const { data: { publicUrl } } = supabaseAdmin.storage.from(BUCKET_NAME).getPublicUrl(path);
 
         sfxTrack.clips.push({
           id: uuidv4(),

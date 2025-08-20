@@ -31,14 +31,27 @@ serve(async (req: Request) => {
       throw new Error("Invalid edit data provided");
     }
 
-    // Prepare the request to Shotstack Render API (staging environment)
+    // Prepare the request to Shotstack Render API
     const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
-    if (!apiKey) throw new Error("Shotstack API key not configured");
+    let apiBase = Deno.env.get("SHOTSTACK_API_BASE"); // Read the base URL from secrets
 
-    const response = await fetch("https://api.shotstack.io/edit/stage/render", {
+    // **ROBUSTNESS FIX**: Validate the base URL and fallback to the stage environment if it's missing or invalid.
+    if (!apiBase || !apiBase.startsWith('http')) {
+        console.warn(`Invalid SHOTSTACK_API_BASE found. Falling back to default stage URL. Please set this secret to 'https://api.shotstack.io/stage' in your Supabase project settings.`);
+        apiBase = "https://api.shotstack.io/stage";
+    }
+
+    if (!apiKey) {
+      throw new Error("Shotstack API key not configured in secrets.");
+    }
+
+    const renderUrl = `${apiBase}/render`; // Construct the correct, full URL
+
+    const response = await fetch(renderUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json",
         "x-api-key": apiKey
       },
       body: JSON.stringify(editData)

@@ -39,9 +39,20 @@ serve(async (req: Request) => {
 
   try {
     const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
-    if (!apiKey) throw new Error("Shotstack API key not configured");
+    let apiBase = Deno.env.get("SHOTSTACK_API_BASE"); // Read the base URL from secrets
+    
+    // **ROBUSTNESS FIX**: Validate the base URL and fallback to the stage environment if it's missing or invalid.
+    if (!apiBase || !apiBase.startsWith('http')) {
+        console.warn(`Invalid SHOTSTACK_API_BASE found. Falling back to default stage URL. Please set this secret to 'https://api.shotstack.io/stage' in your Supabase project settings.`);
+        apiBase = "https://api.shotstack.io/stage";
+    }
 
-    const statusUrl = `https://api.shotstack.io/edit/stage/render/${renderId}`;
+    if (!apiKey) {
+      throw new Error("Shotstack API key not configured in secrets");
+    }
+
+    const statusUrl = `${apiBase}/render/${renderId}`; // Construct the correct, full URL
+
     const response = await fetch(statusUrl, {
       method: "GET",
       headers: {

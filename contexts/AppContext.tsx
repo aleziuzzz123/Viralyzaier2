@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, ReactNode, useRef } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import * as supabase from '../services/supabaseService';
 import { getErrorMessage } from '../utils';
 import { translations, Language, TranslationKey } from '../translations';
@@ -29,7 +28,7 @@ interface BackendError {
 }
 
 interface AppContextType {
-    session: Session | null;
+    session: any | null;
     user: User | null;
     projects: Project[];
     activeProjectId: string | null;
@@ -70,7 +69,7 @@ interface AppContextType {
     // Project Actions
     handleUpdateProject: (projectId: string, updates: Partial<Project>) => Promise<boolean>;
     handleDeleteProject: (projectId: string) => void;
-    handleCreateProjectForBlueprint: (topic: string, platform: Platform, title: string, voiceId: string, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint) => Promise<string | null>;
+    handleCreateProjectForBlueprint: (topic: string, platform: Platform, title: string, voiceId: string | null, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint) => Promise<string | null>;
     handleCreateProjectFromIdea: (idea: Opportunity | ContentGapSuggestion, platform: Platform) => void;
     handleCreateProjectFromInsights: (review: PerformanceReview, project: Project) => void;
     addProjects: (newProjects: Project[]) => void;
@@ -91,7 +90,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-    const [session, setSession] = useState<Session | null>(null);
+    const [session, setSession] = useState<any | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
     const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -299,7 +298,16 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleUpdateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
         try {
-            const updatedProject = await supabase.updateProject(projectId, updates);
+            let updatedProject;
+            
+            // If the update is ONLY for voiceoverUrls, use the dedicated, safe function.
+            if (updates.voiceoverUrls && Object.keys(updates).length === 1) {
+                updatedProject = await supabase.saveVoiceovers(projectId, updates.voiceoverUrls);
+            } else {
+                // Otherwise, use the generic update function.
+                updatedProject = await supabase.updateProject(projectId, updates);
+            }
+
             setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
             if (activeProjectId === projectId) {
                 setActiveProjectDetails(prev => prev ? { ...prev, ...updatedProject } : null);
@@ -311,10 +319,10 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         }
     }, [t, addToast, activeProjectId, setProjects, setActiveProjectDetails]);
 
-    const handleCreateProjectForBlueprint = useCallback(async (topic: string, platform: Platform, title: string, voiceoverVoiceId: string, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint): Promise<string | null> => {
+    const handleCreateProjectForBlueprint = useCallback(async (topic: string, platform: Platform, title: string, voiceoverVoiceId: string | null, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint): Promise<string | null> => {
         if (!user) return null;
         try {
-            const tempProjectData: Omit<Project, 'id' | 'lastUpdated'> = { name: title, topic, platform, videoSize, status: 'Scripting', workflowStep: 2, title, script: blueprint.script, moodboard: [], analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null, launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId, last_performance_check: null, final_video_url: null };
+            const tempProjectData: Omit<Project, 'id' | 'lastUpdated'> = { name: title, topic, platform, videoSize, status: 'Scripting', workflowStep: 2, title, script: blueprint.script, moodboard: [], analysis: null, competitorAnalysis: null, scheduledDate: null, assets: {}, soundDesign: null, launchPlan: null, performance: null, publishedUrl: null, voiceoverVoiceId, lastPerformanceCheck: null, finalVideoUrl: null };
             const tempProject = await supabase.createProject(tempProjectData, user.id);
 
             const moodboardUrls = await Promise.all(
@@ -359,7 +367,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 title: (idea as Opportunity).suggestedTitle || (idea as ContentGapSuggestion).potentialTitles[0] || 'New Idea',
                 script: null, analysis: null, competitorAnalysis: null, moodboard: null, assets: {},
                 soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
-                voiceoverVoiceId: null, last_performance_check: null
+                voiceoverVoiceId: null, lastPerformanceCheck: null
             };
             const newProject = await supabase.createProject(newProjectData, user.id);
             setProjects(prev => [newProject, ...prev]);
@@ -385,7 +393,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
                 title: newName,
                 script: null, analysis: null, competitorAnalysis: null, moodboard: null, assets: {},
                 soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
-                voiceoverVoiceId: null, last_performance_check: null
+                voiceoverVoiceId: null, lastPerformanceCheck: null
             };
             const newProject = await supabase.createProject(newProjectData, user.id);
             setProjects(prev => [newProject, ...prev]);
