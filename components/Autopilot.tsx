@@ -79,7 +79,7 @@ const Autopilot: React.FC = () => {
                     performance: null,
                     publishedUrl: null,
                     voiceoverVoiceId: null,
-                    last_performance_check: null,
+                    lastPerformanceCheck: null,
                 };
                 const newProject = await supabase.createProject(initialProjectData, user.id);
 

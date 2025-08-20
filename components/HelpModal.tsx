@@ -1,13 +1,38 @@
 import React from 'react';
-import { XCircleIcon, LayersIcon, PhotoIcon, PlayCircleIcon } from './Icons';
+import { XCircleIcon } from './Icons';
 
 interface HelpModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
+const Shortcut: React.FC<{ keys: string[]; description: string }> = ({ keys, description }) => (
+    <div className="flex justify-between items-center py-2 border-b border-gray-700">
+        <p className="text-gray-300">{description}</p>
+        <div className="flex gap-1">
+            {keys.map(key => <kbd key={key} className="px-2 py-1 text-xs font-semibold text-indigo-200 bg-gray-900 border border-gray-600 rounded-md">{key}</kbd>)}
+        </div>
+    </div>
+);
+
+
 const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
+
+    const shortcuts = [
+        { keys: ['Space'], description: 'Play / Pause' },
+        { keys: ['L'], description: 'Play' },
+        { keys: ['K'], description: 'Pause' },
+        { keys: ['J'], description: 'Stop (Return to Start)' },
+        { keys: ['←'], description: 'Seek Backward' },
+        { keys: ['→'], description: 'Seek Forward' },
+        { keys: ['Shift', '←'], description: 'Seek Backward (Large)' },
+        { keys: ['Shift', '→'], description: 'Seek Forward (Large)' },
+        { keys: [','], description: 'Step Backward 1 Frame' },
+        { keys: ['.'], description: 'Step Forward 1 Frame' },
+        { keys: ['Ctrl', 'Z'], description: 'Undo' },
+        { keys: ['Ctrl', 'Y'], description: 'Redo' },
+    ];
 
     return (
         <div 
@@ -19,44 +44,24 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             aria-labelledby="help-modal-title"
         >
             <div 
-                className="bg-gray-800 border border-indigo-500/50 rounded-2xl shadow-2xl w-full max-w-lg m-4 p-8 text-left transform transition-all"
+                className="bg-gray-800 border border-indigo-500/50 rounded-2xl shadow-2xl w-full max-w-md m-4 p-8 text-left transform transition-all"
                 onClick={(e) => e.stopPropagation()}
             >
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">
                     <XCircleIcon className="w-8 h-8"/>
                 </button>
                 
-                <h2 id="help-modal-title" className="text-2xl font-bold text-white mb-4">Creative Studio Guide</h2>
+                <h2 id="help-modal-title" className="text-2xl font-bold text-white mb-4">Keyboard Shortcuts</h2>
                 
-                <div className="space-y-4 text-gray-300">
-                    <div className="flex items-start gap-4">
-                        <PlayCircleIcon className="w-8 h-8 text-indigo-400 flex-shrink-0 mt-1" />
-                        <div>
-                            <h3 className="font-semibold text-white">The Player</h3>
-                            <p className="text-sm">This is your live preview. Click on any element like text or images directly in the preview to select it for editing.</p>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-4">
-                        <LayersIcon className="w-8 h-8 text-indigo-400 flex-shrink-0 mt-1" />
-                        <div>
-                            <h3 className="font-semibold text-white">The Timeline</h3>
-                            <p className="text-sm">The timeline at the bottom shows all the scenes from your script. Click on a scene block to jump to that part of the video and select its main visual.</p>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-4">
-                        <PhotoIcon className="w-8 h-8 text-indigo-400 flex-shrink-0 mt-1" />
-                        <div>
-                            <h3 className="font-semibold text-white">The Side Panel</h3>
-                            <p className="text-sm">Use the tabs on the right to switch between editing properties (Inspector), finding new visuals (Media), adjusting audio, and applying your brand kit.</p>
-                        </div>
-                    </div>
+                <div className="space-y-1 text-gray-300">
+                    {shortcuts.map(sc => <Shortcut key={sc.description} keys={sc.keys} description={sc.description} />)}
                 </div>
 
                 <button
                     onClick={onClose}
                     className="w-full mt-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all"
                 >
-                    Got It!
+                    Got It
                 </button>
             </div>
         </div>

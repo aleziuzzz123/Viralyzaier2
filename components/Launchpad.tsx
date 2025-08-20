@@ -86,14 +86,14 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
     });
 
     const handlePublishToYouTube = () => lockAndExecute(async () => {
-        if (!project.final_video_url || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title) {
+        if (!project.finalVideoUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title) {
             addToast("Missing video file, SEO, or thumbnail for publishing.", 'error');
             return;
         }
         setIsPublishing(true);
         try {
             const videoUrl = await publishVideo(
-                project.final_video_url,
+                project.finalVideoUrl,
                 project.title,
                 project.launchPlan.seo.description,
                 project.launchPlan.seo.tags,
@@ -135,7 +135,7 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
         }
     });
 
-    const isPublishingDisabled = isPublishing || !project.final_video_url || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title;
+    const isPublishingDisabled = isPublishing || !project.finalVideoUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title;
 
 
     return (

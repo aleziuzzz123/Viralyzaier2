@@ -17,6 +17,7 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
     const [videoStyle, setVideoStyle] = useState<VideoStyle>('High-Energy Viral');
     const [videoSize, setVideoSize] = useState<'16:9' | '9:16' | '1:1'>('16:9');
     const [videoLength, setVideoLength] = useState(60);
+    const [isNarratorEnabled, setIsNarratorEnabled] = useState(true);
     const [narrator, setNarrator] = useState('pNInz6obpgDQGcFmaJgB');
     const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
     const [generateMoodboard, setGenerateMoodboard] = useState(true);
@@ -32,8 +33,9 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
         setIsLoading(true); setError(''); setProgress([]);
         try {
             const derivedPlatform: Platform = videoSize === '16:9' ? 'youtube_long' : 'youtube_short';
-            const blueprint = await generateVideoBlueprint(topic, derivedPlatform, videoStyle, (msg: string) => setProgress(prev => [...prev, msg]), videoLength, selectedBrand, generateMoodboard);
-            const newProjectId = await handleCreateProjectForBlueprint(topic, derivedPlatform, blueprint.suggestedTitles[0], narrator, videoSize, blueprint);
+            const blueprint = await generateVideoBlueprint(topic, derivedPlatform, videoStyle, (msg: string) => setProgress(prev => [...prev, msg]), videoLength, selectedBrand, generateMoodboard, isNarratorEnabled);
+            const narratorVoiceId = isNarratorEnabled ? narrator : null;
+            const newProjectId = await handleCreateProjectForBlueprint(topic, derivedPlatform, blueprint.suggestedTitles[0], narratorVoiceId, videoSize, blueprint);
             if (newProjectId) onProjectCreated(newProjectId);
             else throw new Error("Project creation failed after blueprint generation.");
         } catch (e) {
@@ -57,7 +59,7 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
             <header className="text-center"><h1 className="text-4xl font-bold text-white">Create New Project Blueprint</h1><p className="mt-2 text-lg text-gray-400">Follow these steps to generate a complete strategic plan for your next video.</p></header>
             <div className="space-y-6 bg-gray-800/50 p-8 rounded-2xl border border-gray-700">
                 <div><h3 className="text-xl font-bold text-white mb-3">1. The Core Idea</h3><textarea value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('blueprint_modal.topic_placeholder')} rows={3} className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-                <div><h3 className="text-xl font-bold text-white mb-3">2. Define Your Video</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="font-semibold text-white">Video Style</label><div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div></div><div className="space-y-6"><div><label className="font-semibold text-white">Brand Identity (Optional)</label><select value={selectedBrandId || ''} onChange={e => setSelectedBrandId(e.target.value || undefined)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white"><option value="">No Brand Identity</option>{brandIdentities.map((brand: BrandIdentity) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></div><div><label className="font-semibold text-white">Video Length: {videoLength}s</label><input type="range" min="30" max="300" step="30" value={videoLength} onChange={e => setVideoLength(parseInt(e.target.value))} className="w-full mt-2" /></div><div><label className="font-semibold text-white">Video Size</label><div className="flex gap-2 mt-2"><button onClick={() => setVideoSize('16:9')} className={`flex-1 text-xs py-2 rounded ${videoSize === '16:9' ? 'bg-indigo-600' : 'bg-gray-700'}`}>16:9 (Horizontal)</button><button onClick={() => setVideoSize('9:16')} className={`flex-1 text-xs py-2 rounded ${videoSize === '9:16' ? 'bg-indigo-600' : 'bg-gray-700'}`}>9:16 (Vertical)</button><button onClick={() => setVideoSize('1:1')} className={`flex-1 text-xs py-2 rounded ${videoSize === '1:1' ? 'bg-indigo-600' : 'bg-gray-700'}`}>1:1 (Square)</button></div></div>
+                <div><h3 className="text-xl font-bold text-white mb-3">2. Define Your Video</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className="font-semibold text-white">Video Style</label><div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div></div><div className="space-y-6"><div><label className="font-semibold text-white">Brand Identity (Optional)</label><select value={selectedBrandId || ''} onChange={e => setSelectedBrandId(e.target.value || undefined)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white"><option value="">No Brand Identity</option>{brandIdentities.map((brand: BrandIdentity) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></div><div><label className="font-semibold text-white">Video Length: {videoLength}s</label><input type="range" min="10" max="300" step="10" value={videoLength} onChange={e => setVideoLength(parseInt(e.target.value))} className="w-full mt-2" /></div><div><label className="font-semibold text-white">Video Size</label><div className="flex gap-2 mt-2"><button onClick={() => setVideoSize('16:9')} className={`flex-1 text-xs py-2 rounded ${videoSize === '16:9' ? 'bg-indigo-600' : 'bg-gray-700'}`}>16:9 (Horizontal)</button><button onClick={() => setVideoSize('9:16')} className={`flex-1 text-xs py-2 rounded ${videoSize === '9:16' ? 'bg-indigo-600' : 'bg-gray-700'}`}>9:16 (Vertical)</button><button onClick={() => setVideoSize('1:1')} className={`flex-1 text-xs py-2 rounded ${videoSize === '1:1' ? 'bg-indigo-600' : 'bg-gray-700'}`}>1:1 (Square)</button></div></div>
                 <div>
                     <label className="font-semibold text-white">AI Moodboard</label>
                     <div className="flex items-center justify-between mt-2 bg-gray-900 rounded-lg p-3">
@@ -67,7 +69,26 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                         </button>
                     </div>
                 </div>
-                </div><div className="md:col-span-2"><label className="font-semibold text-white">Narrator</label><select value={narrator} onChange={e => setNarrator(e.target.value)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white"><optgroup label="Your Voices">{user?.cloned_voices.map((v: ClonedVoice) => <option key={v.id} value={v.id} disabled={v.status !== 'ready'}>{v.name} ({v.status})</option>)}</optgroup><optgroup label="Standard Voices">{ELEVENLABS_VOICES.map((v: { id: string; name: string; }) => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup></select></div></div></div>
+                </div><div className="md:col-span-2">
+                     <div>
+                        <label className="font-semibold text-white">Add AI Narrator (Voice-over)</label>
+                        <div className="flex items-center justify-between mt-2 bg-gray-900 rounded-lg p-3">
+                            <p className="text-sm text-gray-400">Enable AI voice-over for your video?</p>
+                            <button onClick={() => setIsNarratorEnabled(!isNarratorEnabled)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isNarratorEnabled ? 'bg-indigo-600' : 'bg-gray-600'}`}>
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isNarratorEnabled ? 'translate-x-6' : 'translate-x-1'}`}/>
+                            </button>
+                        </div>
+                    </div>
+                    {isNarratorEnabled && (
+                        <div className="mt-4">
+                            <label className="font-semibold text-white">Narrator Voice</label>
+                            <select value={narrator} onChange={e => setNarrator(e.target.value)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white">
+                                <optgroup label="Your Voices">{user?.cloned_voices.map((v: ClonedVoice) => <option key={v.id} value={v.id} disabled={v.status !== 'ready'}>{v.name} ({v.status})</option>)}</optgroup>
+                                <optgroup label="Standard Voices">{ELEVENLABS_VOICES.map((v: { id: string; name: string; }) => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>
+                            </select>
+                        </div>
+                    )}
+                </div></div></div>
                 <div className="text-center pt-6 border-t border-gray-700"><button onClick={handleGenerate} className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"><SparklesIcon className="w-6 h-6 mr-3" />{t('blueprint_modal.generate_button')}</button>{error && <p className="text-red-400 mt-4">{error}</p>}</div>
             </div>
              <div className="text-center"><button onClick={onExit} className="text-gray-400 hover:text-white text-sm font-semibold">&larr; Back to Dashboard</button></div>
