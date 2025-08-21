@@ -331,16 +331,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleUpdateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
         try {
-            let updatedProject;
-            
-            // If the update is ONLY for voiceoverUrls, use the dedicated, safe function.
-            if (updates.voiceoverUrls && Object.keys(updates).length === 1) {
-                updatedProject = await supabaseService.saveVoiceovers(projectId, updates.voiceoverUrls);
-            } else {
-                // Otherwise, use the generic update function.
-                updatedProject = await supabaseService.updateProject(projectId, updates);
-            }
-
+            const updatedProject = await supabaseService.updateProject(projectId, updates);
             setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedProject } : p));
             if (activeProjectId === projectId) {
                 setActiveProjectDetails(prev => prev ? { ...prev, ...updatedProject } : null);

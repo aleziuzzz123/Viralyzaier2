@@ -379,6 +379,7 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
     if (updates.shotstackEditJson !== undefined) dbUpdates.shotstack_edit_json = sanitizeJson(updates.shotstackEditJson);
     if (updates.shotstackRenderId !== undefined) dbUpdates.shotstack_render_id = updates.shotstackRenderId;
     if (updates.videoUrl !== undefined) dbUpdates.video_url = updates.videoUrl;
+    if (updates.voiceoverUrls !== undefined) dbUpdates.voiceover_urls = sanitizeJson(updates.voiceoverUrls);
 
     const table = supabase.from('projects');
     const { data, error } = await table

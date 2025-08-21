@@ -360,37 +360,26 @@ Your output must be a single JSON object with the following structure.
 };
 
 
-export const analyzeVideo = async (frames: string[], title: string, platform: Platform): Promise<Analysis> => {
-    const textPrompt = `You are a viral video expert. A user has uploaded a video titled "${title}" for ${platform}. I am providing you with three keyframes from the video: the hook (first frame), the mid-point (second frame), and a late-stage frame (third frame).
+export const analyzeVideoConcept = async (script: Script, title: string, platform: Platform): Promise<Analysis> => {
+    const scriptSummary = script.scenes.map(s => s.voiceover).filter(Boolean).join(' ').substring(0, 2000);
 
-Analyze the visual content of these frames along with the title to provide a comprehensive virality analysis.
+    const textPrompt = `You are a viral video expert. Analyze the following video *concept* for the ${platform} platform. Your analysis should be based on the script's content and the video's title, not on any visual execution.
+
+**Title:** "${title}"
+**Script Summary:** "${scriptSummary}"
 
 Your output must be a JSON object with:
-- scores: An object containing 'overall', 'hook', 'pacing', 'audio', and 'cta' scores, ALL from 1 to 100. The hook score should be heavily based on the first frame. Pacing is inferred from the visual change between frames. Audio and CTA are inferred from the context of the title and visuals. 'overall' should be a weighted summary of the other scores.
-- summary: A concise summary of your findings.
-- goldenNugget: The single most important tip based on the visuals.
-- strengths: 3 things the video does well visually.
-- improvements: 3 actionable visual improvements with clear reasons explaining WHY they matter.`;
-    
-    // Convert image URLs to Base64 data URLs before sending to the proxy.
-    const dataUrls = await Promise.all(frames.map(url => urlToDataUrl(url)));
-
-    const imageParts = dataUrls.map(frameDataUrl => {
-        const [header, base64Data] = frameDataUrl.split(',');
-        const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
-        return {
-            inlineData: {
-                data: base64Data,
-                mimeType,
-            }
-        };
-    });
+- scores: An object containing 'overall', 'hook', 'pacing', 'audio', and 'cta' scores, ALL from 1 to 100. The hook score is based on the script's opening. Pacing is judged by the script's flow. Audio and CTA are judged by their clarity and impact within the script. 'overall' is a weighted summary.
+- summary: A concise summary of your findings on the script's potential.
+- goldenNugget: The single most important script-related tip.
+- strengths: 3 things the script does well.
+- improvements: 3 actionable script improvements with clear reasons explaining WHY they matter.`;
     
     const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
         type: 'generateContent',
         params: {
             model: 'gemini-2.5-flash',
-            contents: { parts: [...imageParts, { text: textPrompt }] },
+            contents: { parts: [{ text: textPrompt }] },
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {

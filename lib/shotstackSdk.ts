@@ -1,4 +1,6 @@
 // lib/shotstackSdk.ts
+// Single-instance loader that does NOT use import.meta.env
+
 declare global {
   interface Window {
     __SHOTSTACK_SDK__?: any;
@@ -6,48 +8,41 @@ declare global {
   }
 }
 
-async function tryImport(path: string) {
-  console.debug('[Shotstack loader] trying', path);
-  // @vite-ignore so Vite doesn’t rewrite this path
-  return import(/* @vite-ignore */ path);
+function getBaseHref(): string {
+  const el = document.querySelector('base[href]') as HTMLBaseElement | null;
+  // default to root if no <base> is set
+  const href = el?.getAttribute('href') || '/';
+  return new URL(href, window.location.origin).toString();
 }
 
-async function loadLocal(): Promise<any> {
-  const candidates = [
-    '/vendor/shotstack-studio-1.6.1.js',
-    '/vendor/shotstack-studio-1.6.1.mjs',
-    '/vendor/shotstack-studio-1.6.1.esm.js',
-    '/vendor/shotstack-studio.js',
-    '/vendor/shotstack-studio.mjs',
-  ];
-
-  // fast HEAD probe to avoid throwing noisy import errors
-  for (const url of candidates) {
-    try {
-      const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-      if (r.ok) return await tryImport(url);
-    } catch { /* continue */ }
-  }
-
-  // fallback to direct attempts (covers servers that block HEAD)
-  const errs: string[] = [];
-  for (const url of candidates) {
-    try { return await tryImport(url); }
-    catch (e: any) { errs.push(`${url}: ${e?.message ?? e}`); }
-  }
-
-  throw new Error(
-    'Local Shotstack SDK not found under /public/vendor.\n' +
-    'Tried:\n' + errs.map(s => ' - ' + s).join('\n')
-  );
+function vendorUrl(file: string): string {
+  // served from public/ at site root
+  return new URL(`vendor/${file}`, getBaseHref()).toString();
 }
+
+const SDK_FILE = 'shotstack-studio-1.6.2.mjs';
 
 export async function getShotstackSDK() {
   if (window.__SHOTSTACK_SDK__) return window.__SHOTSTACK_SDK__;
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
-  window.__SHOTSTACK_SDK_PROMISE__ = loadLocal().then(mod => {
+
+  const url = vendorUrl(SDK_FILE);
+
+  window.__SHOTSTACK_SDK_PROMISE__ = (async () => {
+    // Helpful existence check for clearer errors
+    const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    if (!head.ok) {
+      throw new Error(
+        `Shotstack SDK not found. Expected at ${url}. ` +
+        `Make sure the file exists at public/vendor/${SDK_FILE} and that <base href="/"> is set.`
+      );
+    }
+
+    // @ts-ignore
+    const mod = await import(/* @vite-ignore */ url);
     window.__SHOTSTACK_SDK__ = mod;
     return mod;
-  });
+  })();
+
   return window.__SHOTSTACK_SDK_PROMISE__;
 }
