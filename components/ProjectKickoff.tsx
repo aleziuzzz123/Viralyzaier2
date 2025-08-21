@@ -11,7 +11,7 @@ interface ProjectKickoffProps {
 }
 
 const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExit }) => {
-    const { t, addToast, lockAndExecute, user, addProjects } = useAppContext();
+    const { t, addToast, lockAndExecute, user, addProjects, consumeCredits } = useAppContext();
     const [topic, setTopic] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -20,7 +20,12 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
         if (!topic.trim()) { setError("Please provide a topic for your video."); return; }
         if (!user) { setError("User not found."); return; }
 
+        if (!await consumeCredits(1)) {
+            return; // consumeCredits handles showing the upgrade modal
+        }
+
         setIsLoading(true);
+        setError('');
         try {
             const newProjectData: Omit<Project, 'id' | 'lastUpdated'> = {
                 name: topic.substring(0, 40) || 'New Project',
@@ -81,7 +86,7 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                 <div className="text-center pt-6 border-t border-gray-700">
                     <button onClick={handleContinue} className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg">
                         <SparklesIcon className="w-6 h-6 mr-3" />
-                        Continue to Blueprint
+                        Continue to Blueprint (1 Credit)
                     </button>
                     {error && <p className="text-red-400 mt-4">{error}</p>}
                 </div>

@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice } from '../types';
-import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon } from './Icons';
+import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon, ScriptIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { rewriteScriptScene, generateVideoBlueprint } from '../services/geminiService';
 import { getErrorMessage } from '../utils';
 import { ELEVENLABS_VOICES, generateVoiceover } from '../services/generativeMediaService';
-import { uploadFile, saveVoiceovers } from '../services/supabaseService';
+import { uploadFile } from '../services/supabaseService';
 
 interface ScriptEditorProps {
     project: Project;
-    onScriptSaved: (script: Script) => void;
 }
 
-const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) => {
+const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     const { t, user, consumeCredits, lockAndExecute, addToast, brandIdentities, handleUpdateProject } = useAppContext();
     const [script, setScript] = useState<Script | null>(project.script);
     const [activeCopilot, setActiveCopilot] = useState<number | null>(null);
@@ -142,55 +141,51 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
     };
     
     const handleSave = () => lockAndExecute(async () => {
-        if (!script || !user) {
-            if (script) onScriptSaved(script);
-            return;
-        }
-
-        if (!project.voiceoverVoiceId) {
-            addToast("Saving script without voiceovers.", "info");
-            onScriptSaved(script);
-            return;
-        }
-
+        if (!script || !user) return;
+    
         setIsSavingScript(true);
         setVoiceoverProgress('Preparing scenes...');
         try {
-            const voiceoverUrls: { [key: number]: string } = {};
             const scriptWithMergedHook = JSON.parse(JSON.stringify(script));
-            
             if (script.hooks && script.hooks.length > 0) {
                 const hookText = script.hooks[script.selectedHookIndex ?? 0];
                 if (hookText && scriptWithMergedHook.scenes[0]) {
-                    scriptWithMergedHook.scenes[0].voiceover = hookText + " " + scriptWithMergedHook.scenes[0].voiceover;
+                    scriptWithMergedHook.scenes[0].voiceover = `${hookText} ${scriptWithMergedHook.scenes[0].voiceover}`;
                 }
             }
-            
-            const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover && project.voiceoverVoiceId);
-            let processedCount = 0;
-
-            for (const scene of scriptWithMergedHook.scenes) {
-                const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
-                if (scene.voiceover && project.voiceoverVoiceId) {
-                    processedCount++;
-                    setVoiceoverProgress(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
-                    
-                    const sceneBlob = await generateVoiceover(scene.voiceover, project.voiceoverVoiceId);
-                    const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
-                    voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+    
+            const updates: Partial<Project> = {
+                script: scriptWithMergedHook,
+                workflowStep: 3,
+            };
+    
+            if (project.voiceoverVoiceId) {
+                const voiceoverUrls: { [key: number]: string } = {};
+                const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover);
+                let processedCount = 0;
+    
+                for (const scene of scriptWithMergedHook.scenes) {
+                    const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
+                    if (scene.voiceover) {
+                        processedCount++;
+                        setVoiceoverProgress(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
+                        const sceneBlob = await generateVoiceover(scene.voiceover, project.voiceoverVoiceId);
+                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
+                        voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+                    }
+                }
+                if (Object.keys(voiceoverUrls).length > 0) {
+                    updates.voiceoverUrls = voiceoverUrls;
                 }
             }
-
-            if (Object.keys(voiceoverUrls).length > 0) {
-                setVoiceoverProgress('Saving voiceover URLs...');
-                await saveVoiceovers(project.id, voiceoverUrls);
+    
+            const success = await handleUpdateProject(project.id, updates);
+    
+            if (success) {
+                addToast("Script saved!", "success");
             }
-
-            addToast("Voiceovers generated and saved!", "success");
-            onScriptSaved(scriptWithMergedHook);
-
         } catch (e) {
-            addToast(`Failed to save script & generate voiceovers: ${getErrorMessage(e)}`, 'error');
+            addToast(`Failed to save script: ${getErrorMessage(e)}`, 'error');
         } finally {
             setIsSavingScript(false);
             setVoiceoverProgress(null);
@@ -203,6 +198,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
         { id: 'Clean & Corporate', name: t('style.corporate_name'), icon: TypeIcon },
         { id: 'Animation', name: 'Animation', icon: PaintBrushIcon },
         { id: 'Vlog', name: 'Vlog Style', icon: FilmIcon },
+        { id: 'Historical Documentary', name: 'Historical Doc', icon: FilmIcon },
+        { id: 'Whiteboard', name: 'Whiteboard', icon: ScriptIcon },
     ];
     
     const copilotActions = [
@@ -235,7 +232,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project, onScriptSaved }) =
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="font-semibold text-white">Video Style</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div>
                             </div>
                             <div className="space-y-6">
                                 <div>

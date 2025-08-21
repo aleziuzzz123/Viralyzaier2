@@ -14,14 +14,6 @@ interface ProjectViewProps {
 
 export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const { handleUpdateProject, t, dismissedTutorials } = useAppContext();
-
-    const handleScriptSaved = (script: Project['script']) => {
-        if (!script) return;
-        handleUpdateProject(project.id, {
-            script: script,
-            workflowStep: 3,
-        });
-    };
     
     const handleProceedToLaunchpad = () => {
         handleUpdateProject(project.id, {
@@ -38,7 +30,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const renderContent = () => {
         switch (project.workflowStep) {
             case 2:
-                return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
+                return <ScriptGenerator project={project} />;
             case 3:
                 return <CreativeStudio />;
             case 4:
@@ -47,7 +39,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
                 return <Launchpad project={project} />;
             default:
                  // Default to the blueprint step if the project is in an early stage (e.g., step 1)
-                return <ScriptGenerator project={project} onScriptSaved={handleScriptSaved} />;
+                return <ScriptGenerator project={project} />;
         }
     };
     

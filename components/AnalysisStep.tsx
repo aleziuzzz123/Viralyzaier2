@@ -21,15 +21,17 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
         let isMounted = true;
 
         const performAnalysis = async () => {
-            if (!isMounted || !project.finalVideoUrl || analysisResult) return; // Don't re-analyze
+            if (!isMounted || !project.script || analysisResult) return; // Don't re-analyze
             
             try {
                 setIsAnalyzing(true);
-                setStatusMessage("Analyzing video against viral data...");
+                setStatusMessage("Analyzing video concept against viral data...");
 
-                if (!project.moodboard || project.moodboard.length === 0) throw new Error("Visual references from moodboard are missing.");
-                
-                const result = await geminiService.analyzeVideo(project.moodboard.slice(0, 3), project.title || project.topic || 'Untitled Video', project.platform);
+                const result = await geminiService.analyzeVideoConcept(
+                    project.script,
+                    project.title || project.topic || 'Untitled Video',
+                    project.platform
+                );
                 
                 await handleUpdateProject(project.id, { analysis: result });
                 if (isMounted) setAnalysisResult(result);
@@ -61,7 +63,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
         return () => {
             isMounted = false;
         };
-    }, [project.status, project.analysis, project.id, project.finalVideoUrl, project.moodboard, project.title, project.topic, project.platform, handleUpdateProject, addToast, onReturnToStudio, analysisResult]);
+    }, [project.status, project.analysis, project.id, project.script, project.title, project.topic, project.platform, handleUpdateProject, addToast, onReturnToStudio, analysisResult]);
 
     // Show loader if rendering or analyzing
     if (project.status === 'Rendering' || isAnalyzing) {

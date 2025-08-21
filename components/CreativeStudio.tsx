@@ -1,6 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { SparklesIcon, MagicWandIcon } from './Icons';
 import AssetAndInspectorPanel from './AssetAndInspectorPanel';
 import ShotstackStudio from './ShotstackStudio';
 import { VideoEditorHandles } from './VideoEditor';
@@ -8,11 +7,15 @@ import Loader from './Loader';
 import { ShotstackClipSelection } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { getErrorMessage } from '../utils';
+import EditorToolbar from './EditorToolbar';
+import HelpModal from './HelpModal';
 
 const CreativeStudio: React.FC = () => {
     const { addToast, activeProjectDetails: project, handleUpdateProject } = useAppContext();
     const editorRef = useRef<VideoEditorHandles>(null);
     const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
     const handleAiPolish = async () => {
         const currentEdit = editorRef.current?.getEdit();
@@ -43,7 +46,6 @@ const CreativeStudio: React.FC = () => {
     
         addToast("Preparing video for rendering...", "info");
     
-        // Step 7, Part 1: Get the complete edit JSON for API submission
         const editJson = editorRef.current.getEdit();
     
         if (!editJson || !editJson.timeline) {
@@ -51,7 +53,6 @@ const CreativeStudio: React.FC = () => {
             return;
         }
     
-        // Auto-adjust soundtrack length to match the final video duration.
         const totalDurationInSeconds = editorRef.current.getTotalDuration() / 1000;
         if (editJson.timeline?.tracks) {
             const musicTrack = editJson.timeline.tracks.find((t: any) => t.name === 'Music');
@@ -61,21 +62,18 @@ const CreativeStudio: React.FC = () => {
         }
     
         try {
-            // First, save the final state of the editor to our database
             await handleUpdateProject(project.id, { shotstackEditJson: editJson });
     
-            // Step 7, Part 2: Submit to the Shotstack API for rendering (via our secure proxy)
             const { renderId } = await invokeEdgeFunction<{ renderId: string }>('shotstack-render', {
                 edit: editJson,
                 projectId: project.id,
             });
     
             if (renderId) {
-                // Step 7, Part 3: Save the render ID for status checking (handled by our webhook)
                 await handleUpdateProject(project.id, {
                     shotstackRenderId: renderId,
                     status: 'Rendering',
-                    workflowStep: 4 // Move to the Analysis step to await completion
+                    workflowStep: 4
                 });
                 addToast("Render job submitted! We'll notify you when it's done.", "success");
             } else {
@@ -93,6 +91,10 @@ const CreativeStudio: React.FC = () => {
     const handleDeleteClip = (trackIndex: number, clipIndex: number) => {
         editorRef.current?.deleteClip(trackIndex, clipIndex);
     };
+
+    const handlePlaybackChange = useCallback((playing: boolean) => {
+        setIsPlaying(playing);
+    }, []);
     
     if (!project) {
         return <div className="min-h-[80vh] flex items-center justify-center"><Loader /></div>;
@@ -102,7 +104,7 @@ const CreativeStudio: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
             <div className="lg:col-span-1 h-full min-h-[400px]">
                 <AssetAndInspectorPanel 
-                    studio={null} 
+                    studio={editorRef.current} 
                     selection={selection} 
                     onAddClip={handleAddClip}
                     onDeleteClip={handleDeleteClip}
@@ -113,16 +115,17 @@ const CreativeStudio: React.FC = () => {
                     editorRef={editorRef}
                     project={project}
                     onSelectionChange={setSelection}
+                    onPlaybackChange={handlePlaybackChange}
                 />
-                <div className="flex-shrink-0 flex items-center justify-center gap-4">
-                    <button onClick={handleAiPolish} className="flex-1 inline-flex items-center justify-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-full transition-colors">
-                        <MagicWandIcon className="w-5 h-5 mr-2" /> AI Polish
-                    </button>
-                    <button onClick={handleRender} className="flex-1 inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors">
-                        <SparklesIcon className="w-5 h-5 mr-2" /> Render Video & Proceed
-                    </button>
-                </div>
+                <EditorToolbar 
+                    editorRef={editorRef}
+                    isPlaying={isPlaying}
+                    onAiPolish={handleAiPolish}
+                    onRender={handleRender}
+                    onOpenHelp={() => setIsHelpModalOpen(true)}
+                />
             </div>
+            <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
         </div>
     );
 };
