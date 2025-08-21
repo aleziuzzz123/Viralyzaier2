@@ -1,201 +1,154 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Project, ShotstackClipSelection, NormalizedStockAsset } from '../types';
-import { LayersIcon, PhotoIcon, TrashIcon, WandSparklesIcon, TypeIcon, AdjustmentsHorizontalIcon, ViewColumnsIcon, SearchIcon, PlusIcon, MusicNoteIcon } from './Icons';
+import { useAppContext } from '../contexts/AppContext';
+import { ShotstackClipSelection, NormalizedStockAsset } from '../types';
+import { SearchIcon, SparklesIcon, XIcon } from './Icons';
 import * as geminiService from '../services/geminiService';
-import Loader from './Loader';
-import { getErrorMessage } from '../utils';
+import TextEngine from './TextEngine';
+import VFXHub from './VFXHub';
+import ColorAudioStudio from './ColorAudioStudio';
+import LayoutToolkit from './LayoutToolkit';
 
-const InspectorPanelContent: React.FC<{ studio: any | null, selection: ShotstackClipSelection | null }> = ({ studio, selection }) => {
-    const handleDelete = () => {
-        if (!studio || !selection) return;
-        studio.deleteClip(selection.trackIndex, selection.clipIndex);
-    };
-    
-    if (!selection || !selection.clip) {
-        return <div className="p-4 text-center text-gray-500">Select a clip on the timeline to edit its properties.</div>;
-    }
-
-    return (
-        <div className="p-4 space-y-6">
-            <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">
-                <p className="text-sm font-bold text-white capitalize">{selection.clip.asset.type} Clip</p>
-                <button onClick={handleDelete} className="p-2 text-gray-400 hover:text-red-400" title="Delete Clip"><TrashIcon className="w-5 h-5" /></button>
-            </div>
-        </div>
-    );
-};
-
-interface MediaPanelProps {
-    project: Project;
-    studio: any | null;
-    onAddClip: (clip: any, trackType: 'b-roll' | 'music') => void;
+interface AssetAndInspectorPanelProps {
+    studio: any;
+    selection: ShotstackClipSelection | null;
+    onAddClip: (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => void;
+    onDeleteClip: (trackIndex: number, clipIndex: number) => void;
 }
-type MediaTab = 'Video' | 'Image' | 'Music' | 'Stickers' | 'AI';
 
-const MediaPanel: React.FC<MediaPanelProps> = ({ project, studio, onAddClip }) => {
-    const [activeMediaTab, setActiveMediaTab] = useState<MediaTab>('Video');
-    const [query, setQuery] = useState('');
+type AssetType = 'Video' | 'Image' | 'Music' | 'Stickers' | 'AI';
+
+const AssetBrowser: React.FC<{ onAddClip: (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => void }> = ({ onAddClip }) => {
+    const { t, lockAndExecute, addToast } = useAppContext();
+    const [activeTab, setActiveTab] = useState<AssetType>('Video');
+    const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<NormalizedStockAsset[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // AI B-Roll state
-    const [aiBrollPrompt, setAiBrollPrompt] = useState('');
-    const [isAiLoading, setIsAiLoading] = useState(false);
-
-    const handleSearch = useCallback(async () => {
-        if (!query.trim()) return;
+    const handleSearch = useCallback(() => lockAndExecute(async () => {
+        if (!searchTerm.trim()) return;
         setIsLoading(true);
         setResults([]);
         try {
-            let data: NormalizedStockAsset[] = [];
-            switch (activeMediaTab) {
-                case 'Video': data = await geminiService.searchPexels(query, 'videos'); break;
-                case 'Image': data = await geminiService.searchPexels(query, 'photos'); break;
-                case 'Music': data = await geminiService.searchJamendoMusic(query); break;
-                case 'Stickers': data = await geminiService.searchGiphy(query, 'stickers'); break;
+            let searchResults: NormalizedStockAsset[] = [];
+            switch (activeTab) {
+                case 'Video':
+                    searchResults = await geminiService.searchPexels(searchTerm, 'videos');
+                    break;
+                case 'Image':
+                    searchResults = await geminiService.searchPexels(searchTerm, 'photos');
+                    break;
+                case 'Music':
+                    searchResults = await geminiService.searchJamendoMusic(searchTerm);
+                    break;
+                case 'Stickers':
+                    searchResults = await geminiService.searchGiphy(searchTerm, 'stickers');
+                    break;
             }
-            setResults(data);
-        } catch (error) { console.error(`Failed to search ${activeMediaTab}:`, error); } finally { setIsLoading(false); }
-    }, [query, activeMediaTab]);
-
-    const handleAddStockAsset = (asset: NormalizedStockAsset) => {
-        if (!studio) return;
-        const trackType = asset.type === 'audio' ? 'music' : 'b-roll';
-        onAddClip({
-            asset: { type: asset.type, src: asset.downloadUrl },
-            start: studio.getCurrentTime(),
-            length: asset.duration || 5
-        }, trackType);
-    };
-
-    const handleAiBroll = async () => {
-        if (!aiBrollPrompt.trim()) return;
-        setIsAiLoading(true);
-        try {
-            const suggestion = await geminiService.getAiBrollSuggestion(aiBrollPrompt);
-            if (suggestion.type === 'stock' && suggestion.query) {
-                setActiveMediaTab('Video');
-                setQuery(suggestion.query);
-                // Trigger search after state updates
-                setTimeout(() => document.getElementById('media-search-button')?.click(), 100);
-            } else if (suggestion.type === 'ai_video' && suggestion.prompt) {
-                // Future: Handle AI video generation
-            }
-        } catch(e) {
-            console.error(getErrorMessage(e));
+            setResults(searchResults);
+        } catch (e) {
+            addToast(e instanceof Error ? e.message : 'Failed to search assets.', 'error');
         } finally {
-            setIsAiLoading(false);
+            setIsLoading(false);
         }
-    };
-    
+    }), [searchTerm, activeTab, lockAndExecute, addToast]);
+
+    const tabs: AssetType[] = ['Video', 'Image', 'Music', 'Stickers', 'AI'];
+
     return (
-        <div className="p-4 flex flex-col h-full">
-            <div className="flex-shrink-0">
-                 <div className="flex gap-2 border-b border-gray-700">
-                    {['Video', 'Image', 'Music', 'Stickers', 'AI'].map(tab => (
-                        <button key={tab} onClick={() => setActiveMediaTab(tab as MediaTab)} className={`px-3 py-2 text-xs font-semibold flex items-center gap-1.5 ${activeMediaTab === tab ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400'}`}>
-                           {tab === 'AI' && <WandSparklesIcon className="w-4 h-4"/>} {tab}
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-700">
+                <div className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        placeholder={`Search for ${activeTab}...`}
+                        className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button onClick={handleSearch} disabled={isLoading} className="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg disabled:bg-gray-600">
+                        <SearchIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                 <nav className="mt-4 -mb-4 flex space-x-4 overflow-x-auto">
+                    {tabs.map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-1 border-b-2 text-sm font-medium ${activeTab === tab ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+                            {tab}
                         </button>
                     ))}
-                </div>
-                 {activeMediaTab !== 'AI' ? (
-                    <div className="flex items-center gap-2 my-4">
-                        <div className="flex-grow relative">
-                            <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"/>
-                            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()} placeholder={`Search for ${activeMediaTab}...`} className="w-full bg-gray-900 border border-gray-700 rounded-full pl-10 pr-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                        </div>
-                        <button id="media-search-button" onClick={handleSearch} disabled={isLoading} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-full font-semibold text-sm disabled:bg-gray-600">Search</button>
-                    </div>
-                ) : (
-                    <div className="my-4 space-y-3">
-                        <textarea value={aiBrollPrompt} onChange={e => setAiBrollPrompt(e.target.value)} placeholder="Describe a visual you need..." rows={2} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-                        <button onClick={handleAiBroll} disabled={isAiLoading} className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 rounded-full font-semibold text-sm disabled:bg-gray-600">{isAiLoading ? "Thinking..." : "Get B-Roll Suggestion"}</button>
-                    </div>
-                )}
+                </nav>
             </div>
-
-            <div className="flex-grow overflow-y-auto mt-2 pr-2 -mr-2">
-                {isLoading ? <div className="flex justify-center items-center h-full"><Loader /></div> : (
-                    <div className={activeMediaTab === 'Music' ? "space-y-2" : "grid grid-cols-2 gap-2"}>
-                        {results.map(asset => (
-                             <div key={asset.id} className="relative group cursor-pointer rounded-md overflow-hidden" onClick={() => handleAddStockAsset(asset)}>
-                                {asset.type === 'audio' ? (
-                                    <div className="bg-gray-900/50 p-3 flex items-center justify-between hover:bg-gray-900">
-                                        <div className="flex items-center gap-3">
-                                            <MusicNoteIcon className="w-5 h-5 text-indigo-400"/>
-                                            <p className="text-sm text-gray-300 truncate">{asset.description}</p>
-                                        </div>
-                                        <PlusIcon className="w-6 h-6 text-white opacity-0 group-hover:opacity-100"/>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <img src={asset.previewImageUrl} alt={asset.description} className="w-full h-full object-cover aspect-video" />
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <PlusIcon className="w-8 h-8 text-white"/>
-                                        </div>
-                                    </>
-                                )}
+            <div className="flex-1 overflow-y-auto p-4">
+                {isLoading && <p className="text-center text-gray-400">Loading...</p>}
+                <div className="grid grid-cols-2 gap-4">
+                    {results.map(asset => (
+                        <div key={asset.id} className="group relative cursor-pointer" onClick={() => onAddClip(asset.type, asset.downloadUrl)}>
+                            <img src={asset.previewImageUrl} alt={asset.description} className="w-full h-24 object-cover rounded-md bg-black" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <p className="text-white text-xs text-center p-1">{asset.description}</p>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
 };
 
-interface AssetAndInspectorPanelProps {
-    project: Project;
-    studio: any | null;
-    selection: ShotstackClipSelection | null;
-    onAddClip: (clip: any, trackType: 'b-roll' | 'music') => void;
-}
+const Inspector: React.FC<{ selection: ShotstackClipSelection; studio: any; onDeleteClip: (trackIndex: number, clipIndex: number) => void }> = ({ selection, studio, onDeleteClip }) => {
+    const [activeTab, setActiveTab] = useState('Inspect');
+    const tabs = ['Inspect', 'Text', 'VFX', 'Polish', 'Layout'];
 
-type Tab = 'Media' | 'Inspector';
-
-const AssetAndInspectorPanel: React.FC<AssetAndInspectorPanelProps> = ({ project, studio, selection, onAddClip }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('Media');
-
-    useEffect(() => {
-        if (selection) setActiveTab('Inspector');
-        else setActiveTab('Media');
-    }, [selection]);
-
-    const renderActiveTab = () => {
-        switch(activeTab) {
-            case 'Media': return <MediaPanel project={project} studio={studio} onAddClip={onAddClip} />;
-            case 'Inspector': return <InspectorPanelContent studio={studio} selection={selection} />;
-            default: return null;
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'Text': return <TextEngine studio={studio} selection={selection} />;
+            case 'VFX': return <VFXHub studio={studio} selection={selection} />;
+            case 'Polish': return <ColorAudioStudio studio={studio} selection={selection} />;
+            case 'Layout': return <LayoutToolkit studio={studio} selection={selection} />;
+            case 'Inspect':
+            default:
+                return (
+                    <div className="p-4 space-y-4">
+                        <div className="text-xs text-gray-400 break-words">
+                            <p><span className="font-bold text-gray-200">Type:</span> {selection.clip.asset.type}</p>
+                            <p><span className="font-bold text-gray-200">Start:</span> {selection.clip.start.toFixed(2)}s</p>
+                            <p><span className="font-bold text-gray-200">Length:</span> {selection.clip.length.toFixed(2)}s</p>
+                        </div>
+                        <button onClick={() => onDeleteClip(selection.trackIndex, selection.clipIndex)} className="w-full flex items-center justify-center gap-2 p-2 bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded-md text-sm font-semibold">
+                            <XIcon className="w-4 h-4" /> Delete Clip
+                        </button>
+                    </div>
+                );
         }
-    };
-
-    const tabs: { id: Tab, icon: React.FC<{className?:string}>, label: string }[] = [
-        { id: 'Media', icon: PhotoIcon, label: 'Media' },
-        { id: 'Inspector', icon: LayersIcon, label: 'Inspector' },
-    ];
+    }
 
     return (
-        <div className="h-full flex flex-col bg-gray-900 text-white">
-            <div className="flex-shrink-0 border-b border-gray-700/50 flex justify-around">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        disabled={tab.id === 'Inspector' && !selection}
-                        className={`w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors disabled:text-gray-600 disabled:cursor-not-allowed ${
-                            activeTab === tab.id
-                                ? 'border-indigo-500 text-white'
-                                : 'border-transparent text-gray-400 hover:text-white'
-                        }`}
-                        title={tab.label}
-                    >
-                        <tab.icon className="w-5 h-5" /> {tab.label}
-                    </button>
-                ))}
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-700">
+                <h2 className="text-xl font-bold text-white">Inspector</h2>
+                 <nav className="mt-2 -mb-4 flex space-x-4 overflow-x-auto">
+                    {tabs.map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-1 border-b-2 text-sm font-medium ${activeTab === tab ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+                            {tab}
+                        </button>
+                    ))}
+                </nav>
             </div>
-            <div className="flex-grow overflow-y-auto">
-                {renderActiveTab()}
+            <div className="flex-1 overflow-y-auto">
+                {renderTabContent()}
             </div>
+        </div>
+    );
+};
+
+const AssetAndInspectorPanel: React.FC<AssetAndInspectorPanelProps> = ({ studio, selection, onAddClip, onDeleteClip }) => {
+    return (
+        <div className="bg-gray-800/50 h-full rounded-lg border border-gray-700 overflow-hidden">
+            {selection ? (
+                <Inspector selection={selection} studio={studio} onDeleteClip={onDeleteClip} />
+            ) : (
+                <AssetBrowser onAddClip={onAddClip} />
+            )}
         </div>
     );
 };
