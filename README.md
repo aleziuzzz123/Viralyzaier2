@@ -4,7 +4,14 @@ This guide walks you through setting up the application, which is now powered by
 
 ---
 
-## 1. Supabase: Set Up Your Backend Secrets
+## 1. API Keys: Sandbox vs. Production (Important!)
+
+When developing your application, it is crucial to use your **Sandbox API Key** from the Shotstack Dashboard. The sandbox environment is free for rendering tests (videos will have a watermark) and will prevent accidental charges.
+
+- **Action:** Set your **sandbox key** in the `SHOTSTACK_API_KEY` secret for the `shotstack-render` and `shotstack-status` Supabase functions.
+- **Production Key:** Only use your **Production API Key** in your live, deployed application when you are ready to serve non-watermarked videos to your users.
+
+## 2. Supabase: Set Up Your Backend Secrets
 
 Your backend functions need secret keys to communicate with various services securely.
 
@@ -13,18 +20,19 @@ Your backend functions need secret keys to communicate with various services sec
 3.  For each function, go to its **Secrets** tab and add the following keys. You will need to create accounts for these services to get your keys.
 
     *   **For `shotstack-render` & `shotstack-status`:**
-        *   `SHOTSTACK_API_KEY`: Your **secret** Shotstack API key for rendering (use your "stage" key for development).
+        *   `SHOTSTACK_API_KEY`: Your **secret** Shotstack API key (use your "stage" key for development, as mentioned above).
+        *   `SHOTSTACK_API_BASE`: Set this to `https://api.shotstack.io/stage` for development.
         *   `SUPABASE_URL`: The URL of your Supabase project. This is crucial for constructing the webhook callback URL.
 
-    *   **For `shotstack-webhook` (New):**
+    *   **For `shotstack-webhook`:**
         *   `SUPABASE_URL`: The URL of your Supabase project.
         *   `SUPABASE_SERVICE_ROLE_KEY`: Your project's `service_role` key, found in your project's API settings.
 
     *   **For `gemini-proxy`, `ai-polish`, `ai-broll-generator`:**
         *   `GEMINI_API_KEY`: Your Google AI API Key.
     
-    *   **For `ai-polish`:**
-        *   `ELEVENLABS_API_KEY`: Your ElevenLabs API Key for generating sound effects.
+    *   **For `ai-polish`, `elevenlabs-proxy`, etc.:**
+        *   `ELEVENLABS_API_KEY`: Your ElevenLabs API Key.
     
     *   **For `pexels-proxy`:**
         *   `PEXELS_API_KEY`: Your Pexels API Key.
@@ -35,13 +43,13 @@ Your backend functions need secret keys to communicate with various services sec
     *   **For `giphy-proxy`:**
         *   `GIPHY_API_KEY`: Your Giphy API Key.
     
-    *   ... (and other secrets for Stripe, etc.)
+    *   ... (and other secrets for Stripe, Google OAuth, etc.)
 
 4.  After setting or changing secrets, you **must redeploy** your Supabase Edge Functions for the changes to take effect.
 
 ---
 
-## 2. Frontend: No Keys Required
+## 3. Frontend: No Keys Required
 
 The frontend application does not require any public API keys. The Shotstack Studio editor is initialized without a key, and all rendering calls are proxied securely through the `shotstack-render` Supabase function.
 
@@ -58,8 +66,8 @@ The frontend application does not require any public API keys. The Shotstack Stu
 ## Troubleshooting
 
 -   **Editor Fails to Load:**
-    -   Check the browser console for any errors related to the `@shotstack/shotstack-studio` package. Ensure your dependencies are installed correctly.
+    -   Check the browser console for any errors related to the `@shotstack/shotstack-studio` package or the `asset-proxy` function. Ensure your dependencies are installed correctly.
 -   **Rendering Fails with a 4xx/5xx Error:**
-    -   This is likely an issue with the `shotstack-render` function. Check its logs in the Supabase dashboard. Ensure the `SHOTSTACK_API_KEY` and `SUPABASE_URL` secrets are set correctly and that you have redeployed the function after setting them.
+    -   This is likely an issue with the `shotstack-render` function. Check its logs in the Supabase dashboard. Ensure the `SHOTSTACK_API_KEY`, `SHOTSTACK_API_BASE` and `SUPABASE_URL` secrets are set correctly and that you have redeployed the function after setting them.
 -   **Video Stays in "Rendering" State Forever:**
     -   This indicates the `shotstack-webhook` function may not have been called or has an error. Check its logs in the Supabase dashboard. Ensure the function has been deployed and its secrets are set.

@@ -1,103 +1,68 @@
-// supabase/functions/asset-proxy/index.ts
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-const corsHeaders: Record<string, string> = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range",
   "Access-Control-Allow-Methods": "GET,HEAD,OPTIONS",
-  "Access-Control-Expose-Headers":
-    "Accept-Ranges, Content-Range, Content-Length, Content-Type, ETag, Last-Modified",
+  "Access-Control-Allow-Headers": "Origin, Range, Accept, Content-Type",
+  "Timing-Allow-Origin": "*",
+  "Cross-Origin-Resource-Policy": "cross-origin",
+  "Accept-Ranges": "bytes",
+  "Cache-Control": "public, max-age=31536000, immutable",
 };
 
-const mimeTypes: Record<string, string> = {
-  mp3: "audio/mpeg",
-  wav: "audio/wav",
-  mp4: "video/mp4",
-  mov: "video/quicktime",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  gif: "image/gif",
-  webp: "image/webp",
+const MIME: Record<string, string> = {
+  // images
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+  gif: "image/gif", svg: "image/svg+xml",
+  // audio
+  mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav", ogg: "audio/ogg",
+  // video
+  mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm",
+  // scripts
+  js: "text/javascript",
+  mjs: "text/javascript",
 };
+
+const extFrom = (u: string) => {
+  const clean = u.split("?")[0];
+  const last = clean.split("/").pop() || "";
+  return last.includes(".") ? last.split(".").pop()!.toLowerCase() : "";
+};
+
+const isLoop = (u: string) => /\/functions\/v1\/asset-proxy/i.test(u);
 
 serve(async (req) => {
-  // CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   try {
     const url = new URL(req.url);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const ix = parts.lastIndexOf("asset-proxy");
+    const encoded = parts[ix + 1];
+    const name = parts[ix + 2] ? decodeURIComponent(parts[ix + 2]) : "";
 
-    let targetUrl = "";
-    let filenameFromPath = "";
+    if (!encoded) return new Response("Missing target", { status: 400, headers: CORS });
 
-    const path = decodeURIComponent(url.pathname); 
-    const parts = path.split("/").filter(Boolean); 
-
-    if (parts.length >= 3 && parts[0] === "asset-proxy" && (parts[1] === "http" || parts[1] === "https")) {
-      const scheme = parts[1];
-      const rest = parts.slice(2).join("/");
-      targetUrl = `${scheme}://${rest}`;
-      filenameFromPath = parts[parts.length - 1] || "asset";
-    } else {
-      const q = url.searchParams.get("u") || url.searchParams.get("url") || "";
-      if (q) {
-        targetUrl = q;
-        const f = path.split("/").pop() || "";
-        filenameFromPath = f || "asset";
-      }
+    const target = decodeURIComponent(encoded);
+    if (!/^https?:\/\//i.test(target) || isLoop(target)) {
+      return new Response("Invalid target", { status: 400, headers: CORS });
     }
 
-    if (!/^https?:\/\//i.test(targetUrl)) {
-      return new Response(
-        JSON.stringify({ error: "Provide upstream URL via path: /asset-proxy/https/<host>/<...>/file.ext or ?url=..." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const fwd = new Headers();
-    const range = req.headers.get("range");
-    if (range) fwd.set("range", range);
-
-    const upstream = await fetch(targetUrl, {
-      method: req.method === "HEAD" ? "HEAD" : "GET",
-      headers: fwd,
+    const range = req.headers.get("Range") ?? "";
+    const upstream = await fetch(target, {
+      headers: range ? { Range: range } : {},
       redirect: "follow",
     });
 
-    if (!upstream.ok && upstream.status !== 206) {
-      const body = await upstream.text().catch(() => "");
-      return new Response(
-        JSON.stringify({ error: "Upstream asset source returned an error.", status: upstream.status, body }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // ** FIX **: The restrictive check that only allowed audio files has been removed.
-    // The proxy can now serve images, videos, and any other required asset type.
+    // Build headers
+    const headers = new Headers(upstream.headers);
+    const ext = extFrom(name || target);
+    if (ext && MIME[ext]) headers.set("Content-Type", MIME[ext]);
+    Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));
+    if (name) headers.set("Content-Disposition", `inline; filename="${name}"`);
 
-    const resHeaders = new Headers(upstream.headers);
-    for (const [k, v] of Object.entries(corsHeaders)) resHeaders.set(k, v);
-
-    const ext = (filenameFromPath.split(".").pop() || "").toLowerCase();
-    const contentType = mimeTypes[ext];
-    if (contentType) {
-      resHeaders.set("Content-Type", contentType);
-    }
-
-    resHeaders.set("Content-Disposition", `inline; filename="${filenameFromPath}"`);
-    if (upstream.status === 206 || !resHeaders.has("Accept-Ranges")) {
-      resHeaders.set("Accept-Ranges", "bytes");
-    }
-    resHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
-
-    return new Response(upstream.body, { status: upstream.status, headers: resHeaders });
-  } catch (e: any) {
-    return new Response(
-      JSON.stringify({ error: "Asset proxy failed.", details: e?.message || String(e) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(upstream.body, { status: upstream.status, headers });
+  } catch {
+    return new Response("Proxy error", { status: 502, headers: CORS });
   }
 });

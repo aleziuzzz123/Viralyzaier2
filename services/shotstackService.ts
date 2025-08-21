@@ -1,17 +1,41 @@
+// src/services/shotstackService.ts
 import { invokeEdgeFunction } from './supabaseService';
 
-interface RenderStatus {
-    status: 'submitted' | 'queued' | 'rendering' | 'done' | 'failed' | 'cancelled';
-    url?: string;
+export type RenderPhase =
+  | 'submitted'
+  | 'queued'
+  | 'rendering'
+  | 'done'
+  | 'failed'
+  | 'cancelled';
+
+export interface RenderStatus {
+  status: RenderPhase;
+  url?: string;
+  message?: string;
 }
 
-/**
- * Checks the status of a Shotstack render job.
- * @param renderId The ID of the render job to check.
- * @returns The current status and URL if completed.
- */
-export const getRenderStatus = async (renderId: string): Promise<RenderStatus> => {
-    // The Supabase function can be called via GET or POST.
-    // We use POST here for consistency with other service calls.
-    return await invokeEdgeFunction<RenderStatus>('shotstack-status', { id: renderId });
-};
+// Start a render via an edge function (optional but handy)
+export async function submitRender(edit: any, webhookUrl?: string): Promise<{ id: string }> {
+  return await invokeEdgeFunction<{ id: string }>('shotstack-render', { edit, webhookUrl });
+}
+
+// Check render status (this is what your UI polls)
+export async function getRenderStatus(renderId: string): Promise<RenderStatus> {
+  if (!renderId) throw new Error('renderId is required');
+  return await invokeEdgeFunction<RenderStatus>('shotstack-status', { id: renderId });
+}
+
+// Utility: poll until finished
+export async function pollRender(
+  renderId: string,
+  { intervalMs = 4000, timeoutMs = 15 * 60_000 } = {}
+): Promise<RenderStatus> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const s = await getRenderStatus(renderId);
+    if (s.status === 'done' || s.status === 'failed' || s.status === 'cancelled') return s;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  throw new Error('Render polling timed out');
+}

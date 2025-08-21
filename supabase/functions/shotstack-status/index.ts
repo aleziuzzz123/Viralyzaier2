@@ -1,89 +1,44 @@
 // supabase/functions/shotstack-status/index.ts
-// Secure proxy to check the status of a Shotstack render by ID
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 declare const Deno: any;
 
-const corsHeaders = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-client-info, apikey, range",
+  "Timing-Allow-Origin": "*",
+  "Content-Type": "application/json",
 };
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("OK", { headers: corsHeaders });
-  }
+const API_BASE = Deno.env.get("SHOTSTACK_API_BASE") ?? "https://api.shotstack.io/stage"; // use /v1 for prod
+const API_KEY  = Deno.env.get("SHOTSTACK_API_KEY")!;
 
-  try {
-    const apiKey = Deno.env.get("SHOTSTACK_API_KEY");
-    if (!apiKey) {
-      throw new Error("Function is not configured. Go to Supabase project -> Edge Functions -> shotstack-status -> Secrets, and set SHOTSTACK_API_KEY.");
-    }
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
-    // We allow POST (with JSON body containing id) or GET with ?id= query
-    let renderId: string | null = null;
-    if (req.method === "POST") {
-      try {
-        const { id } = await req.json();
-        renderId = id;
-      } catch {
-        // If body parse fails
-        renderId = null;
-      }
-    } else if (req.method === "GET") {
-      const url = new URL(req.url);
-      renderId = url.searchParams.get("id");
-    }
+  const url = new URL(req.url);
+  const payload = req.method === "GET" ? {} : await req.json().catch(() => ({}));
+  const id = (payload?.id ?? url.searchParams.get("id")) as string | null;
 
-    if (!renderId) {
-      return new Response(JSON.stringify({ error: "No render ID provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+  if (!API_KEY) return new Response(JSON.stringify({ error: "SHOTSTACK_API_KEY not set" }), { status: 500, headers: CORS });
+  if (!id)     return new Response(JSON.stringify({ error: "Missing id" }), { status: 400, headers: CORS });
 
-    let apiBase = Deno.env.get("SHOTSTACK_API_BASE"); // Read the base URL from secrets
-    
-    // **ROBUSTNESS FIX**: Validate the base URL and fallback to the stage environment if it's missing or invalid.
-    if (!apiBase || !apiBase.startsWith('http')) {
-        console.warn(`Invalid SHOTSTACK_API_BASE found. Falling back to default stage URL. Please set this secret to 'https://api.shotstack.io/stage' in your Supabase project settings.`);
-        apiBase = "https://api.shotstack.io/stage";
-    }
+  const res = await fetch(`${API_BASE}/render/${id}`, {
+    headers: { "x-api-key": API_KEY, "accept": "application/json" },
+  });
 
-    const statusUrl = `${apiBase}/render/${renderId}`; // Construct the correct, full URL
+  const json = await res.json().catch(() => ({}));
+  const status =
+    json?.response?.status ??
+    json?.status ??
+    "failed";
 
-    const response = await fetch(statusUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey
-      }
-    });
+  const outUrl =
+    json?.response?.url ??
+    json?.response?.output?.[0]?.url ??
+    json?.response?.data?.[0]?.url ??
+    undefined;
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("Shotstack status error:", response.status, errorBody);
-      return new Response(JSON.stringify({ error: "Shotstack API error", details: errorBody }), {
-        status: response.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const result = await response.json();
-    // The response contains status and possibly url when done
-    const statusData = result.response;
-    // We will forward the important parts to the client
-    const { status, url } = statusData;
-    return new Response(JSON.stringify({ status, url }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  } catch (error) {
-    console.error("Function error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
+  return new Response(JSON.stringify({ status, url: outUrl }), { status: 200, headers: CORS });
 });
