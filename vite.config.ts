@@ -5,15 +5,12 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+  // This resolve block prevents Vite from bundling multiple versions of PixiJS,
+  // which can cause issues with Shotstack Studio's plugin system (e.g., "AudioLoadParser not found").
   resolve: {
-    dedupe: ['@shotstack/shotstack-studio'],
+    dedupe: ['pixi.js', '@pixi/*'],
   },
   optimizeDeps: {
-    include: [],
-    exclude: []
+    include: ['@shotstack/shotstack-studio'],
   },
-  build: {
-    rollupOptions: { external: [] },
-    commonjsOptions: { include: [/node_modules/] }
-  }
 });

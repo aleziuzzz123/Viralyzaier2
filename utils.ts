@@ -74,6 +74,27 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
     }
 };
 
+// --- URL Hygiene ---
+/**
+ * Normalizes a URL by trimming whitespace and decoding any accidental proxy wrapping.
+ * Ensures that only clean, direct URLs are used in the application.
+ */
+export const normalizeUrl = (u: string | null | undefined): string => {
+    if (!u) return '';
+    const trimmed = u.trim();
+    // Use regex to robustly find and decode the URL from a proxy wrapper.
+    if (trimmed.includes('/asset-proxy?url=')) {
+        try {
+            return decodeURIComponent(trimmed.replace(/^.*\/asset-proxy\?url=/, ''));
+        } catch (e) {
+            console.error('Failed to decode proxied URL:', trimmed, e);
+            return '';
+        }
+    }
+    return trimmed;
+};
+
+
 // --- IndexedDB Cache Utilities ---
 
 const DB_NAME = 'ViralyzerDB';

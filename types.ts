@@ -6,13 +6,22 @@ export type WorkflowStep = 1 | 2 | 3 | 4 | 5;
 export type VideoStyle = 'High-Energy Viral' | 'Cinematic Documentary' | 'Clean & Corporate' | 'Animation' | 'Historical Documentary' | 'Vlog' | 'Whiteboard';
 export type AiVideoModel = 'runwayml' | 'kling' | 'minimax' | 'seedance';
 
-// Using `any` for the Json type resolves complex type inference issues with the Supabase client.
+// A specific, non-recursive type for JSON to prevent "Type instantiation is excessively deep" errors
+// with the Supabase client, which can occur with complex, auto-generated schemas.
+// Using `any` is a pragmatic solution to TypeScript's complexity limits with Supabase's generated types.
 export type Json = any;
+
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
 export interface Plan { id: PlanId; name: string; price: number; creditLimit: number; features: string[]; isMostPopular?: boolean; }
 export interface Subscription { planId: PlanId; status: 'active' | 'canceled'; endDate: string | null; }
+export interface ShotstackClipSelection {
+  clip: any; // The full clip object from Shotstack
+  trackIndex: number;
+  clipIndex: number;
+}
+
 
 // --- User & Brand Types ---
 export interface ChannelAudit {
@@ -54,7 +63,7 @@ export interface BrandIdentity {
 // --- Project & Content Types ---
 export interface Project {
   id: string;
-  user_id?: string;
+  userId?: string;
   name: string;
   topic: string;
   platform: Platform;
@@ -74,12 +83,12 @@ export interface Project {
   publishedUrl: string | null;
   workflowStep: WorkflowStep;
   voiceoverVoiceId: string | null;
-  last_performance_check: string | null;
-  final_video_url?: string | null;
-  shotstack_edit_json?: object | null;
-  shotstack_render_id?: string | null;
-  video_url?: string | null;
-  voiceover_urls?: { [key: number]: string } | null;
+  lastPerformanceCheck: string | null;
+  finalVideoUrl?: string | null;
+  shotstackEditJson?: object | null;
+  shotstackRenderId?: string | null;
+  videoUrl?: string | null;
+  voiceoverUrls?: { [key: number]: string } | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -273,6 +282,7 @@ export type Database = {
           visual_style_guide?: string | null
           writing_style_guide?: string | null
         }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -299,6 +309,7 @@ export type Database = {
           project_id?: string | null
           user_id?: string
         }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -331,6 +342,7 @@ export type Database = {
           stripe_customer_id?: string | null
           subscription?: Json | null
         }
+        Relationships: []
       }
       projects: {
         Row: {
@@ -420,6 +432,7 @@ export type Database = {
           voiceover_voice_id?: string | null
           workflow_step?: number
         }
+        Relationships: []
       }
       user_youtube_tokens: {
         Row: {
@@ -446,6 +459,7 @@ export type Database = {
           scope?: string
           user_id?: string
         }
+        Relationships: []
       }
       video_jobs: {
         Row: {
@@ -481,6 +495,7 @@ export type Database = {
           error_message?: string | null
           output_url?: string | null
         }
+        Relationships: []
       }
     }
     Views: {
