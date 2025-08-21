@@ -14,9 +14,9 @@ async function tryImport(path: string) {
 
 async function loadLocal(): Promise<any> {
   const candidates = [
-    '/vendor/shotstack-studio-1.6.2.js',
-    '/vendor/shotstack-studio-1.6.2.mjs',
-    '/vendor/shotstack-studio-1.6.2.esm.js',
+    '/vendor/shotstack-studio-1.6.1.js',
+    '/vendor/shotstack-studio-1.6.1.mjs',
+    '/vendor/shotstack-studio-1.6.1.esm.js',
     '/vendor/shotstack-studio.js',
     '/vendor/shotstack-studio.mjs',
   ];
