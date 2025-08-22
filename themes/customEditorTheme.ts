@@ -15,19 +15,19 @@ export const customEditorTheme = {
       divider: "#4B5563",
       icon: "#D1D5DB",
       text: "#F9FAFB",
-      height: 36,
+      height: 36
     },
     ruler: {
       background: "#1F2937",
       text: "#9CA3AF",
       markers: "#4B5563",
-      height: 30,
+      height: 30
     },
     tracks: {
       surface: "#111827",
       surfaceAlt: "#1F2937",
       border: "#374151",
-      height: 60,
+      height: 60
     },
     clips: {
       video: "#2563eb",
@@ -39,7 +39,8 @@ export const customEditorTheme = {
       luma: "#84cc16",
       default: "#6B7280",
       selected: "#6366f1",
-      radius: 4,
-    },
-  },
-};
+      radius: 4
+    }
+  }
+}
+
