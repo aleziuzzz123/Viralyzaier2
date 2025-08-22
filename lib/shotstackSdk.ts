@@ -1,4 +1,5 @@
 // lib/shotstackSdk.ts
+
 declare global {
   interface Window {
     __SHOTSTACK_SDK__?: any;
@@ -6,15 +7,15 @@ declare global {
   }
 }
 
-/** Where the vendored ESM lives (must be /public/vendor/shotstack-studio.mjs) */
+/** The vendored ESM lives at /public/vendor/shotstack-studio.mjs */
 const SDK_URL = '/vendor/shotstack-studio.mjs';
 
-/** Load the Shotstack Studio module exactly once (browser dynamic import). */
-export async function getShotstackSdk(): Promise<any> {
+/** Load the Shotstack Studio module exactly once (dynamic browser import). */
+export function getShotstackSdk(): Promise<any> {
   if (window.__SHOTSTACK_SDK__) return Promise.resolve(window.__SHOTSTACK_SDK__);
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
 
-  const p = import(/* @vite-ignore */ SDK_URL).then(mod => {
+  const p = import(/* @vite-ignore */ SDK_URL).then((mod) => {
     window.__SHOTSTACK_SDK__ = mod;
     return mod;
   });
@@ -23,10 +24,11 @@ export async function getShotstackSdk(): Promise<any> {
   return p;
 }
 
-/** Back-compat alias so other files can import getShotstackSDK */
+/** Back-compat aliases so any import name works */
 export const getShotstackSDK = getShotstackSdk;
+export const getShotstack    = getShotstackSdk;
 
-/** Optional helper if you ever want to force a fresh load */
+/** Optional: force a fresh load (rarely needed) */
 export function resetShotstackBootFlag() {
   delete window.__SHOTSTACK_SDK__;
   delete window.__SHOTSTACK_SDK_PROMISE__;
