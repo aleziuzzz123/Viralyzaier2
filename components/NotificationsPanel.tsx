@@ -1,85 +1,125 @@
-
-
-import React, { useRef, useEffect, useContext } from 'react';
-import type { Notification } from '../types.ts';
-import { formatDistanceToNow } from 'date-fns';
-import { DataContext } from '../context/DataContext.tsx';
+import React, { useRef, useEffect, useState } from 'react';
+import { useAppContext } from '../contexts/AppContext';
+import { Notification } from '../types';
+import { SparklesIcon, BellIcon } from './Icons';
+import * as supabase from '../services/supabaseService';
 
 interface NotificationsPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onMarkAllAsRead: () => void;
+    onPanelToggle: (isOpen: boolean) => void;
 }
 
-export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
-  isOpen,
-  onClose,
-  onMarkAllAsRead,
-}) => {
-  const { state: { notifications } } = useContext(DataContext);
-  const panelRef = useRef<HTMLDivElement>(null);
+const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ onPanelToggle }) => {
+    const { user, setActiveProjectId, t } = useAppContext();
+    const [isOpen, setIsOpen] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        onClose();
-      }
+    useEffect(() => {
+        if (isOpen && user) {
+            setIsLoading(true);
+            supabase.getNotifications(user.id)
+                .then(setNotifications)
+                .finally(() => setIsLoading(false));
+        }
+    }, [isOpen, user]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                onPanelToggle(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onPanelToggle]);
+    
+    const handleToggle = () => {
+        const newIsOpen = !isOpen;
+        setIsOpen(newIsOpen);
+        onPanelToggle(newIsOpen);
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+
+    const markNotificationAsRead = async (id: string) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        try { await supabase.markNotificationAsRead(id); } catch (e) { console.error(e); }
     };
-  }, [isOpen, onClose]);
+    
+    const markAllNotificationsAsRead = async () => {
+        if (!user) return;
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        try { await supabase.markAllNotificationsAsRead(user.id); } catch (e) { console.error(e); }
+    };
+    
+    const handleNotificationClick = (notificationId: string, projectId?: string | null) => {
+        markNotificationAsRead(notificationId);
+        if (projectId) {
+            setActiveProjectId(projectId);
+        }
+        setIsOpen(false);
+        onPanelToggle(false);
+    };
+    
+    const unreadCount = notifications.filter((n: Notification) => !n.is_read).length;
 
-  if (!isOpen) {
-    return null;
-  }
-
-  return (
-    <div
-      ref={panelRef}
-      className="absolute top-full right-0 mt-3 w-80 bg-[#2A1A5E] rounded-xl border border-[#4A3F7A] shadow-2xl shadow-black/50 z-50 overflow-hidden"
-    >
-      <div className="p-4 border-b border-[#4A3F7A]/50 flex justify-between items-center">
-        <h3 className="font-bold text-white">Notifications</h3>
-        {notifications.some(n => !n.read) && (
-             <button 
-                onClick={onMarkAllAsRead}
-                className="text-xs text-[#DAFF00]/80 hover:text-[#DAFF00] underline"
-            >
-                Mark all as read
+    return (
+        <div ref={panelRef} className="relative">
+            <button onClick={handleToggle} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
+                <BellIcon className="w-6 h-6" />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                        {unreadCount}
+                    </span>
+                )}
             </button>
-        )}
-      </div>
-      <div className="max-h-96 overflow-y-auto">
-        {notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`p-4 border-b border-[#4A3F7A]/30 flex items-start gap-3 transition-colors duration-200 ${!notification.read ? 'bg-[#1A0F3C]/30' : ''}`}
-            >
-              {!notification.read && (
-                <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-              )}
-              <div className="flex-grow">
-                <p className={`text-sm ${notification.read ? 'text-purple-200/80' : 'text-white'}`}>
-                  {notification.message}
-                </p>
-                <p className="text-xs text-purple-300/60 mt-1">
-                  {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                </p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="p-8 text-center">
-            <i className="fa-regular fa-bell-slash text-3xl text-purple-300/50 mb-3"></i>
-            <p className="text-sm text-purple-200">You have no new notifications.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+            {isOpen && (
+                <div 
+                    className="absolute top-14 right-0 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl animate-fade-in-up z-30" 
+                    style={{animationDuration: '0.2s'}}
+                >
+                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                        <h3 className="font-bold text-white">{t('notifications.title')}</h3>
+                        {unreadCount > 0 && (
+                            <button 
+                                onClick={markAllNotificationsAsRead}
+                                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+                            >
+                                {t('notifications.mark_all_read')}
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="max-h-96 overflow-y-auto">
+                        {isLoading ? <p className="p-4 text-center text-gray-400">Loading...</p> : notifications.length > 0 ? (
+                            <ul className="divide-y divide-gray-700">
+                                {notifications.map((n: Notification) => (
+                                    <li key={n.id}>
+                                        <button 
+                                            onClick={() => handleNotificationClick(n.id, n.project_id)}
+                                            className={`w-full text-left p-4 transition-colors ${!n.is_read ? 'bg-indigo-900/30 text-white font-semibold' : 'text-gray-400 hover:bg-gray-700/50'}`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <SparklesIcon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${!n.is_read ? 'text-indigo-400' : 'text-gray-500'}`} />
+                                                <p className="text-sm">{n.message}</p>
+                                            </div>
+                                            <p className="text-xs text-gray-500 text-right mt-2">
+                                                {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </p>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500">
+                                <p>{t('notifications.empty')}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
+
+export default NotificationsPanel;
