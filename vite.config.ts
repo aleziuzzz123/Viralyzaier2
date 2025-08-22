@@ -4,17 +4,15 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
 export default defineConfig({
-  base: '/', // serve from site root
+  base: '/',                 // So /vendor/... resolves correctly
   plugins: [react()],
   resolve: {
-    // so you can import like: import x from '@/lib/uuid'
     alias: { '@': path.resolve(__dirname, '.') },
-    // avoid multiple Pixi instances (Shotstack bundles Pixi)
-    dedupe: ['pixi.js', '@pixi/*'],
+    dedupe: ['pixi.js', '@pixi/*'], // avoid multiple Pixi builds
   },
   optimizeDeps: {
-    // IMPORTANT: we're loading Shotstack from /public/vendor, not from node_modules
-    // so tell Vite NOT to prebundle it or Pixi.
+    // We are loading Shotstack from /public/vendor, not node_modules.
+    // Tell Vite NOT to prebundle these (prevents double Pixi/FFmpeg).
     exclude: ['@shotstack/shotstack-studio', 'pixi.js', '@pixi/utils', '@pixi/assets'],
   },
 });
