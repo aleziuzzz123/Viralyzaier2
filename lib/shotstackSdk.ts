@@ -7,10 +7,10 @@ declare global {
   }
 }
 
-/** The vendored ESM lives at /public/vendor/shotstack-studio.mjs */
+/** The vendored ESM file */
 const SDK_URL = '/vendor/shotstack-studio.mjs';
 
-/** Load the Shotstack Studio module exactly once (dynamic browser import). */
+/** Load the Shotstack Studio module exactly once (dynamic import). */
 export function getShotstackSdk(): Promise<any> {
   if (window.__SHOTSTACK_SDK__) return Promise.resolve(window.__SHOTSTACK_SDK__);
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
@@ -28,7 +28,7 @@ export function getShotstackSdk(): Promise<any> {
 export const getShotstackSDK = getShotstackSdk;
 export const getShotstack    = getShotstackSdk;
 
-/** Optional: force a fresh load (rarely needed) */
+/** Optional hard reset */
 export function resetShotstackBootFlag() {
   delete window.__SHOTSTACK_SDK__;
   delete window.__SHOTSTACK_SDK_PROMISE__;
