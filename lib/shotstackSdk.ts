@@ -1,3 +1,4 @@
+// src/lib/shotstackSdk.ts
 declare global {
   interface Window {
     __SHOTSTACK_SDK__?: any;
@@ -8,24 +9,26 @@ declare global {
 
 /**
  * Load the vendored Shotstack Studio module exactly once.
- * File must exist at /public/vendor/shotstack-studio.mjs  ➜  /vendor/shotstack-studio.mjs
+ * Make sure the file exists at: public/vendor/shotstack-studio.mjs
+ *   => it will be served at:   /vendor/shotstack-studio.mjs
+ *
+ * If you saved a versioned filename instead (e.g. shotstack-studio-1.6.2.mjs),
+ * change SDK_PATH below to match it.
  */
+const SDK_PATH = '/vendor/shotstack-studio.mjs';
+// const SDK_PATH = '/vendor/shotstack-studio-1.6.2.mjs'; // <— use this if that's your file
+
 export async function getShotstack() {
   if (window.__SHOTSTACK_SDK__) return window.__SHOTSTACK_SDK__;
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
 
-  const p = import(/* @vite-ignore */ '/vendor/shotstack-studio.mjs')
-    .then((mod) => {
-      window.__SHOTSTACK_SDK__ = mod;
-      return mod;
-    })
-    .finally(() => {
-      // Keep the promise for next importers
-      window.__SHOTSTACK_SDK_PROMISE__ = p;
-    });
+  const promise = import(/* @vite-ignore */ SDK_PATH).then((mod) => {
+    window.__SHOTSTACK_SDK__ = mod;
+    return mod;
+  });
 
-  window.__SHOTSTACK_SDK_PROMISE__ = p;
-  return p;
+  window.__SHOTSTACK_SDK_PROMISE__ = promise;
+  return promise;
 }
 
 /** Optional: allow a hard reset if needed on full unmount */
