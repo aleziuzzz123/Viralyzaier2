@@ -4,11 +4,10 @@ import React, {
 import { getShotstackSdk } from "../lib/shotstackSdk";
 import { supabaseUrl } from "../services/supabaseClient";
 import { customEditorTheme } from "../themes/customEditorTheme";
-// If you have these types in your repo keep them, otherwise make them `any`
 import type { Project, ShotstackClipSelection } from "../types";
 import Loader from "./Loader";
 
-/* ---------------- URL proxy helpers (your existing logic) ---------------- */
+/* ---------------- URL proxy helpers ---------------- */
 const isProxied = (u: string) => /\/functions\/v1\/asset-proxy\//i.test(u);
 const SKIP_PROXY = /(^\/vendor\/)|(^https?:\/\/(cdn\.jsdelivr\.net|unpkg\.com))/i;
 const proxyUrl = (url: string, fileHint?: string): string => {
@@ -148,51 +147,44 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
         setIsInitializing(true);
         await waitForHosts();
 
-        // 1) Load SDK
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSdk();
+        if (!Edit || !Canvas || !Controls || !Timeline) {
+          throw new Error("Shotstack SDK did not export expected classes");
+        }
 
-        // 2) Decide size
         const size =
           project?.videoSize === "9:16" ? { width: 720, height: 1280 } :
           project?.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
                                           { width: 1280, height: 720 };
 
-        // 3) Create edit + canvas
         const edit = new Edit(size, "#000000");
         await edit.load();
 
         const canvas = new Canvas(size, edit, { responsive: true });
         await canvas.load(canvasHost.current!);
 
-        // 4) Load template: project JSON -> script -> hello.json fallback
+        // choose template: project JSON -> script -> hello.json
         let template: any = null;
-
         if (project?.shotstackEditJson && Object.keys(project.shotstackEditJson).length) {
           template = project.shotstackEditJson;
         } else {
           template = buildTimelineFromProject(project);
         }
-
         if (!template) {
           template = await fetch("/templates/hello.json").then(r => r.json()).catch(() => null);
         }
+        if (template) await edit.loadEdit(template);
 
-        if (template) {
-          await edit.loadEdit(template);
-        }
-
-        // 5) Controls + timeline
         const controls = new Controls(edit);
         await controls.load(controlsHost.current!);
 
         const w = timelineHost.current!.clientWidth || size.width;
         const h = timelineHost.current!.clientHeight || 300;
 
-        // IMPORTANT: pass { theme: customEditorTheme } as third argument
+        // NOTE: v1.6.x accepts theme as third param
         const timeline = new Timeline(edit, { width: w, height: h }, { theme: customEditorTheme });
         await timeline.load(timelineHost.current!);
 
-        // 6) Events
         edit.events.addEventListener("clip:selected", handleSelection);
         edit.events.addEventListener("clip:updated", handleUpdate);
         edit.events.addEventListener("clip:deselected", handleDeselected);
@@ -269,7 +261,8 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
     }));
 
     return (
-      <div className="flex-1 flex flex-col min-h-0 gap-4">
+      // IMPORTANT: overflow-y-auto so the Timeline can be scrolled into view
+      <div className="flex-1 flex flex-col min-h-0 gap-4 overflow-y-auto">
         {isInitializing && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-50 rounded-lg">
             <Loader />
@@ -277,7 +270,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
           </div>
         )}
 
-        {/* Canvas host (we give it a visible black bg so you see the box even before load) */}
+        {/* Canvas host */}
         <div
           ref={canvasHost}
           data-shotstack-studio
@@ -285,7 +278,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
           style={{ flex: "1 1 auto", minHeight: 420 }}
         />
 
-        {/* Controls host (hidden but must exist) */}
+        {/* Controls host (hidden) */}
         <div
           ref={controlsHost}
           data-shotstack-controls
@@ -293,12 +286,12 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
           style={{ minHeight: 2, height: 2, visibility: "hidden" }}
         />
 
-        {/* Timeline host (must have height!) */}
+        {/* Timeline host (make it unmistakable & on top) */}
         <div
           ref={timelineHost}
           data-shotstack-timeline
           className="w-full bg-gray-900 rounded-lg flex-shrink-0"
-          style={{ height: 300 }}
+          style={{ height: 300, border: "1px solid #4f46e5", zIndex: 10, position: "relative" }}
         />
       </div>
     );
@@ -306,6 +299,5 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 );
 
 export default VideoEditor;
-
 
 
