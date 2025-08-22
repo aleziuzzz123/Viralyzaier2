@@ -5,29 +5,28 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ['@shotstack/shotstack-studio', 'pixi.js', '@pixi/*'],
-    alias: [
-      // Force every @pixi/* to resolve to THIS node_modules
-      { find: /^@pixi\/(.+)$/, replacement: path.resolve(__dirname, 'node_modules/@pixi/$1') },
-      // Force pixi.js root to THIS node_modules
-      { find: /^pixi\.js$/, replacement: path.resolve(__dirname, 'node_modules/pixi.js') },
-      // Force studio to single path
-      { find: '@shotstack/shotstack-studio', replacement: path.resolve(__dirname, 'node_modules/@shotstack/shotstack-studio') },
+    dedupe: [
+      '@shotstack/shotstack-studio',
+      'pixi.js',
+      '@pixi/core', '@pixi/utils', '@pixi/constants',
+      '@pixi/extensions', '@pixi/math', '@pixi/runner',
+      '@pixi/compressed-textures', '@pixi/text', '@pixi/spritesheet'
     ],
-    // Important in monorepos/symlinked setups: resolve to the physical path so Vite doesn’t treat a symlink as a second copy
     preserveSymlinks: false,
+    alias: {
+      'pixi.js': path.resolve(__dirname, 'node_modules/pixi.js'),
+      '@shotstack/shotstack-studio': path.resolve(__dirname, 'node_modules/@shotstack/shotstack-studio')
+    }
   },
   optimizeDeps: {
-    include: ['@shotstack/shotstack-studio'], 
-    // keep empty unless you added pixi explicitly
-    exclude: [],
+    include: ['@shotstack/shotstack-studio']
   },
   build: {
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        studio: path.resolve(__dirname, 'studio.html'),
-      },
-    },
-  },
+        studio: path.resolve(__dirname, 'studio.html')
+      }
+    }
+  }
 });
