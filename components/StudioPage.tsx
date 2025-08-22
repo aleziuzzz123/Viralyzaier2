@@ -120,7 +120,7 @@ export default function StudioPage() {
         const controls = new Controls(edit);
         await controls.load();
 
-        const timeline = new Timeline(edit, { width: size.width, height: 300 }, timelineHost.current!);
+        const timeline = new Timeline(edit, { host: timelineHost.current!, width: size.width, height: 300 });
         await timeline.load();
 
         edit.events.on('clip:selected', () => {});

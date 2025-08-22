@@ -74,7 +74,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         await controls.load();
         controlsRef.current = controls;
 
-        const timeline = new Timeline(edit, { width: size.width, height: 300 }, timelineHost.current!);
+        const timeline = new Timeline(edit, { host: timelineHost.current!, width: size.width, height: 300 });
         await timeline.load();
         timelineRef.current = timeline;
 
@@ -90,9 +90,9 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         edit.events.on('edit:updated', handleStateChange);
         edit.events.on('clip:selected', handleSelection);
         edit.events.on('clip:deselected', () => handleSelection(null));
-        controls.on('play', handlePlay);
-        controls.on('pause', handlePause);
-        controls.on('stop', handleStop);
+        controls.events.on('play', handlePlay);
+        controls.events.on('pause', handlePause);
+        controls.events.on('stop', handleStop);
 
         if (!cancelled) {
           onLoad?.(edit);
@@ -103,9 +103,9 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
           edit.events.off('edit:updated', handleStateChange);
           edit.events.off('clip:selected', handleSelection);
           edit.events.off('clip:deselected', () => handleSelection(null));
-          controls.off('play', handlePlay);
-          controls.off('pause', handlePause);
-          controls.off('stop', handleStop);
+          controls.events.off('play', handlePlay);
+          controls.events.off('pause', handlePause);
+          controls.events.off('stop', handleStop);
         };
 
       } catch (e: any) {
