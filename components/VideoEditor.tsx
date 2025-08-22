@@ -1,14 +1,6 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { customEditorTheme } from '../themes/customEditorTheme';
-
-// A robust, Vite-friendly way to load the SDK module.
-// It uses a global promise to ensure the module is only fetched once.
-async function getShotstackSDK() {
-  if (!(window as any).SHOTSTACK_SDK) {
-    (window as any).SHOTSTACK_SDK = import('@shotstack/shotstack-studio');
-  }
-  return (window as any).SHOTSTACK_SDK;
-}
+import { getShotstackSDK } from '../lib/shotstackSdk';
 
 // Define the handles that the component will expose
 export interface VideoEditorHandles {
@@ -47,81 +39,105 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
 
   useEffect(() => {
     let cancelled = false;
+    let edit: any;
+    let canvas: any;
+    let controls: any;
+    let timeline: any;
     let cleanupEvents: (() => void) | undefined;
 
-    (async () => {
+    const boot = async () => {
       try {
         if (!canvasHost.current || !timelineHost.current) {
-          // Wait for hosts
           await new Promise(r => requestAnimationFrame(r));
           if (cancelled) return;
         }
+        
+        if (!canvasHost.current!.offsetHeight) canvasHost.current!.style.minHeight = "420px";
+        if (!timelineHost.current!.offsetHeight) timelineHost.current!.style.minHeight = "300px";
 
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
+        if (cancelled) return;
+        
+        const size = initialState.output?.size ?? { width: 1280, height: 720 };
+        const bg = initialState.timeline?.background ?? "#000000";
 
-        const size = initialState.output.size;
-        const bg = initialState.timeline.background ?? '#000';
-
-        const edit = new Edit(size, bg);
+        edit = new Edit({ size, background: bg });
         await edit.load(customEditorTheme);
+        if (cancelled) return;
         editRef.current = edit;
 
-        const canvas = new Canvas(size, edit, canvasHost.current!);
+        canvas = new Canvas({ edit, size, host: canvasHost.current! });
         await canvas.load();
+        if (cancelled) return;
         canvasRef.current = canvas;
-
-        const controls = new Controls(edit);
-        await controls.load();
-        controlsRef.current = controls;
-
-        const timeline = new Timeline(edit, { host: timelineHost.current!, width: size.width, height: 300 });
-        await timeline.load();
-        timelineRef.current = timeline;
 
         await edit.loadEdit(initialState);
         
-        // Event listeners
-        const handleStateChange = () => onStateChange?.(edit.getEdit());
-        const handleSelection = (selection: any) => onSelectionChange?.(selection);
-        const handlePlay = () => onIsPlayingChange?.(true);
-        const handlePause = () => onIsPlayingChange?.(false);
-        const handleStop = () => onIsPlayingChange?.(false);
+        controls = new Controls({ edit });
+        await controls.load();
+        if (cancelled) return;
+        controlsRef.current = controls;
+        
+        timeline = new Timeline({ edit, host: timelineHost.current!, width: size.width, height: 300 });
+        await timeline.load();
+        if (cancelled) return;
+        timelineRef.current = timeline;
+        
+        const handleStateChange = () => { if (!cancelled) onStateChange?.(edit.getEdit()); };
+        const handleSelection = (selection: any) => { if (!cancelled) onSelectionChange?.(selection); };
+        const handlePlay = () => { if (!cancelled) onIsPlayingChange?.(true); };
+        const handlePause = () => { if (!cancelled) onIsPlayingChange?.(false); };
+        const handleStop = () => { if (!cancelled) onIsPlayingChange?.(false); };
 
-        edit.events.on('edit:updated', handleStateChange);
-        edit.events.on('clip:selected', handleSelection);
-        edit.events.on('clip:deselected', () => handleSelection(null));
-        controls.events.on('play', handlePlay);
-        controls.events.on('pause', handlePause);
-        controls.events.on('stop', handleStop);
+        if (edit?.events?.on && typeof edit.events.on === 'function') {
+          edit.events.on('edit:updated', handleStateChange);
+          edit.events.on('clip:selected', handleSelection);
+          edit.events.on('clip:deselected', () => handleSelection(null));
+        } else {
+          console.warn("Edit events API missing; skipping .on handlers");
+        }
+        
+        if (controls?.events?.on && typeof controls.events.on === 'function') {
+          controls.events.on('play', handlePlay);
+          controls.events.on('pause', handlePause);
+          controls.events.on('stop', handleStop);
+        } else {
+            console.warn("Controls events API missing; skipping .on handlers");
+        }
+        
+        cleanupEvents = () => {
+            if (edit?.events?.off) {
+                edit.events.off('edit:updated', handleStateChange);
+                edit.events.off('clip:selected', handleSelection);
+                edit.events.off('clip:deselected', () => handleSelection(null));
+            }
+            if(controls?.events?.off) {
+                controls.events.off('play', handlePlay);
+                controls.events.off('pause', handlePause);
+                controls.events.off('stop', handleStop);
+            }
+        };
 
         if (!cancelled) {
           onLoad?.(edit);
           setLoading(false);
         }
-
-        cleanupEvents = () => { // Cleanup events
-          edit.events.off('edit:updated', handleStateChange);
-          edit.events.off('clip:selected', handleSelection);
-          edit.events.off('clip:deselected', () => handleSelection(null));
-          controls.events.off('play', handlePlay);
-          controls.events.off('pause', handlePause);
-          controls.events.off('stop', handleStop);
-        };
-
       } catch (e: any) {
-        console.error('[Shotstack] boot failed:', e);
+        console.error("[Shotstack] boot failed:", e);
         if (!cancelled) {
           setErr(e?.message ?? String(e));
           setLoading(false);
         }
       }
-    })();
-    
+    };
+
+    boot();
+
     return () => {
       cancelled = true;
       cleanupEvents?.();
-      try { timelineRef.current?.dispose?.(); } catch (e) { console.error('Error disposing timeline:', e); }
-      try { canvasRef.current?.dispose?.(); } catch (e) { console.error('Error disposing canvas:', e); }
+      try { timeline?.dispose?.(); } catch (e) { console.error('Error disposing timeline:', e); }
+      try { canvas?.dispose?.(); } catch (e) { console.error('Error disposing canvas:', e); }
       editRef.current = null;
       canvasRef.current = null;
       timelineRef.current = null;
@@ -129,7 +145,6 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
     };
   }, [initialState, onLoad, onStateChange, onSelectionChange, onIsPlayingChange]);
 
-  // Expose control methods via ref
   useImperativeHandle(ref, () => ({
     play: () => controlsRef.current?.play(),
     pause: () => controlsRef.current?.pause(),
@@ -147,7 +162,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
 
   if (err) {
     return (
-      <div className="p-4 text-red-800 bg-red-100 rounded-lg">
+      <div className="p-4 rounded-lg bg-red-900/50 border border-red-500/50 text-red-300">
         <strong>Creative Studio failed:</strong> {err}
       </div>
     );

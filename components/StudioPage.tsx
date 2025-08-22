@@ -1,18 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { getShotstackSDK } from '../lib/shotstackSdk';
 
 // --- put near your other imports
 type SDK = typeof import("@shotstack/shotstack-studio");
-
-declare global {
-  interface Window { SHOTSTACK_SDK?: Promise<typeof import('@shotstack/shotstack-studio')>; }
-}
-
-async function loadSDK() {
-  if (!window.SHOTSTACK_SDK) {
-    window.SHOTSTACK_SDK = import('@shotstack/shotstack-studio'); // 1.5.0 in package.json
-  }
-  return window.SHOTSTACK_SDK;
-}
 
 // Sanitizer from prompt
 function sanitizeTemplate(t: any) {
@@ -48,7 +38,7 @@ export default function StudioPage() {
 
   useEffect(() => {
     (async () => {
-      const mod = await loadSDK();
+      const mod = await getShotstackSDK();
       setSdk(mod);
     })();
   }, []);
@@ -98,7 +88,7 @@ export default function StudioPage() {
           await new Promise(r => requestAnimationFrame(r));
         }
 
-        const { Edit, Canvas, Controls, Timeline } = await loadSDK();
+        const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
 
         const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
         if (!res.ok) throw new Error(`template ${res.status}`);
@@ -109,18 +99,18 @@ export default function StudioPage() {
         const size = template.output.size;
         const bg = template.timeline.background ?? '#000';
 
-        const edit = new Edit(size, bg);
+        const edit = new Edit({ size, background: bg });
         await edit.load();
 
-        const canvas = new Canvas(edit, { size, host: canvasHost.current! });
+        const canvas = new Canvas({ edit, size, host: canvasHost.current! });
         await canvas.load();
 
         await edit.loadEdit(template);
 
-        const controls = new Controls(edit);
+        const controls = new Controls({ edit });
         await controls.load();
 
-        const timeline = new Timeline(edit, { host: timelineHost.current!, width: size.width, height: 300 });
+        const timeline = new Timeline({ edit, host: timelineHost.current!, width: size.width, height: 300 });
         await timeline.load();
 
         edit.events.on('clip:selected', () => {});
