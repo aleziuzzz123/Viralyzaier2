@@ -7,16 +7,7 @@ declare global {
   }
 }
 
-/**
- * Load the vendored Shotstack Studio module exactly once.
- * Make sure the file exists at: public/vendor/shotstack-studio.mjs
- *   => it will be served at:   /vendor/shotstack-studio.mjs
- *
- * If you saved a versioned filename instead (e.g. shotstack-studio-1.6.2.mjs),
- * change SDK_PATH below to match it.
- */
-const SDK_PATH = '/vendor/shotstack-studio.mjs';
-// const SDK_PATH = '/vendor/shotstack-studio-1.6.2.mjs'; // <— use this if that's your file
+const SDK_PATH = '/vendor/shotstack-studio.mjs'; // <-- matches your filename
 
 export async function getShotstack() {
   if (window.__SHOTSTACK_SDK__) return window.__SHOTSTACK_SDK__;
@@ -31,7 +22,6 @@ export async function getShotstack() {
   return promise;
 }
 
-/** Optional: allow a hard reset if needed on full unmount */
 export function resetShotstackBootFlag() {
   window.__SHOTSTACK_BOOTED__ = false;
 }
