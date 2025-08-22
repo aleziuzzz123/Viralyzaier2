@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { getShotstackSDK } from '../lib/shotstackSdk';
 import { customEditorTheme } from '../themes/customEditorTheme';
+
+// A robust, Vite-friendly way to load the SDK module.
+// It uses a global promise to ensure the module is only fetched once.
+async function getShotstackSDK() {
+  if (!(window as any).SHOTSTACK_SDK) {
+    (window as any).SHOTSTACK_SDK = import('@shotstack/shotstack-studio');
+  }
+  return (window as any).SHOTSTACK_SDK;
+}
 
 // Define the handles that the component will expose
 export interface VideoEditorHandles {
