@@ -8,14 +8,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
-  },
+{
   "dependencies": {
-    "@google/genai": "^1.13.0",
-    "@supabase/supabase-js": "^2.54.0",
+    "@shotstack/shotstack-studio": "^1.6.3",
+    "pixi.js": "^8.5.2",
+    "@ffmpeg/ffmpeg": "^0.12.12",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "uuid": "^9.0.1"
-  },
+    "@supabase/supabase-js": "^2.54.0"
+  }
+}
   "devDependencies": {
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
