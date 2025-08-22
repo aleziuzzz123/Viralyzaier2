@@ -1,47 +1,17 @@
 // lib/shotstackSdk.ts
-// Single-instance loader that does NOT use import.meta.env
+// Single-instance loader that uses the official npm package.
 
 declare global {
   interface Window {
-    __SHOTSTACK_SDK__?: any;
-    __SHOTSTACK_SDK_PROMISE__?: Promise<any>;
+    SHOTSTACK_SDK_PROMISE?: Promise<typeof import("@shotstack/shotstack-studio")>;
   }
 }
 
-function getBaseHref(): string {
-  const el = document.querySelector('base[href]') as HTMLBaseElement | null;
-  // default to root if no <base> is set
-  const href = el?.getAttribute('href') || '/';
-  return new URL(href, window.location.origin).toString();
-}
-
-function vendorUrl(file: string): string {
-  // served from public/ at site root
-  return new URL(`vendor/${file}`, getBaseHref()).toString();
-}
-
-const SDK_FILE = 'shotstack-studio.mjs';
-
-export async function getShotstackSDK() {
-  if (window.__SHOTSTACK_SDK__) return window.__SHOTSTACK_SDK__;
-  if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
-
-  const url = vendorUrl(SDK_FILE);
-
-  window.__SHOTSTACK_SDK_PROMISE__ = (async () => {
-    // Helpful existence check for clearer errors
-    const head = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-    if (!head.ok) {
-      throw new Error(
-        `Shotstack SDK not found. Expected at ${url}. ` +
-        `Make sure the file exists at public/vendor/${SDK_FILE} and that <base href="/"> is set.`
-      );
-    }
-
-    const mod = await import(/* @vite-ignore */ url);
-    window.__SHOTSTACK_SDK__ = mod;
-    return mod;
-  })();
-
-  return window.__SHOTSTACK_SDK_PROMISE__;
+export function getShotstackSDK() {
+  if (!window.SHOTSTACK_SDK_PROMISE) {
+    // Dynamically import the npm package and cache the promise
+    // to ensure it's only fetched and evaluated once.
+    window.SHOTSTACK_SDK_PROMISE = import("@shotstack/shotstack-studio");
+  }
+  return window.SHOTSTACK_SDK_PROMISE;
 }
