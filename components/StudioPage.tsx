@@ -112,7 +112,7 @@ export default function StudioPage() {
         const edit = new Edit(size, bg);
         await edit.load();
 
-        const canvas = new Canvas(size, edit, canvasHost.current!);
+        const canvas = new Canvas(edit, { size, host: canvasHost.current! });
         await canvas.load();
 
         await edit.loadEdit(template);
