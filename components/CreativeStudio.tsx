@@ -4,7 +4,13 @@ import { SparklesIcon } from './Icons';
 const CreativeStudio: React.FC = () => {
     
     const openEditor = () => {
-        window.location.href = '/studio.html';
+        const url = '/studio.html';     // relative path served by Vite
+        if (window.top && window.top !== window) {
+          // Break out of the AI Studio preview iframe
+          (window.top as Window).location.href = url;
+        } else {
+          window.location.href = url;
+        }
     };
 
     return (

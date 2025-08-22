@@ -1,104 +1,80 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
+import React, { useEffect, useRef, useState } from 'react';
 
-const StudioPage: React.FC = () => {
-  const [edit, setEdit] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState<boolean>(false);
+declare global {
+  interface Window { SHOTSTACK_SDK?: Promise<typeof import('@shotstack/shotstack-studio')>; }
+}
+
+async function loadSDK() {
+  if (!window.SHOTSTACK_SDK) {
+    window.SHOTSTACK_SDK = import('@shotstack/shotstack-studio'); // 1.5.0 in package.json
+  }
+  return window.SHOTSTACK_SDK;
+}
+
+export default function StudioPage() {
+  const canvasHost = useRef<HTMLDivElement>(null);
+  const timelineHost = useRef<HTMLDivElement>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialized) return; // Prevent double initialization
-
-    const initializeEditor = async () => {
+    let cancelled = false;
+    (async () => {
       try {
-        setIsLoading(true);
-        setInitialized(true);
+        // Wait for hosts
+        for (let i = 0; i < 120; i++) {
+          if (canvasHost.current && timelineHost.current) break;
+          await new Promise(r => requestAnimationFrame(r));
+        }
 
-        // Small delay to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const { Edit, Canvas, Controls, Timeline } = await loadSDK();
 
-        // 1. Retrieve an edit from a template
-        const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-        const response = await fetch(templateUrl);
-        if (!response.ok) throw new Error(`Failed to fetch template: ${response.statusText}`);
-        const template = await response.json();
+        const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
+        if (!res.ok) throw new Error(`template ${res.status}`);
+        const template = await res.json();
 
-        // 2. Initialize the edit with dimensions and background color
-        const edit = new Edit(template.output.size, template.timeline.background);
+        const size = template.output.size;
+        const bg = template.timeline.background ?? '#000';
+
+        const edit = new Edit(size, bg);
         await edit.load();
 
-        // 3. Create a canvas to display the edit
-        const canvas = new Canvas(template.output.size, edit);
-        await canvas.load(); // Renders to [data-shotstack-studio] element
+        // Renders into [data-shotstack-studio]
+        const canvas = new Canvas(size, edit);
+        await canvas.load();
 
-        // 4. Load the template
         await edit.loadEdit(template);
 
-        // 5. Add keyboard controls
         const controls = new Controls(edit);
         await controls.load();
 
-        // 6. Add timeline for visual editing
-        const timeline = new Timeline(edit, {
-          width: template.output.size.width,
-          height: 300
-        });
-        await timeline.load(); // Renders to [data-shotstack-timeline] element
+        // Renders into [data-shotstack-timeline]
+        const timeline = new Timeline(edit, { width: size.width, height: 300 });
+        await timeline.load();
 
-        // Set up event listeners
-        edit.events.on("clip:selected", (data: any) => {
-          console.log("Clip selected:", data);
-        });
-
-        edit.events.on("clip:updated", (data: any) => {
-          console.log("Clip updated:", data);
-        });
-
-        setEdit(edit);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Failed to initialize video editor:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-        setInitialized(false); // Reset on error
-        setIsLoading(false);
+        // Correct event API
+        edit.events.on('clip:selected', () => {});
+        edit.events.on('clip:updated', () => {});
+        if (!cancelled) {/* loaded */}
+      } catch (e: any) {
+        console.error('[Shotstack] boot failed:', e);
+        if (!cancelled) setErr(e?.message ?? String(e));
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-    initializeEditor();
-  }, [initialized]);
-
-  if (error) {
+  if (err) {
     return (
-      <div style={{ padding: '20px' }}>
-        <div style={{
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          padding: '15px',
-          borderRadius: '5px',
-          border: '1px solid #f5c6cb'
-        }}>
-          <h3>Error Loading Video Editor</h3>
-          <p>{error}</p>
-        </div>
+      <div style={{padding:16,color:'#b91c1c',background:'#fee2e2',borderRadius:8}}>
+        <strong>Creative Studio failed:</strong> {err}
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{color: 'white', marginBottom: '1rem'}}>Creative Studio</h1>
-      
-      {isLoading && (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#9CA3AF' }}>
-          Starting Editor...
-        </div>
-      )}
-
-      <div data-shotstack-studio style={{minHeight: '420px'}}></div>
-      <div data-shotstack-timeline style={{minHeight: '300px'}}></div>
+    <div style={{padding:16}}>
+      <div ref={canvasHost} data-shotstack-studio style={{minHeight:420, background:'#000', borderRadius:8}} />
+      <div ref={timelineHost} data-shotstack-timeline style={{minHeight:300, background:'#111827', borderRadius:8, marginTop:16}} />
     </div>
   );
-};
-
-export default StudioPage;
+}
