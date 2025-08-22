@@ -1,88 +1,16 @@
+// components/VideoEditor.tsx
 import React, {
-  useEffect, useRef, useImperativeHandle, forwardRef, useState, useCallback,
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useState,
+  useCallback,
 } from "react";
-import { getShotstackSdk } from "../lib/shotstackSdk";
-import { supabaseUrl } from "../services/supabaseClient";
+import getShotstackSDK from "../lib/shotstackSdk"; // << default import
 import { customEditorTheme } from "../themes/customEditorTheme";
 import type { Project, ShotstackClipSelection } from "../types";
-import Loader from "./Loader";
 
-/* ---------------- URL proxy helpers ---------------- */
-const isProxied = (u: string) => /\/functions\/v1\/asset-proxy\//i.test(u);
-const SKIP_PROXY = /(^\/vendor\/)|(^https?:\/\/(cdn\.jsdelivr\.net|unpkg\.com))/i;
-const proxyUrl = (url: string, fileHint?: string): string => {
-  if (!url || SKIP_PROXY.test(url) || !/^https?:\/\//i.test(url) || !supabaseUrl) return url;
-  if (isProxied(url)) return url;
-  const file = (fileHint || url.split("/").pop() || "asset").replace(/\?.*$/, "");
-  return `${supabaseUrl}/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(file)}`;
-};
-
-/* ---------------- Build simple timeline from your project ---------------- */
-const buildTimelineFromProject = (project: Project | any) => {
-  if (!project?.script) return null;
-
-  const size =
-    project.videoSize === "9:16" ? { width: 720, height: 1280 } :
-    project.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
-                                   { width: 1280, height: 720 };
-
-  const aRollClips: any[] = [];
-  const titleClips: any[] = [];
-  const voiceoverClips: any[] = [];
-  let currentTime = 0;
-
-  for (const [index, scene] of project.script.scenes.entries()) {
-    const [startStr, endStr] = (scene.timecode || "").split("-");
-    const startTime = parseFloat(startStr) || currentTime;
-    const endTime = parseFloat(endStr) || (startTime + 5);
-    const duration = Math.max(0.1, endTime - startTime);
-    currentTime = endTime;
-
-    if (scene.storyboardImageUrl) {
-      aRollClips.push({
-        asset: { type: "image", src: proxyUrl(scene.storyboardImageUrl) },
-        start: startTime,
-        length: duration,
-        fit: "cover",
-        transition: { in: "fade", out: "fade", duration: 0.5 },
-      });
-    }
-
-    if (project.voiceoverUrls?.[index]) {
-      voiceoverClips.push({
-        asset: { type: "audio", src: proxyUrl(project.voiceoverUrls[index]) },
-        start: startTime,
-        length: duration,
-      });
-    }
-
-    if (scene.onScreenText) {
-      titleClips.push({
-        asset: { type: "title", text: scene.onScreenText, style: "subtitle" },
-        start: startTime,
-        length: duration,
-      });
-    }
-  }
-
-  return {
-    timeline: {
-      background: "#000000",
-      tracks: [
-        { name: "A-Roll", clips: aRollClips },
-        { name: "Titles", clips: titleClips },
-        { name: "B-Roll", clips: [] },
-        { name: "Overlays", clips: [] },
-        { name: "Music", clips: [] },
-        { name: "Voiceover", clips: voiceoverClips },
-        { name: "SFX", clips: [] },
-      ],
-    },
-    output: { format: "mp4", size },
-  };
-};
-
-/* --------------------------- Component contracts ------------------------- */
 export interface VideoEditorHandles {
   addClip: (type: "video" | "image" | "audio" | "sticker", url: string) => void;
   deleteClip: (trackIndex: number, clipIndex: number) => void;
@@ -99,7 +27,7 @@ export interface VideoEditorHandles {
 }
 
 type Props = {
-  project: Project | any;
+  project: Project;
   onSelectionChange: (s: ShotstackClipSelection | null) => void;
   onPlaybackChange: (isPlaying: boolean) => void;
 };
@@ -112,31 +40,45 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 
     const editRef = useRef<any>();
     const canvasRef = useRef<any>();
-    const controlsRef = useRef<any>();
     const timelineRef = useRef<any>();
     const BOOT = useRef(false);
+
     const [isInitializing, setIsInitializing] = useState(true);
 
-    const handleSelection  = useCallback((d: any) => onSelectionChange(d ?? null), [onSelectionChange]);
-    const handleUpdate     = useCallback((d: any) => onSelectionChange(d?.current ?? null), [onSelectionChange]);
-    const handleDeselected = useCallback(() => onSelectionChange(null), [onSelectionChange]);
-    const handlePlay  = useCallback(() => onPlaybackChange(true),  [onPlaybackChange]);
+    // --- tiny helpers ---
+    const size =
+      project?.videoSize === "9:16"
+        ? { width: 720, height: 1280 }
+        : project?.videoSize === "1:1"
+        ? { width: 1080, height: 1080 }
+        : { width: 1280, height: 720 };
+
+    const handleSelection = useCallback(
+      (data: any) => onSelectionChange(data ?? null),
+      [onSelectionChange]
+    );
+    const handleUpdate = useCallback(
+      (data: any) => onSelectionChange(data?.current ?? null),
+      [onSelectionChange]
+    );
+    const handlePlay = useCallback(() => onPlaybackChange(true), [onPlaybackChange]);
     const handlePause = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
-    const handleStop  = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
+    const handleStop = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
 
     const waitForHosts = async () => {
       const ok = () => {
-        const c = canvasHost.current, t = timelineHost.current, k = controlsHost.current;
-        const cOK = !!c && c.offsetParent !== null && c.clientHeight > 0 && c.clientWidth > 0;
-        const tOK = !!t && t.offsetParent !== null && t.clientHeight > 0 && t.clientWidth > 0;
-        const kOK = !!k && k.offsetParent !== null;
-        return cOK && tOK && kOK;
+        const c = canvasHost.current;
+        const t = timelineHost.current;
+        const k = controlsHost.current;
+        const hasSize = (el?: HTMLElement | null) =>
+          !!el && el.offsetParent !== null && el.clientWidth > 0 && el.clientHeight > 0;
+        return hasSize(c) && !!k && !!t; // timeline can be empty initially; just needs to exist
       };
-      for (let i = 0; i < 120; i++) { // ~2s
-        await new Promise(r => requestAnimationFrame(r));
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
         if (ok()) return;
       }
-      throw new Error("Shotstack hosts missing or zero-sized");
+      throw new Error("Editor hosts not ready");
     };
 
     useEffect(() => {
@@ -147,60 +89,54 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
         setIsInitializing(true);
         await waitForHosts();
 
-        const { Edit, Canvas, Controls, Timeline } = await getShotstackSdk();
-        if (!Edit || !Canvas || !Controls || !Timeline) {
-          throw new Error("Shotstack SDK did not export expected classes");
-        }
+        const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
 
-        const size =
-          project?.videoSize === "9:16" ? { width: 720, height: 1280 } :
-          project?.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
-                                          { width: 1280, height: 720 };
-
+        // 1) EDIT
         const edit = new Edit(size, "#000000");
         await edit.load();
 
+        // 2) CANVAS (mount to our element)
         const canvas = new Canvas(size, edit, { responsive: true });
         await canvas.load(canvasHost.current!);
 
-        // choose template: project JSON -> script -> hello.json
-        let template: any = null;
-        if (project?.shotstackEditJson && Object.keys(project.shotstackEditJson).length) {
-          template = project.shotstackEditJson;
-        } else {
-          template = buildTimelineFromProject(project);
-        }
-        if (!template) {
-          template = await fetch("/templates/hello.json").then(r => r.json()).catch(() => null);
-        }
-        if (template) await edit.loadEdit(template);
+        // 3) LOAD TEMPLATE (fall back to hello.json so timeline has content)
+        const template =
+          (project as any)?.shotstackEditJson && Object.keys((project as any).shotstackEditJson).length
+            ? (project as any).shotstackEditJson
+            : await fetch("/templates/hello.json").then((r) => r.json());
+        await edit.loadEdit(template);
 
+        // 4) KEYBOARD CONTROLS
         const controls = new Controls(edit);
-        await controls.load(controlsHost.current!);
+        await controls.load(); // NOTE: no element needed
 
-        const w = timelineHost.current!.clientWidth || size.width;
-        const h = timelineHost.current!.clientHeight || 300;
+        // 5) TIMELINE  ❗ IMPORTANT CHANGES
+        //    - pass the theme as { theme: customEditorTheme }
+        //    - call load() with NO argument (it mounts itself to [data-shotstack-timeline])
+        const timelineWidth =
+          (timelineHost.current?.clientWidth || size.width);
+        const timeline = new Timeline(
+          edit,
+          { width: timelineWidth, height: 300 },
+          { theme: customEditorTheme }
+        );
+        await timeline.load(); // <-- no element argument
 
-        // NOTE: v1.6.x accepts theme as third param
-        const timeline = new Timeline(edit, { width: w, height: h }, { theme: customEditorTheme });
-        await timeline.load(timelineHost.current!);
-
+        // events
         edit.events.addEventListener("clip:selected", handleSelection);
         edit.events.addEventListener("clip:updated", handleUpdate);
-        edit.events.addEventListener("clip:deselected", handleDeselected);
         edit.events.addEventListener("edit:play", handlePlay);
         edit.events.addEventListener("edit:pause", handlePause);
         edit.events.addEventListener("edit:stop", handleStop);
 
+        // refs
         editRef.current = edit;
         canvasRef.current = canvas;
-        controlsRef.current = controls;
         timelineRef.current = timeline;
 
         setIsInitializing(false);
-        console.log("[Studio] Loaded ✓");
-      })().catch((err) => {
-        console.error("[Studio] boot failed:", err);
+      })().catch((e) => {
+        console.error("Studio boot failed:", e);
         BOOT.current = false;
         setIsInitializing(false);
       });
@@ -209,29 +145,29 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
         try {
           editRef.current?.events?.removeEventListener("clip:selected", handleSelection);
           editRef.current?.events?.removeEventListener("clip:updated", handleUpdate);
-          editRef.current?.events?.removeEventListener("clip:deselected", handleDeselected);
           editRef.current?.events?.removeEventListener("edit:play", handlePlay);
           editRef.current?.events?.removeEventListener("edit:pause", handlePause);
           editRef.current?.events?.removeEventListener("edit:stop", handleStop);
         } catch {}
-        editRef.current = canvasRef.current = controlsRef.current = timelineRef.current = null;
+        editRef.current = canvasRef.current = timelineRef.current = null;
         BOOT.current = false;
       };
-    }, [project, handleSelection, handleUpdate, handleDeselected, handlePlay, handlePause, handleStop]);
+    }, [project, handleSelection, handleUpdate, handlePlay, handlePause, handleStop]);
 
     useImperativeHandle(ref, () => ({
       addClip: (type, url) => {
         const edit = editRef.current;
         if (!edit) return;
-        const t = edit.currentTime || 0;
-        const clip: any = { start: Number(t || 0), length: 5 };
+        const t = Number(edit.currentTime || 0);
+        const clip: any = { start: t, length: 5 };
+
         if (type === "audio") {
-          clip.asset = { type: "audio", src: proxyUrl(url), volume: 0.8 };
-          edit.getTrack(4)?.addClip(clip); // Music
+          clip.asset = { type: "audio", src: url, volume: 0.8 };
+          edit.getTrack(4)?.addClip(clip); // Music track
         } else {
-          clip.asset = { type: type === "sticker" ? "image" : type, src: proxyUrl(url) };
+          clip.asset = { type: type === "sticker" ? "image" : type, src: url };
           clip.fit = "cover";
-          edit.getTrack(2)?.addClip(clip); // B-Roll
+          edit.getTrack(2)?.addClip(clip); // B-Roll track
         }
       },
       deleteClip: (ti, ci) => editRef.current?.deleteClip(ti, ci),
@@ -240,14 +176,9 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
         if (!edit) return;
         const clip = edit.getClip(ti, ci);
         if (!clip) return;
-        const next = { ...clip };
-        for (const k of Object.keys(updates)) {
-          const v = (updates as any)[k];
-          if (v && typeof v === "object" && !Array.isArray(v) && next[k]) next[k] = { ...next[k], ...v };
-          else next[k] = v;
-        }
-        edit.getTrack(ti)?.updateClip(ci, next);
-        canvasRef.current?.render();
+        const newClip = { ...clip, ...updates };
+        const track = edit.getTrack(ti);
+        track?.updateClip(ci, newClip);
       },
       getEdit: () => editRef.current?.getEdit(),
       loadEdit: (e: any) => editRef.current?.loadEdit(e),
@@ -261,37 +192,34 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
     }));
 
     return (
-      // IMPORTANT: overflow-y-auto so the Timeline can be scrolled into view
       <div className="flex-1 flex flex-col min-h-0 gap-4 overflow-y-auto">
         {isInitializing && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-50 rounded-lg">
-            <Loader />
-            <p className="mt-4 text-white font-semibold">Initializing Creative Studio...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50 rounded-lg">
+            <div className="text-white font-semibold">Starting Editor…</div>
           </div>
         )}
 
-        {/* Canvas host */}
+        {/* Canvas */}
         <div
           ref={canvasHost}
           data-shotstack-studio
-          className="w-full bg-black rounded-lg overflow-hidden relative"
-          style={{ flex: "1 1 auto", minHeight: 420 }}
+          className="w-full bg-black rounded-lg overflow-hidden"
+          style={{ minHeight: 420 }}
         />
 
-        {/* Controls host (hidden) */}
+        {/* Controls (keyboard only) */}
         <div
           ref={controlsHost}
           data-shotstack-controls
-          className="w-full"
-          style={{ minHeight: 2, height: 2, visibility: "hidden" }}
+          style={{ height: 2, visibility: "hidden" }}
         />
 
-        {/* Timeline host (make it unmistakable & on top) */}
+        {/* Timeline host – the SDK finds this by attribute */}
         <div
           ref={timelineHost}
           data-shotstack-timeline
-          className="w-full bg-gray-900 rounded-lg flex-shrink-0"
-          style={{ height: 300, border: "1px solid #4f46e5", zIndex: 10, position: "relative" }}
+          className="w-full bg-gray-900 rounded-lg"
+          style={{ height: 300, minHeight: 300 }}
         />
       </div>
     );
@@ -299,5 +227,4 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 );
 
 export default VideoEditor;
-
 
