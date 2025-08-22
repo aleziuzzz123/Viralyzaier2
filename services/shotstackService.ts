@@ -16,8 +16,8 @@ export interface RenderStatus {
 }
 
 // Start a render via an edge function (optional but handy)
-export async function submitRender(edit: any, webhookUrl?: string): Promise<{ id: string }> {
-  return await invokeEdgeFunction<{ id: string }>('shotstack-render', { edit, webhookUrl });
+export async function submitRender(edit: any, projectId: string): Promise<{ renderId: string }> {
+  return await invokeEdgeFunction<{ renderId: string }>('shotstack-render', { edit, projectId });
 }
 
 // Check render status (this is what your UI polls)
