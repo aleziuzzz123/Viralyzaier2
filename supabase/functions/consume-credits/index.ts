@@ -52,8 +52,9 @@ serve(async (req: Request) => {
       });
     }
 
-    // For the demo user, simulate credit consumption without actually deducting.
-    if (user.email === 'demo@viralyzer.app') {
+    // For any demo user, simulate credit consumption without actually deducting.
+    const isDemoUser = user.email === 'demo@viralyzer.app' || user.email === 'jegooalex@gmail.com';
+    if (isDemoUser) {
       return new Response(JSON.stringify({ success: true, newCredits: 999 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -102,7 +103,7 @@ serve(async (req: Request) => {
             .from('profiles')
             .upsert({
                 id: user.id,
-                email: user.email || `user_${user.id.split('-')[0]}@viralyzaier.app`, // Use a fallback email to prevent crash
+                email: user.email || `user_${user.id.split('-')[0]}@viralyzer.app`, // Use a fallback email to prevent crash
                 subscription: { planId: 'free', status: 'active', endDate: null },
                 ai_credits: freePlanCreditLimit,
             })

@@ -42,31 +42,6 @@ const profileRowToUser = (row: any, youtubeConnected: boolean) => {
     };
 };
 
-const projectRowToProject = (row: any) => ({
-    id: row.id,
-    name: row.name,
-    topic: row.topic,
-    platform: row.platform,
-    videoSize: row.video_size || '16:9',
-    status: row.status,
-    title: row.title || null,
-    script: row.script || null,
-    analysis: row.analysis || null,
-    competitorAnalysis: row.competitor_analysis || null,
-    moodboard: row.moodboard || null,
-    assets: row.assets || {},
-    soundDesign: row.sound_design || null,
-    launchPlan: row.launch_plan || null,
-    performance: row.performance || null,
-    scheduledDate: row.scheduled_date || null,
-    publishedUrl: row.published_url || null,
-    lastUpdated: row.last_updated,
-    workflowStep: row.workflow_step,
-    voiceoverVoiceId: row.voiceover_voice_id || null,
-    last_performance_check: row.last_performance_check || null,
-    final_video_url: row.final_video_url || null,
-});
-
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -92,26 +67,14 @@ serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
     
-    // Fetch all required data in parallel from the server-side
-    const [profileResult, projectsResult, notificationsResult, brandIdentitiesResult, youtubeTokenResult] = await Promise.all([
+    // Fetch only essential data in parallel
+    const [profileResult, youtubeTokenResult] = await Promise.all([
       supabaseAdmin.from('profiles').select('*').eq('id', user.id).single(),
-      supabaseAdmin.from('projects').select('id, name, topic, platform, status, last_updated, published_url, scheduled_date, workflow_step').eq('user_id', user.id).order('last_updated', { ascending: false }),
-      supabaseAdmin.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabaseAdmin.from('brand_identities').select('*').eq('user_id', user.id),
       supabaseAdmin.from('user_youtube_tokens').select('user_id').eq('user_id', user.id).maybeSingle()
     ]);
 
     // Error handling for each query
     if (profileResult.error && profileResult.error.code !== 'PGRST116') throw profileResult.error;
-    if (projectsResult.error) throw projectsResult.error;
-    if (notificationsResult.error) throw notificationsResult.error;
-    
-    // **ROBUSTNESS FIX**: Gracefully handle if brand_identities fails, as it's a non-critical feature.
-    // Instead of throwing an error and crashing, just log a warning and continue.
-    if (brandIdentitiesResult.error) {
-        console.warn('Could not fetch brand identities:', brandIdentitiesResult.error.message);
-    }
-    
     if (youtubeTokenResult.error) throw youtubeTokenResult.error;
 
     let userProfile = profileResult.data;
@@ -134,17 +97,8 @@ serve(async (req: Request) => {
     
     const youtubeConnected = !!youtubeTokenResult.data;
     const finalUser = profileRowToUser(userProfile, youtubeConnected);
-    const finalProjects = (projectsResult.data || []).map(projectRowToProject);
-
-    // Bundle the data for the client
-    const initialData = {
-      user: finalUser,
-      projects: finalProjects,
-      notifications: notificationsResult.data || [],
-      brandIdentities: brandIdentitiesResult.data || [],
-    };
     
-    return new Response(JSON.stringify(initialData), {
+    return new Response(JSON.stringify({ user: finalUser }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
