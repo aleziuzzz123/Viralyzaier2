@@ -61,24 +61,24 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         const size = initialState.output?.size ?? { width: 1280, height: 720 };
         const bg = initialState.timeline?.background ?? "#000000";
 
-        edit = new Edit({ size, background: bg });
+        edit = new Edit({ width: size.width, height: size.height, background: bg });
         await edit.load(customEditorTheme);
         if (cancelled) return;
         editRef.current = edit;
 
-        canvas = new Canvas({ edit, size, host: canvasHost.current! });
+        canvas = new Canvas(edit, { size, host: canvasHost.current!, responsive: true });
         await canvas.load();
         if (cancelled) return;
         canvasRef.current = canvas;
 
         await edit.loadEdit(initialState);
         
-        controls = new Controls({ edit });
+        controls = new Controls(edit);
         await controls.load();
         if (cancelled) return;
         controlsRef.current = controls;
         
-        timeline = new Timeline({ edit, host: timelineHost.current!, width: size.width, height: 300 });
+        timeline = new Timeline(edit, { host: timelineHost.current!, width: size.width, height: 300 });
         await timeline.load();
         if (cancelled) return;
         timelineRef.current = timeline;
