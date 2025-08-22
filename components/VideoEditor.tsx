@@ -1,4 +1,3 @@
-// components/VideoEditor.tsx
 import React, {
   useEffect, useRef, useImperativeHandle,
   forwardRef, useState, useCallback
@@ -19,69 +18,89 @@ const proxyUrl = (url: string, fileHint?: string): string => {
   return `${supabaseUrl}/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(file)}`;
 };
 
-// -------- Build a basic timeline from your Project --------
-const buildTimelineFromProject = (project: Project) => {
-  if (!project?.script) return null;
-
+// -------- Build a timeline from your Project, with a safe fallback --------
+const buildTimelineFromProject = (project?: Project) => {
   const size =
-    project.videoSize === "9:16" ? { width: 720, height: 1280 } :
-    project.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
-                                   { width: 1280, height: 720 };
+    project?.videoSize === "9:16" ? { width: 720, height: 1280 } :
+    project?.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
+                                    { width: 1280, height: 720 };
 
-  const aRollClips: any[] = [];
-  const titleClips: any[] = [];
-  const voiceoverClips: any[] = [];
-  let currentTime = 0;
+  // If there is a script, build tracks + clips from scenes
+  if (project?.script?.scenes?.length) {
+    const aRollClips: any[] = [];
+    const titleClips: any[] = [];
+    const voiceoverClips: any[] = [];
+    let currentTime = 0;
 
-  for (const [index, scene] of project.script.scenes.entries()) {
-    const [startStr, endStr] = (scene.timecode || "").split("-");
-    const startTime = parseFloat(startStr) || currentTime;
-    const endTime   = parseFloat(endStr)   || (startTime + 5);
-    const duration  = Math.max(0.1, endTime - startTime);
-    currentTime = endTime;
+    for (const [index, scene] of project.script.scenes.entries()) {
+      const [startStr, endStr] = String(scene.timecode || "").split("-");
+      const startTime = parseFloat(startStr) || currentTime;
+      const endTime   = parseFloat(endStr)   || (startTime + 5);
+      const duration  = Math.max(0.1, endTime - startTime);
+      currentTime = endTime;
 
-    if (scene.storyboardImageUrl) {
-      aRollClips.push({
-        asset: { type: "image", src: proxyUrl(scene.storyboardImageUrl) },
-        start: startTime,
-        length: duration,
-        fit: "cover",
-        transition: { in: "fade", out: "fade", duration: 0.5 }
-      });
+      if (scene.storyboardImageUrl) {
+        aRollClips.push({
+          asset: { type: "image", src: proxyUrl(scene.storyboardImageUrl) },
+          start: startTime,
+          length: duration,
+          fit: "cover",
+          transition: { in: "fade", out: "fade", duration: 0.5 }
+        });
+      }
+      if (project.voiceoverUrls?.[index]) {
+        voiceoverClips.push({
+          asset: { type: "audio", src: proxyUrl(project.voiceoverUrls[index]) },
+          start: startTime,
+          length: duration
+        });
+      }
+      if (scene.onScreenText) {
+        titleClips.push({
+          asset: { type: "title", text: scene.onScreenText, style: "subtitle" },
+          start: startTime,
+          length: duration
+        });
+      }
     }
-    if (project.voiceoverUrls?.[index]) {
-      voiceoverClips.push({
-        asset: { type: "audio", src: proxyUrl(project.voiceoverUrls[index]) },
-        start: startTime,
-        length: duration
-      });
-    }
-    if (scene.onScreenText) {
-      titleClips.push({
-        asset: { type: "title", text: scene.onScreenText, style: "subtitle" },
-        start: startTime,
-        length: duration
-      });
-    }
+
+    return {
+      timeline: {
+        background: "#000000",
+        tracks: [
+          { name: "A-Roll",     clips: aRollClips     },
+          { name: "Titles",     clips: titleClips     },
+          { name: "B-Roll",     clips: []             },
+          { name: "Overlays",   clips: []             },
+          { name: "Music",      clips: []             },
+          { name: "Voiceover",  clips: voiceoverClips },
+          { name: "SFX",        clips: []             }
+        ]
+      },
+      output: { format: "mp4", size }
+    };
   }
 
+  // Fallback: show a simple 3s “Ready” title so canvas/timeline aren’t empty
   return {
     timeline: {
       background: "#000000",
       tracks: [
-        { name: "A-Roll",     clips: aRollClips     },
-        { name: "Titles",     clips: titleClips     },
-        { name: "B-Roll",     clips: []             },
-        { name: "Overlays",   clips: []             },
-        { name: "Music",      clips: []             },
-        { name: "Voiceover",  clips: voiceoverClips },
-        { name: "SFX",        clips: []             }
+        { name: "A-Roll", clips: [] },
+        { name: "Titles", clips: [
+          {
+            asset: { type: "title", text: "Ready to edit", style: "subtitle" },
+            start: 0, length: 3
+          }
+        ]},
+        { name: "B-Roll", clips: [] },
+        { name: "Overlays", clips: [] },
+        { name: "Music", clips: [] },
+        { name: "Voiceover", clips: [] },
+        { name: "SFX", clips: [] }
       ]
     },
-    output: {
-      format: "mp4",
-      size
-    }
+    output: { format: "mp4", size }
   };
 };
 
@@ -121,15 +140,13 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Shotstack emits via an internal event emitter: use .on/.off
-  const onSelect = useCallback((data: any) => onSelectionChange(data ?? null), [onSelectionChange]);
-  const onUpdate = useCallback((data: any) => onSelectionChange(data?.current ?? null), [onSelectionChange]);
+  const onSelect   = useCallback((data: any) => onSelectionChange(data ?? null), [onSelectionChange]);
+  const onUpdate   = useCallback((data: any) => onSelectionChange(data?.current ?? null), [onSelectionChange]);
   const onDeselect = useCallback(() => onSelectionChange(null), [onSelectionChange]);
-  const onPlay  = useCallback(() => onPlaybackChange(true),  [onPlaybackChange]);
-  const onPause = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
-  const onStop  = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
+  const onPlay     = useCallback(() => onPlaybackChange(true),  [onPlaybackChange]);
+  const onPause    = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
+  const onStop     = useCallback(() => onPlaybackChange(false), [onPlaybackChange]);
 
-  // Ensure hosts exist & are visible before boot
   const waitForHosts = async () => {
     const ok = () => {
       const c = canvasHost.current, t = timelineHost.current, k = controlsHost.current;
@@ -158,39 +175,42 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
         project.videoSize === "1:1"  ? { width: 1080, height: 1080 } :
                                        { width: 1280, height: 720 };
 
+      // 1) Create the Edit
       const edit = new Edit(size, "#000000");
       await edit.load();
 
-      // According to docs, .load() auto-mounts to [data-shotstack-*] hosts
-      const canvas   = new Canvas(size, edit);
-      await canvas.load();
-
+      // 2) Canvas + Controls first
+      const canvas = new Canvas(size, edit);
+      await canvas.load();         // mounts to [data-shotstack-studio]
       const controls = new Controls(edit);
-      await controls.load();
+      await controls.load();       // mounts to [data-shotstack-controls]
 
+      // 3) Load an edit JSON (real template or fallback)
+      const template = project?.shotstackEditJson && Object.keys(project.shotstackEditJson).length
+        ? project.shotstackEditJson
+        : buildTimelineFromProject(project);
+      await edit.loadEdit(template);
+
+      // Make sure something is visible
+      try { await canvas.zoomToFit(); } catch {}
+
+      // 4) Now create & mount the Timeline AFTER the edit is loaded
       const timelineSize = {
         width:  timelineHost.current!.clientWidth || 1280,
         height: timelineHost.current!.clientHeight || 300,
       };
       const timeline = new Timeline(edit, timelineSize, { theme: customEditorTheme });
-      await timeline.load();
+      await timeline.load();       // mounts to [data-shotstack-timeline]
 
-      const template =
-        project.shotstackEditJson && Object.keys(project.shotstackEditJson).length > 0
-          ? project.shotstackEditJson
-          : buildTimelineFromProject(project);
-      if (template) {
-        await edit.loadEdit(template);
-      }
-
-      // hook events
+      // Hook up events
       edit.events.on("clip:selected", onSelect);
       edit.events.on("clip:updated",  onUpdate);
       edit.events.on("clip:deselected", onDeselect);
-      edit.events.on("edit:play",  onPlay);
+      edit.events.on("edit:play", onPlay);
       edit.events.on("edit:pause", onPause);
-      edit.events.on("edit:stop",  onStop);
+      edit.events.on("edit:stop", onStop);
 
+      // Keep refs
       editRef.current     = edit;
       canvasRef.current   = canvas;
       controlsRef.current = controls;
@@ -218,6 +238,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
     };
   }, [project, onSelect, onUpdate, onDeselect, onPlay, onPause, onStop]);
 
+  // Public handles
   useImperativeHandle(ref, () => ({
     addClip: (type, url) => {
       const edit = editRef.current;
@@ -227,11 +248,11 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 
       if (type === "audio") {
         clip.asset = { type: "audio", src: proxyUrl(url), volume: 0.8 };
-        edit.getTrack(4)?.addClip(clip);      // Music track
+        edit.getTrack(4)?.addClip(clip);      // Music
       } else {
         clip.asset = { type: type === "sticker" ? "image" : type, src: proxyUrl(url) };
         clip.fit = "cover";
-        edit.getTrack(2)?.addClip(clip);      // B-Roll track
+        edit.getTrack(2)?.addClip(clip);      // B-Roll
       }
     },
     deleteClip: (ti, ci) => editRef.current?.deleteClip(ti, ci),
@@ -241,19 +262,16 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
       const clip = edit.getClip(ti, ci);
       if (!clip) return;
 
-      const newClip = { ...clip };
+      const next = { ...clip };
       Object.keys(updates).forEach((k) => {
         const v = (updates as any)[k];
-        if (typeof v === "object" && v && !Array.isArray(v) && newClip[k]) {
-          newClip[k] = { ...newClip[k], ...v };
-        } else {
-          newClip[k] = v;
-        }
+        if (typeof v === "object" && v && !Array.isArray(v) && next[k]) next[k] = { ...next[k], ...v };
+        else next[k] = v;
       });
 
       const track = edit.getTrack(ti);
-      track?.updateClip(ci, newClip);
-      canvasRef.current?.render?.();
+      track?.updateClip(ci, next);
+      (canvasRef.current as any)?.render?.();
     },
     getEdit: () => editRef.current?.getEdit(),
     loadEdit: (e: any) => editRef.current?.loadEdit(e),
@@ -303,3 +321,4 @@ const VideoEditor = forwardRef<VideoEditorHandles, Props>(
 });
 
 export default VideoEditor;
+
