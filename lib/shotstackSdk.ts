@@ -1,5 +1,4 @@
 // lib/shotstackSdk.ts
-
 declare global {
   interface Window {
     __SHOTSTACK_SDK__?: any;
@@ -15,7 +14,7 @@ export async function getShotstackSdk(): Promise<any> {
   if (window.__SHOTSTACK_SDK__) return Promise.resolve(window.__SHOTSTACK_SDK__);
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
 
-  const p = import(/* @vite-ignore */ SDK_URL).then((mod) => {
+  const p = import(/* @vite-ignore */ SDK_URL).then(mod => {
     window.__SHOTSTACK_SDK__ = mod;
     return mod;
   });
@@ -24,7 +23,7 @@ export async function getShotstackSdk(): Promise<any> {
   return p;
 }
 
-/** Back-compat alias so other files may import { getShotstackSDK } */
+/** Back-compat alias so other files can import getShotstackSDK */
 export const getShotstackSDK = getShotstackSdk;
 
 /** Optional helper if you ever want to force a fresh load */
