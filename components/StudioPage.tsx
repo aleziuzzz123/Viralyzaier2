@@ -15,6 +15,13 @@ export default function StudioPage() {
   const canvasHost = useRef<HTMLDivElement>(null);
   const timelineHost = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Refs to hold the SDK instances for cleanup
+  const editRef = useRef<any>(null);
+  const canvasRef = useRef<any>(null);
+  const timelineRef = useRef<any>(null);
+  const controlsRef = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +45,6 @@ export default function StudioPage() {
         const edit = new Edit(size, bg);
         await edit.load();
 
-        // Renders into [data-shotstack-studio]
         const canvas = new Canvas(size, edit);
         await canvas.load();
 
@@ -47,20 +53,41 @@ export default function StudioPage() {
         const controls = new Controls(edit);
         await controls.load();
 
-        // Renders into [data-shotstack-timeline]
         const timeline = new Timeline(edit, { width: size.width, height: 300 });
         await timeline.load();
 
-        // Correct event API
         edit.events.on('clip:selected', () => {});
         edit.events.on('clip:updated', () => {});
-        if (!cancelled) {/* loaded */}
+
+        if (!cancelled) {
+          // Store instances for cleanup
+          editRef.current = edit;
+          canvasRef.current = canvas;
+          timelineRef.current = timeline;
+          controlsRef.current = controls;
+          setLoading(false);
+        }
       } catch (e: any) {
         console.error('[Shotstack] boot failed:', e);
-        if (!cancelled) setErr(e?.message ?? String(e));
+        if (!cancelled) {
+          setErr(e?.message ?? String(e));
+          setLoading(false);
+        }
       }
     })();
-    return () => { cancelled = true; };
+    
+    // CRITICAL cleanup function
+    return () => {
+      cancelled = true;
+      try { timelineRef.current?.dispose?.(); } catch (e) { console.error('Error disposing timeline:', e); }
+      try { canvasRef.current?.dispose?.(); } catch (e) { console.error('Error disposing canvas:', e); }
+      
+      // Clear refs to prevent stale references
+      timelineRef.current = null;
+      canvasRef.current = null;
+      controlsRef.current = null;
+      editRef.current = null;
+    };
   }, []);
 
   if (err) {
@@ -73,8 +100,9 @@ export default function StudioPage() {
 
   return (
     <div style={{padding:16}}>
-      <div ref={canvasHost} data-shotstack-studio style={{minHeight:420, background:'#000', borderRadius:8}} />
-      <div ref={timelineHost} data-shotstack-timeline style={{minHeight:300, background:'#111827', borderRadius:8, marginTop:16}} />
+      {loading && <div style={{color:"#666", textAlign: 'center', padding: '50px'}}>Starting Editor…</div>}
+      <div ref={canvasHost} data-shotstack-studio style={{minHeight:420, background:'#000', borderRadius:8, display: loading ? 'none' : 'block'}} />
+      <div ref={timelineHost} data-shotstack-timeline style={{minHeight:300, background:'#111827', borderRadius:8, marginTop:16, display: loading ? 'none' : 'block'}} />
     </div>
   );
 }
