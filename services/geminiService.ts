@@ -117,7 +117,12 @@ Your output MUST be a JSON object with the following structure:
                                     type: Type.ARRAY,
                                     items: {
                                         type: Type.OBJECT,
-                                        properties: { timecode: { type: Type.STRING }, visual: { type: Type.STRING }, voiceover: { type: Type.STRING }, onScreenText: { type: Type.STRING } },
+                                        properties: { 
+                                            timecode: { type: Type.STRING, description: "A string representing the start and end time of the scene in seconds, formatted as 'start-end' (e.g., '0-5', '5-12.5'). DO NOT include units like 's' or use minute:second formats." }, 
+                                            visual: { type: Type.STRING }, 
+                                            voiceover: { type: Type.STRING }, 
+                                            onScreenText: { type: Type.STRING } 
+                                        },
                                         required: ["timecode", "visual", "voiceover", "onScreenText"]
                                     }
                                 },
@@ -190,7 +195,7 @@ Your response **MUST** be a JSON array containing exactly 3 blueprint objects. E
     "hooks": ["An array of 3 distinct, psychologically-driven hook options."],
     "scenes": [
       {
-        "timecode": "e.g., '0-8s'",
+        "timecode": "e.g., '0-8'",
         "visual": "A description of the visual elements.",
         "voiceover": "The voiceover script for this scene.",
         "onScreenText": "Any text overlays for this scene."

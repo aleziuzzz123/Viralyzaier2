@@ -269,6 +269,16 @@ export const getProjectsForUser = async (userId: string): Promise<Project[]> => 
     return (data || []).map(p => projectRowToProject(p));
 };
 
+export const getProjectsWithAssetsForUser = async (userId: string): Promise<Project[]> => {
+    const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userId)
+        .order('last_updated', { ascending: false });
+    if (error) throw new Error(getErrorMessage(error));
+    return (data || []).map(p => projectRowToProject(p));
+};
+
 export const getProjectDetails = async (projectId: string): Promise<Project | null> => {
     const { data, error } = await supabase
         .from('projects')

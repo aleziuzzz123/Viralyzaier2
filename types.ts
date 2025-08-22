@@ -16,6 +16,25 @@ export type Json = any;
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
 export interface Plan { id: PlanId; name: string; price: number; creditLimit: number; features: string[]; isMostPopular?: boolean; }
 export interface Subscription { planId: PlanId; status: 'active' | 'canceled'; endDate: string | null; }
+
+export interface ShotstackOutput {
+  format: string;
+  size: {
+    width: number;
+    height: number;
+  };
+}
+
+export interface ShotstackTimeline {
+  background: string;
+  tracks: any[];
+}
+
+export interface ShotstackEditJson {
+  timeline: ShotstackTimeline;
+  output: ShotstackOutput;
+}
+
 export interface ShotstackClipSelection {
   clip: any; // The full clip object from Shotstack
   trackIndex: number;
@@ -85,7 +104,7 @@ export interface Project {
   voiceoverVoiceId: string | null;
   lastPerformanceCheck: string | null;
   finalVideoUrl?: string | null;
-  shotstackEditJson?: object | null;
+  shotstackEditJson?: ShotstackEditJson | null;
   shotstackRenderId?: string | null;
   videoUrl?: string | null;
   voiceoverUrls?: { [key: number]: string } | null;
