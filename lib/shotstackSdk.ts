@@ -1,4 +1,4 @@
-// src/lib/shotstackSdk.ts
+// lib/shotstackSdk.ts
 declare global {
   interface Window {
     __SHOTSTACK_SDK__?: any;
@@ -7,20 +7,26 @@ declare global {
   }
 }
 
-const SDK_PATH = '/vendor/shotstack-studio.mjs'; // <-- matches your filename
-
-export async function getShotstack() {
-  if (window.__SHOTSTACK_SDK__) return window.__SHOTSTACK_SDK__;
+/**
+ * Load the vendored Shotstack Studio module exactly once.
+ * File must exist at:  /public/vendor/shotstack-studio.mjs  -> served at /vendor/shotstack-studio.mjs
+ */
+export function getShotstack(): Promise<any> {
+  if (window.__SHOTSTACK_SDK__) return Promise.resolve(window.__SHOTSTACK_SDK__);
   if (window.__SHOTSTACK_SDK_PROMISE__) return window.__SHOTSTACK_SDK_PROMISE__;
 
-  const promise = import(/* @vite-ignore */ SDK_PATH).then((mod) => {
-    window.__SHOTSTACK_SDK__ = mod;
-    return mod;
-  });
+  const p = import(/* @vite-ignore */ '/vendor/shotstack-studio.mjs')
+    .then((mod) => {
+      window.__SHOTSTACK_SDK__ = mod;
+      return mod;
+    });
 
-  window.__SHOTSTACK_SDK_PROMISE__ = promise;
-  return promise;
+  window.__SHOTSTACK_SDK_PROMISE__ = p;
+  return p;
 }
+
+// Backwards-compat: if something imports getShotstackSDK, this keeps working.
+export const getShotstackSDK = getShotstack;
 
 export function resetShotstackBootFlag() {
   window.__SHOTSTACK_BOOTED__ = false;
