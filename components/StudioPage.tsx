@@ -29,14 +29,15 @@ export default function StudioPage() {
         const res = await fetch("https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json");
         if (!res.ok) throw new Error(`Template ${res.status}`);
         const template = await res.json();
+        const size = template.output?.size ?? { width: 1280, height: 720 };
 
         // 3) Boot sequence
-        const edit = new Edit({ width: template.output.size.width, height: template.output.size.height, background: template.timeline.background });
+        const edit = new Edit({});
         await edit.load();
         if (disposed) return;
 
-        canvas = new Canvas(edit, { size: template.output.size, responsive: true, host: canvasHostRef.current! });
-        await canvas.load();
+        canvas = new Canvas({ width: size.width, height: size.height, responsive: true }, edit);
+        await canvas.load(canvasHostRef.current!); // <-- explicit host
         if (disposed) return;
 
         await edit.loadEdit(template);
@@ -45,9 +46,9 @@ export default function StudioPage() {
         await controls.load();
         if (disposed) return;
 
-        const tlWidth = timelineHostRef.current?.clientWidth || template.output.size.width;
-        timeline = new Timeline(edit, { width: tlWidth, height: 300, host: timelineHostRef.current! });
-        await timeline.load();
+        const tlWidth = timelineHostRef.current?.clientWidth || size.width;
+        timeline = new Timeline({ width: tlWidth, height: 300 }, edit);
+        await timeline.load(timelineHostRef.current!); // <-- explicit host
         if (disposed) return;
 
         // 4) Events (guard to avoid undefined.on)
