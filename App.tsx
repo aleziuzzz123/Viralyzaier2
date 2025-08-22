@@ -1,267 +1,152 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Toast } from './types';
-import Dashboard from './components/Dashboard';
-import { ProjectView } from './components/ProjectView';
-import ContentCalendar from './components/ContentCalendar';
-import PricingPage from './components/PricingPage';
-import UserMenu from './components/UserMenu';
-import { LandingPage } from './components/Homepage';
-import { DashboardIcon, CalendarIcon, GithubIcon, SparklesIcon, CheckCircleIcon, XCircleIcon, InfoIcon, ChartPieIcon, PhotoIcon, BellIcon, RocketLaunchIcon, WarningIcon } from './components/Icons';
-import ChannelHub from './components/ChannelHub';
-import AssetLibrary from './components/AssetLibrary';
-import { AppProvider, useAppContext } from './contexts/AppContext';
-import LanguageSwitcher from './components/LanguageSwitcher';
-import NotificationsPanel from './components/NotificationsPanel';
-import Autopilot from './components/Autopilot';
-import Settings from './components/Settings';
-import ScheduleModal from './components/ScheduleModal';
-import UpgradeModal from './components/UpgradeModal';
-import ConfirmationModal from './components/ConfirmationModal';
-import ProjectKickoff from './components/ProjectKickoff';
-import Loader from './components/Loader';
 
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthProvider, AuthContext, AuthDispatchableAction } from './context/AuthContext.tsx';
+import { DataProvider } from './context/DataContext.tsx';
+import { UIProvider } from './context/UIContext.tsx';
+import { supabase } from './services/supabaseClient.ts';
+import type { Session, Plan, Client } from './types.ts';
+import { SalesPage } from './components/SalesPage.tsx';
+import { Oto1Page } from './components/Oto1Page.tsx';
+import { Oto2Page } from './components/Oto2Page.tsx';
+import { Oto3Page } from './components/Oto3Page.tsx';
+import { AuthPage } from './components/AuthPage.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
 
-type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
+type FlowState = 'sales' | 'oto1' | 'oto2' | 'oto3' | 'app' | 'auth';
+type PostAuthAction = { planToUpgrade: Plan, nextFlowState: 'oto2' | 'oto3' | 'app' };
 
-const BackendErrorModal: React.FC = () => {
-    const { backendError, clearBackendError, t } = useAppContext();
+// The AppContent component contains the main routing logic and accesses context.
+const AppContent: React.FC<{
+    setGuestPlan: (plan: Plan | null) => void;
+    setPendingUpgradePlan: (plan: Plan | null) => void;
+}> = ({ setGuestPlan, setPendingUpgradePlan }) => {
+    const { state, dispatch: authDispatch } = useContext(AuthContext);
+    const { user } = state;
 
-    if (!backendError) return null;
-    
-    const isTimeoutError = backendError.message.toLowerCase().includes('timed out');
-    
-    return (
-         <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" 
-            onClick={clearBackendError}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="backend-error-modal-title"
-        >
-            <div 
-                className="bg-gray-800 border border-red-500/50 rounded-2xl shadow-2xl w-full max-w-2xl m-4 p-8 text-center transform transition-all"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <button onClick={clearBackendError} className="absolute top-4 right-4 text-gray-500 hover:text-white">
-                    <XCircleIcon className="w-8 h-8"/>
-                </button>
-                <div className="mx-auto bg-red-900/50 border border-red-500/50 p-3 rounded-full w-fit mb-6">
-                   <WarningIcon className="w-10 h-10 text-red-400" />
-                </div>
-                <h2 id="backend-error-modal-title" className="text-2xl font-bold text-white mb-3">{backendError.title}</h2>
-                <p className="text-gray-300 mb-6">
-                    {t('backend_error.description')}
-                </p>
-                <div className="mt-4 text-left bg-gray-900 p-4 rounded-md">
-                    <p className="text-sm text-gray-400 font-semibold">{t('backend_error.server_error_details')}</p>
-                    <p className="mt-4 text-sm text-red-300 font-mono bg-red-900/50 p-2 rounded">
-                        {backendError.message}
-                    </p>
-                    {isTimeoutError ? (
-                        <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
-                            <p className="font-bold">What does this mean?</p>
-                            <p className="mt-2 text-amber-200">
-                               The server took too long to respond to a request. This can happen due to high traffic or a temporary issue. Please try refreshing the page in a few moments.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
-                            <p className="font-bold">{t('backend_error.how_to_fix_title')}</p>
-                            <p className="mt-2 text-amber-200">
-                               {t('backend_error.how_to_fix_intro')}
-                            </p>
-                            <ul className="list-disc list-inside mt-2 text-amber-200 text-xs space-y-1">
-                                <li>{t('backend_error.how_to_fix_step1')}</li>
-                                <li>{t('backend_error.how_to_fix_step2')}</li>
-                                <li>{t('backend_error.how_to_fix_step3')}</li>
-                                <li>{t('backend_error.how_to_fix_step4')}</li>
-                            </ul>
-                        </div>
-                    )}
-                </div>
-                <button
-                    onClick={clearBackendError}
-                    className="w-full max-w-xs mx-auto mt-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all"
-                >
-                    {t('backend_error.close_button')}
-                </button>
-            </div>
-        </div>
-    );
-};
+    const [flowState, setFlowState] = useState<FlowState>(() => user ? 'app' : 'sales');
+    const [postAuthAction, setPostAuthAction] = useState<PostAuthAction | null>(null);
+    const [impersonatingClient, setImpersonatingClient] = useState<Client | null>(null);
 
-interface ToastComponentProps {
-    toast: Toast;
-    onDismiss: (id: number) => void;
-}
-
-const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onDismiss }) => {
+    // Effect to handle navigation after authentication and for user state changes (logout)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            onDismiss(toast.id);
-        }, 5000);
-        return () => clearTimeout(timer);
-    }, [toast, onDismiss]);
-
-    const icons = {
-        success: <CheckCircleIcon className="w-6 h-6 text-green-400" />,
-        error: <XCircleIcon className="w-6 h-6 text-red-400" />,
-        info: <InfoIcon className="w-6 h-6 text-blue-400" />,
+        if (user) {
+            if (postAuthAction) {
+                // User just logged in to complete an upgrade
+                authDispatch({ type: 'UPGRADE_PLAN_REQUEST', payload: postAuthAction.planToUpgrade });
+                setFlowState(postAuthAction.nextFlowState);
+                setPostAuthAction(null);
+                setPendingUpgradePlan(null);
+            } else if (flowState === 'auth' || flowState === 'sales') {
+                // User is logged in but on a logged-out page, redirect to app
+                setFlowState('app');
+            }
+        } else {
+            // User is logged out, reset to sales page.
+            setFlowState('sales');
+            setImpersonatingClient(null);
+        }
+    }, [user, postAuthAction, authDispatch, setPendingUpgradePlan, flowState]);
+    
+    // Handler for logged-out users who click an upgrade button.
+    const handleRequireAuth = (action: PostAuthAction) => {
+        setPostAuthAction(action);
+        setPendingUpgradePlan(action.planToUpgrade);
+        setFlowState('auth');
     };
 
-    return (
-        <div className="toast bg-gray-800 border border-gray-700 rounded-lg shadow-2xl p-4 flex items-center space-x-4 max-w-sm">
-            <div className="flex-shrink-0">{icons[toast.type]}</div>
-            <div className="flex-grow">
-                <p className="text-gray-200 text-sm font-medium">{toast.message}</p>
-                <div className="bg-gray-700 h-1 rounded-full mt-2">
-                    <div className="bg-indigo-500 h-1 rounded-full animate-progress-bar"></div>
-                </div>
-            </div>
-        </div>
-    );
-};
+    const handleLoginAsClient = (client: Client) => {
+        setImpersonatingClient(client);
+        window.scrollTo(0, 0);
+    };
 
-const MainApp = () => {
-    const { 
-        session, user,
-        toasts, dismissToast, activeProjectId, setActiveProjectId,
-        t,
-        confirmation, handleConfirmation, handleCancelConfirmation,
-        activeProjectDetails, isProjectDetailsLoading
-    } = useAppContext();
-    const [currentView, setCurrentView] = useState<View>('dashboard');
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const handleLogoutClientView = () => {
+        setImpersonatingClient(null);
+    };
 
-    useEffect(() => {
-        if(activeProjectId) {
-            setCurrentView('project');
+    const renderFlow = () => {
+        const dashboard = <Dashboard impersonatingClient={impersonatingClient} onLoginAsClient={handleLoginAsClient} onLogoutClientView={handleLogoutClientView} onNavigate={setFlowState} />;
+
+        if (user) {
+            // --- LOGGED-IN USER FLOW ---
+            switch (flowState) {
+                case 'oto1':
+                    return <Oto1Page onUpgrade={() => { authDispatch({ type: 'UPGRADE_PLAN_REQUEST', payload: 'unlimited' }); setFlowState('oto2'); }} onDecline={() => setFlowState('oto2')} />;
+                case 'oto2':
+                    return <Oto2Page onUpgrade={() => { authDispatch({ type: 'UPGRADE_PLAN_REQUEST', payload: 'dfy' }); setFlowState('oto3'); }} onDecline={() => setFlowState('oto3')} />;
+                case 'oto3':
+                    return <Oto3Page onUpgrade={() => { authDispatch({ type: 'UPGRADE_PLAN_REQUEST', payload: 'agency' }); setFlowState('app'); }} onDecline={() => setFlowState('app')} />;
+                case 'app':
+                default:
+                    return dashboard;
+            }
         } else {
-            if(currentView === 'project') {
-                setCurrentView('dashboard');
+            // --- LOGGED-OUT USER FLOW ---
+            switch (flowState) {
+                case 'sales':
+                    return <SalesPage onPurchaseClick={() => setFlowState('oto1')} onDashboardClick={() => setFlowState('auth')} />;
+                case 'oto1':
+                    return <Oto1Page onUpgrade={() => handleRequireAuth({ planToUpgrade: 'unlimited', nextFlowState: 'oto2' })} onDecline={() => setFlowState('oto2')} />;
+                case 'oto2':
+                    return <Oto2Page onUpgrade={() => handleRequireAuth({ planToUpgrade: 'dfy', nextFlowState: 'oto3' })} onDecline={() => setFlowState('oto3')} />;
+                case 'oto3':
+                    return <Oto3Page onUpgrade={() => handleRequireAuth({ planToUpgrade: 'agency', nextFlowState: 'app' })} onDecline={() => { setGuestPlan('basic'); setFlowState('app'); }} />;
+                case 'auth':
+                    return <AuthPage />;
+                case 'app': // Guest mode
+                default:
+                    return dashboard;
             }
         }
-    }, [activeProjectId, currentView]);
-
-    const handleSetView = (view: View) => {
-        if (view === 'pricing' && currentView === 'project') {
-            // Do nothing to prevent navigation away from pricing when modal closes
-        } else {
-            setCurrentView(view);
-        }
-        if (view !== 'project' && view !== 'kickoff') {
-            setActiveProjectId(null);
-        }
-    };
-
-    const handleSelectProject = (projectId: string) => {
-        setActiveProjectId(projectId);
     };
     
-    const handleNewProject = () => {
-        handleSetView('kickoff');
-    };
-
-    const renderCurrentView = () => {
-        if (!user) return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading_user')}</div>;
-        
-        switch (currentView) {
-            case 'project':
-                if (isProjectDetailsLoading) {
-                    return <div className="flex justify-center items-center h-64"><Loader /></div>;
-                }
-                if (activeProjectDetails) {
-                    return <ProjectView project={activeProjectDetails} />;
-                }
-                handleSetView('dashboard'); 
-                return null;
-            case 'kickoff':
-                return <ProjectKickoff onProjectCreated={handleSelectProject} onExit={() => handleSetView('dashboard')} />;
-            case 'calendar':
-                return <ContentCalendar />;
-            case 'pricing':
-                return <PricingPage />;
-            case 'channel':
-                return <ChannelHub />;
-            case 'assetLibrary':
-                return <AssetLibrary />;
-            case 'autopilot':
-                return <Autopilot />;
-            case 'settings':
-                return <Settings />;
-            case 'dashboard':
-            default:
-                return <Dashboard onSelectProject={handleSelectProject} onNewProject={handleNewProject} />;
-        }
-    };
-    
-    if (!session) {
-        return <LandingPage />;
-    }
-
-    if (!user) {
-        return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
-    }
-    
-    return (
-        <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-            <header className="bg-black/30 border-b border-gray-700/50 px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-20">
-                <div className="flex items-center space-x-6">
-                    <a href="#" onClick={(e) => { e.preventDefault(); handleSetView('dashboard'); }} className="flex items-center space-x-2 text-white">
-                        <SparklesIcon className="w-7 h-7 text-indigo-500" />
-                        <span className="font-bold text-lg hidden sm:inline">{t('app.name')}</span>
-                    </a>
-                    <nav className="hidden md:flex items-center space-x-2">
-                        <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><DashboardIcon className="w-5 h-5 inline mr-2"/>{t('nav.dashboard')}</button>
-                        <button onClick={() => handleSetView('autopilot')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'autopilot' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><RocketLaunchIcon className="w-5 h-5 inline mr-2"/>{t('nav.autopilot')}</button>
-                        <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'calendar' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><CalendarIcon className="w-5 h-5 inline mr-2"/>{t('nav.calendar')}</button>
-                        <button onClick={() => handleSetView('channel')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'channel' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ChartPieIcon className="w-5 h-5 inline mr-2"/>{t('nav.my_channel')}</button>
-                        <button onClick={() => handleSetView('assetLibrary')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'assetLibrary' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><PhotoIcon className="w-5 h-5 inline mr-2"/>{t('nav.asset_library')}</button>
-                    </nav>
-                </div>
-                <div className="flex items-center space-x-4">
-                    <LanguageSwitcher variant="header" />
-                    <a href="https://github.com/google/genai-js" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white" title={t('nav.powered_by')}><GithubIcon className="w-6 h-6" /></a>
-                    <div className="relative">
-                        <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
-                            <NotificationsPanel onPanelToggle={setIsNotificationsOpen} />
-                        </button>
-                    </div>
-                    <UserMenu onNavigate={handleSetView} />
-                </div>
-            </header>
-          
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
-            </main>
-            
-            <ScheduleModal />
-            <UpgradeModal />
-            {confirmation.isOpen && (
-                <ConfirmationModal 
-                    isOpen={confirmation.isOpen} 
-                    onClose={handleCancelConfirmation} 
-                    onConfirm={handleConfirmation} 
-                    title={confirmation.title}
-                >
-                    {confirmation.message}
-                </ConfirmationModal>
-            )}
-
-            <BackendErrorModal />
-    
-            {document.getElementById('toast-container') && createPortal(toasts.map(toast => <ToastComponent key={toast.id} toast={toast} onDismiss={dismissToast} />), document.getElementById('toast-container')!)}
-        </div>
-    );
+    return renderFlow();
 };
 
-function App() {
+
+// The main App component manages session state and provides contexts.
+const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [guestPlan, setGuestPlan] = useState<Plan | null>(null);
+  const [pendingUpgradePlan, setPendingUpgradePlan] = useState<Plan | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoadingSession(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (!session) { // User logged out
+        setGuestPlan(null);
+        setPendingUpgradePlan(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (isLoadingSession) {
     return (
-        <AppProvider>
-            <MainApp />
-        </AppProvider>
-    )
-}
+        <div className="flex items-center justify-center min-h-screen bg-[#1A0F3C]">
+             <svg className="animate-spin h-10 w-10 text-[#DAFF00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+    );
+  }
+
+  return (
+    <AuthProvider session={session} guestPlan={guestPlan} pendingUpgradePlan={pendingUpgradePlan}>
+        <UIProvider>
+            <DataProvider>
+                <AppContent setGuestPlan={setGuestPlan} setPendingUpgradePlan={setPendingUpgradePlan} />
+            </DataProvider>
+        </UIProvider>
+    </AuthProvider>
+  );
+};
 
 export default App;
