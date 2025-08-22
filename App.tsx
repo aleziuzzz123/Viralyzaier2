@@ -29,6 +29,8 @@ const BackendErrorModal: React.FC = () => {
 
     if (!backendError) return null;
     
+    const isTimeoutError = backendError.message.toLowerCase().includes('timed out');
+    
     return (
          <div 
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" 
@@ -56,18 +58,27 @@ const BackendErrorModal: React.FC = () => {
                     <p className="mt-4 text-sm text-red-300 font-mono bg-red-900/50 p-2 rounded">
                         {backendError.message}
                     </p>
-                    <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
-                        <p className="font-bold">{t('backend_error.how_to_fix_title')}</p>
-                        <p className="mt-2 text-amber-200">
-                           {t('backend_error.how_to_fix_intro')}
-                        </p>
-                        <ul className="list-disc list-inside mt-2 text-amber-200 text-xs space-y-1">
-                            <li>{t('backend_error.how_to_fix_step1')}</li>
-                            <li>{t('backend_error.how_to_fix_step2')}</li>
-                            <li>{t('backend_error.how_to_fix_step3')}</li>
-                            <li>{t('backend_error.how_to_fix_step4')}</li>
-                        </ul>
-                    </div>
+                    {isTimeoutError ? (
+                        <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
+                            <p className="font-bold">What does this mean?</p>
+                            <p className="mt-2 text-amber-200">
+                               The server took too long to respond to a request. This can happen due to high traffic or a temporary issue. Please try refreshing the page in a few moments.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
+                            <p className="font-bold">{t('backend_error.how_to_fix_title')}</p>
+                            <p className="mt-2 text-amber-200">
+                               {t('backend_error.how_to_fix_intro')}
+                            </p>
+                            <ul className="list-disc list-inside mt-2 text-amber-200 text-xs space-y-1">
+                                <li>{t('backend_error.how_to_fix_step1')}</li>
+                                <li>{t('backend_error.how_to_fix_step2')}</li>
+                                <li>{t('backend_error.how_to_fix_step3')}</li>
+                                <li>{t('backend_error.how_to_fix_step4')}</li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
                 <button
                     onClick={clearBackendError}
@@ -116,7 +127,7 @@ const MainApp = () => {
     const { 
         session, user,
         toasts, dismissToast, activeProjectId, setActiveProjectId,
-        t, notifications,
+        t,
         confirmation, handleConfirmation, handleCancelConfirmation,
         activeProjectDetails, isProjectDetailsLoading
     } = useAppContext();
@@ -193,8 +204,6 @@ const MainApp = () => {
         return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
     }
     
-    const unreadCount = notifications.filter(n => !n.is_read).length;
-
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col">
             <header className="bg-black/30 border-b border-gray-700/50 px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-20">
@@ -216,14 +225,8 @@ const MainApp = () => {
                     <a href="https://github.com/google/genai-js" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white" title={t('nav.powered_by')}><GithubIcon className="w-6 h-6" /></a>
                     <div className="relative">
                         <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
-                            <BellIcon className="w-6 h-6" />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                                    {unreadCount}
-                                </span>
-                            )}
+                            <NotificationsPanel onPanelToggle={setIsNotificationsOpen} />
                         </button>
-                        {isNotificationsOpen && <NotificationsPanel onClose={() => setIsNotificationsOpen(false)} />}
                     </div>
                     <UserMenu onNavigate={handleSetView} />
                 </div>

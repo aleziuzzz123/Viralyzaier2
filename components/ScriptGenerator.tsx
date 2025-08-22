@@ -5,20 +5,21 @@ import { useAppContext } from '../contexts/AppContext';
 import { rewriteScriptScene, generateVideoBlueprint } from '../services/geminiService';
 import { getErrorMessage } from '../utils';
 import { ELEVENLABS_VOICES, generateVoiceover } from '../services/generativeMediaService';
-import { uploadFile } from '../services/supabaseService';
+import { uploadFile, dataUrlToBlob, getBrandIdentitiesForUser } from '../services/supabaseService';
 
 interface ScriptEditorProps {
     project: Project;
 }
 
 const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
-    const { t, user, consumeCredits, lockAndExecute, addToast, brandIdentities, handleUpdateProject } = useAppContext();
+    const { t, user, consumeCredits, lockAndExecute, addToast, handleUpdateProject } = useAppContext();
     const [script, setScript] = useState<Script | null>(project.script);
     const [activeCopilot, setActiveCopilot] = useState<number | null>(null);
     const [isRewriting, setIsRewriting] = useState(false);
     const copilotRef = useRef<HTMLDivElement>(null);
     const [isSavingScript, setIsSavingScript] = useState(false);
     const [voiceoverProgress, setVoiceoverProgress] = useState<string | null>(null);
+    const [brandIdentities, setBrandIdentities] = useState<BrandIdentity[]>([]);
 
     // New state for Blueprint generation
     const [isGeneratingBlueprint, setIsLoadingBlueprint] = useState(false);
@@ -37,6 +38,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     }, [project.script]);
 
     useEffect(() => {
+        if (user) {
+            getBrandIdentitiesForUser(user.id)
+                .then(setBrandIdentities)
+                .catch(() => addToast("Failed to load brand identities.", "error"));
+        }
+    }, [user, addToast]);
+
+    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (copilotRef.current && !copilotRef.current.contains(event.target as Node)) {
                 setActiveCopilot(null);
@@ -48,29 +57,96 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
 
     const handleGenerateBlueprint = () => lockAndExecute(async () => {
         if (!project.topic) { addToast("Project topic is missing.", "error"); return; }
+        if (!user) { addToast("User not found.", "error"); return; }
         if (!await consumeCredits(5)) return;
+    
         setIsLoadingBlueprint(true);
         setProgressMessage('Kicking off the creative process...');
+    
         try {
+            // Step 1: Generate the script and visual plan (blueprint)
+            setProgressMessage('Generating script and visual plan...');
             const blueprint = await generateVideoBlueprint(
-                project.topic, 
-                videoSize === '16:9' ? 'youtube_long' : 'youtube_short', 
-                videoStyle, 
-                (message) => setProgressMessage(message), 
-                videoLength, 
-                selectedBrand, 
+                project.topic,
+                videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
+                videoStyle,
+                (message) => setProgressMessage(message),
+                videoLength,
+                selectedBrand,
                 shouldGenerateMoodboard,
                 isNarratorEnabled
             );
+    
             const narratorVoiceId = isNarratorEnabled ? narrator : null;
-            await handleUpdateProject(project.id, {
-                script: blueprint.script,
-                moodboard: blueprint.moodboard,
+            let scriptWithMergedHook = JSON.parse(JSON.stringify(blueprint.script));
+    
+            if (scriptWithMergedHook.hooks && scriptWithMergedHook.hooks.length > 0) {
+                const hookText = scriptWithMergedHook.hooks[0];
+                if (hookText && scriptWithMergedHook.scenes[0]) {
+                    scriptWithMergedHook.scenes[0].voiceover = `${hookText} ${scriptWithMergedHook.scenes[0].voiceover}`;
+                }
+            }
+            
+            // Step 2: Upload moodboard images and enrich the script with final URLs
+            const moodboardUrls: string[] = [];
+            if (shouldGenerateMoodboard && blueprint.moodboard && user) {
+                const uploadPromises = blueprint.moodboard.map(async (base64Img: string, index: number) => {
+                    setProgressMessage(`Uploading visual asset ${index + 1} of ${blueprint.moodboard.length}...`);
+                    try {
+                        const blob = await dataUrlToBlob(base64Img);
+                        const path = `${user.id}/${project.id}/moodboard_${index}.jpg`;
+                        return await uploadFile(blob, path, 'image/jpeg');
+                    } catch (e) {
+                        console.error(`Failed to upload moodboard image ${index}:`, e);
+                        return null;
+                    }
+                });
+                const uploadedUrls = await Promise.all(uploadPromises);
+                scriptWithMergedHook.scenes.forEach((scene: Scene, index: number) => {
+                    const url = uploadedUrls[index];
+                    if (url) {
+                        scene.storyboardImageUrl = url;
+                        moodboardUrls.push(url);
+                    }
+                });
+            }
+            
+            const updates: Partial<Project> = {
+                script: scriptWithMergedHook,
+                moodboard: moodboardUrls.length > 0 ? moodboardUrls : blueprint.moodboard,
                 title: blueprint.suggestedTitles[0],
                 voiceoverVoiceId: narratorVoiceId,
                 videoSize: videoSize,
-            });
-            setScript(blueprint.script); // Update local state
+                workflowStep: 3,
+                shotstackEditJson: null, shotstackRenderId: null, finalVideoUrl: null, analysis: null,
+            };
+    
+            // Step 3: Generate voiceovers if a narrator is enabled
+            if (narratorVoiceId && user) {
+                const voiceoverUrls: { [key: number]: string } = {};
+                const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover && scene.voiceover.trim() !== '');
+                let processedCount = 0;
+    
+                for (const scene of scriptWithMergedHook.scenes) {
+                    const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
+                    if (scene.voiceover && scene.voiceover.trim() !== '') {
+                        processedCount++;
+                        setProgressMessage(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
+                        const sceneBlob = await generateVoiceover(scene.voiceover, narratorVoiceId);
+                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
+                        voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+                    }
+                }
+                if (Object.keys(voiceoverUrls).length > 0) {
+                    updates.voiceoverUrls = voiceoverUrls;
+                }
+            }
+    
+            // Step 4: Save all updates and transition the workflow
+            setProgressMessage('Finalizing project...');
+            await handleUpdateProject(project.id, updates);
+            addToast("Blueprint complete! Entering the Creative Studio...", "success");
+    
         } catch (e) {
             addToast(`Blueprint generation failed: ${getErrorMessage(e)}`, 'error');
         } finally {
@@ -157,6 +233,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
             const updates: Partial<Project> = {
                 script: scriptWithMergedHook,
                 workflowStep: 3,
+                // Reset downstream data to ensure the editor rebuilds the timeline from the new script
+                shotstackEditJson: null,
+                shotstackRenderId: null,
+                finalVideoUrl: null,
+                analysis: null,
             };
     
             if (project.voiceoverVoiceId) {
@@ -289,7 +370,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                 </div>
                  <button onClick={handleGenerateBlueprint} disabled={isGeneratingBlueprint} className="mt-8 inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-gray-600">
                     <SparklesIcon className="w-6 h-6 mr-3" />
-                    {isGeneratingBlueprint ? 'Generating...' : 'Generate Blueprint (5 Credits)'}
+                    {isGeneratingBlueprint ? 'Generating...' : 'Generate Blueprint & Proceed (5 Credits)'}
                 </button>
             </div>
         )

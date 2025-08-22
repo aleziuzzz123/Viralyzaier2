@@ -1,80 +1,123 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Notification } from '../types';
-import { SparklesIcon } from './Icons';
+import { SparklesIcon, BellIcon } from './Icons';
+import * as supabase from '../services/supabaseService';
 
 interface NotificationsPanelProps {
-    onClose: () => void;
+    onPanelToggle: (isOpen: boolean) => void;
 }
 
-const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ onClose }) => {
-    const { notifications, markNotificationAsRead, markAllNotificationsAsRead, setActiveProjectId, t } = useAppContext();
+const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ onPanelToggle }) => {
+    const { user, setActiveProjectId, t } = useAppContext();
+    const [isOpen, setIsOpen] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const panelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isOpen && user) {
+            setIsLoading(true);
+            supabase.getNotifications(user.id)
+                .then(setNotifications)
+                .finally(() => setIsLoading(false));
+        }
+    }, [isOpen, user]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-                onClose();
+                setIsOpen(false);
+                onPanelToggle(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose]);
+    }, [onPanelToggle]);
+    
+    const handleToggle = () => {
+        const newIsOpen = !isOpen;
+        setIsOpen(newIsOpen);
+        onPanelToggle(newIsOpen);
+    };
+
+    const markNotificationAsRead = async (id: string) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        try { await supabase.markNotificationAsRead(id); } catch (e) { console.error(e); }
+    };
+    
+    const markAllNotificationsAsRead = async () => {
+        if (!user) return;
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        try { await supabase.markAllNotificationsAsRead(user.id); } catch (e) { console.error(e); }
+    };
     
     const handleNotificationClick = (notificationId: string, projectId?: string | null) => {
         markNotificationAsRead(notificationId);
         if (projectId) {
             setActiveProjectId(projectId);
         }
-        onClose();
+        setIsOpen(false);
+        onPanelToggle(false);
     };
     
     const unreadCount = notifications.filter((n: Notification) => !n.is_read).length;
 
     return (
-        <div 
-            ref={panelRef}
-            className="absolute top-14 right-0 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl animate-fade-in-up z-30" 
-            style={{animationDuration: '0.2s'}}
-        >
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="font-bold text-white">{t('notifications.title')}</h3>
+        <div ref={panelRef} className="relative">
+            <button onClick={handleToggle} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
+                <BellIcon className="w-6 h-6" />
                 {unreadCount > 0 && (
-                    <button 
-                        onClick={markAllNotificationsAsRead}
-                        className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
-                    >
-                        {t('notifications.mark_all_read')}
-                    </button>
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                        {unreadCount}
+                    </span>
                 )}
-            </div>
-            
-            <div className="max-h-96 overflow-y-auto">
-                {notifications.length > 0 ? (
-                    <ul className="divide-y divide-gray-700">
-                        {notifications.map((n: Notification) => (
-                            <li key={n.id}>
-                                <button 
-                                    onClick={() => handleNotificationClick(n.id, n.project_id)}
-                                    className={`w-full text-left p-4 transition-colors ${!n.is_read ? 'bg-indigo-900/30 text-white font-semibold' : 'text-gray-400 hover:bg-gray-700/50'}`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <SparklesIcon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${!n.is_read ? 'text-indigo-400' : 'text-gray-500'}`} />
-                                        <p className="text-sm">{n.message}</p>
-                                    </div>
-                                    <p className="text-xs text-gray-500 text-right mt-2">
-                                        {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                    </p>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <div className="p-8 text-center text-gray-500">
-                        <p>{t('notifications.empty')}</p>
+            </button>
+            {isOpen && (
+                <div 
+                    className="absolute top-14 right-0 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl animate-fade-in-up z-30" 
+                    style={{animationDuration: '0.2s'}}
+                >
+                    <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                        <h3 className="font-bold text-white">{t('notifications.title')}</h3>
+                        {unreadCount > 0 && (
+                            <button 
+                                onClick={markAllNotificationsAsRead}
+                                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+                            >
+                                {t('notifications.mark_all_read')}
+                            </button>
+                        )}
                     </div>
-                )}
-            </div>
+                    
+                    <div className="max-h-96 overflow-y-auto">
+                        {isLoading ? <p className="p-4 text-center text-gray-400">Loading...</p> : notifications.length > 0 ? (
+                            <ul className="divide-y divide-gray-700">
+                                {notifications.map((n: Notification) => (
+                                    <li key={n.id}>
+                                        <button 
+                                            onClick={() => handleNotificationClick(n.id, n.project_id)}
+                                            className={`w-full text-left p-4 transition-colors ${!n.is_read ? 'bg-indigo-900/30 text-white font-semibold' : 'text-gray-400 hover:bg-gray-700/50'}`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <SparklesIcon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${!n.is_read ? 'text-indigo-400' : 'text-gray-500'}`} />
+                                                <p className="text-sm">{n.message}</p>
+                                            </div>
+                                            <p className="text-xs text-gray-500 text-right mt-2">
+                                                {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </p>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500">
+                                <p>{t('notifications.empty')}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

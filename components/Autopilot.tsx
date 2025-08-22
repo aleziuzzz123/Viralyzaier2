@@ -6,7 +6,7 @@ import { RocketLaunchIcon, PlusIcon, TrashIcon } from './Icons';
 import { Project } from '../types';
 
 const Autopilot: React.FC = () => {
-    const { user, setUser, consumeCredits, requirePermission, addToast, t, addProjects, setActiveProjectId, lockAndExecute } = useAppContext();
+    const { user, setUser, consumeCredits, requirePermission, addToast, t, setActiveProjectId, lockAndExecute } = useAppContext();
     const [pillars, setPillars] = useState<string[]>(user?.content_pillars || []);
     const [newPillar, setNewPillar] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +97,6 @@ const Autopilot: React.FC = () => {
                 createdProjects.push(finalProject);
             }
             
-            addProjects(createdProjects);
             addToast("Content backlog generated! Your new ideas are on the dashboard.", 'success');
             setActiveProjectId(null);
 

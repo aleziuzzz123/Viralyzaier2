@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { SparklesIcon, UploadIcon, UserCircleIcon, RefreshIcon } from './Icons';
 import { invokeEdgeFunction } from '../services/supabaseService';
-import { ClonedVoice, User } from '../types';
+import { ClonedVoice, User, BrandIdentity } from '../types';
 import BrandIdentityHub from './BrandIdentityHub';
+import * as supabase from '../services/supabaseService';
 
 const Settings: React.FC = () => {
     const { user, t, requirePermission, addToast, setUser, consumeCredits } = useAppContext();
@@ -12,6 +13,19 @@ const Settings: React.FC = () => {
     const [isCloning, setIsCloning] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [error, setError] = useState('');
+    const [brandIdentities, setBrandIdentities] = useState<BrandIdentity[]>([]);
+    const [isLoadingBrands, setIsLoadingBrands] = useState(true);
+
+    useEffect(() => {
+        if (user) {
+            setIsLoadingBrands(true);
+            supabase.getBrandIdentitiesForUser(user.id)
+                .then(setBrandIdentities)
+                .catch(() => addToast("Failed to load brand identities.", "error"))
+                .finally(() => setIsLoadingBrands(false));
+        }
+    }, [user, addToast]);
+
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -93,7 +107,11 @@ const Settings: React.FC = () => {
                 <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">{t('settings.subtitle')}</p>
             </header>
             
-            <BrandIdentityHub />
+            <BrandIdentityHub 
+                brandIdentities={brandIdentities}
+                setBrandIdentities={setBrandIdentities}
+                isLoading={isLoadingBrands}
+            />
 
             <div className="max-w-4xl mx-auto bg-gray-800/50 p-8 rounded-2xl border border-gray-700">
                 <h2 className="text-2xl font-bold text-white mb-2 flex items-center">

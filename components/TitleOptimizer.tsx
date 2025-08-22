@@ -11,8 +11,8 @@ interface TitleOptimizerProps {
 }
 
 const TitleOptimizer: React.FC<TitleOptimizerProps> = ({ onTitleSelect, platform }) => {
-  const { consumeCredits, projects, activeProjectId, t } = useAppContext();
-  const project = projects.find((p: Project) => p.id === activeProjectId);
+  const { consumeCredits, activeProjectDetails, t } = useAppContext();
+  const project = activeProjectDetails;
   const initialTopic = project?.topic || '';
 
   const [topic, setTopic] = useState(initialTopic);

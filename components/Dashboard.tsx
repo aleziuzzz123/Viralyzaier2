@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Project } from '../types';
 import { FilePlusIcon } from './Icons';
 import KanbanBoard from './KanbanBoard';
 import { PLANS } from '../services/paymentService';
 import { useAppContext } from '../contexts/AppContext';
 import Loader from './Loader';
+import * as supabase from '../services/supabaseService';
 
 interface DashboardProps {
     onSelectProject: (id: string) => void;
@@ -12,21 +13,33 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onNewProject }) => {
-    const { user, projects, t, isInitialLoading } = useAppContext();
+    const { user, t, isInitialLoading: isAppLoading, addToast } = useAppContext();
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [isLoadingProjects, setIsLoadingProjects] = useState(true);
     
     useEffect(() => {
+        if (user) {
+            setIsLoadingProjects(true);
+            supabase.getProjectsForUser(user.id)
+                .then(setProjects)
+                .catch(() => addToast("Failed to load project board.", "error"))
+                .finally(() => setIsLoadingProjects(false));
+        }
+    }, [user, addToast]);
+
+    useEffect(() => {
         const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-        if (user && projects.length === 0 && !isInitialLoading && !hasSeenOnboarding) {
+        if (user && projects.length === 0 && !isAppLoading && !isLoadingProjects && !hasSeenOnboarding) {
           onNewProject();
           localStorage.setItem('hasSeenOnboarding', 'true');
         }
-    }, [user, projects, isInitialLoading, onNewProject]);
+    }, [user, projects, isAppLoading, isLoadingProjects, onNewProject]);
 
     const planId = user?.subscription?.planId || 'free';
     const currentPlan = PLANS.find(p => p.id === planId) || PLANS.find(p => p.id === 'free')!;
     const creditsUsed = currentPlan.creditLimit - (user?.aiCredits || 0);
 
-    if (isInitialLoading) {
+    if (isAppLoading || isLoadingProjects) {
         return <div className="flex justify-center items-center h-64"><Loader /></div>;
     }
 

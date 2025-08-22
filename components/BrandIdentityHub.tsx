@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { BrandIdentity } from '../types';
 import { PlusIcon, PencilIcon, TrashIcon, XCircleIcon, PaintBrushIcon, UploadIcon } from './Icons';
-import { uploadFile } from '../services/supabaseService';
+import { uploadFile, createBrandIdentity, updateBrandIdentity, deleteBrandIdentity } from '../services/supabaseService';
 import { getErrorMessage } from '../utils';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -10,11 +10,12 @@ interface BrandIdentityModalProps {
     isOpen: boolean;
     onClose: () => void;
     identityToEdit: BrandIdentity | null;
+    onSave: (identity: BrandIdentity) => void;
 }
 
 // Modal component for creating/editing brand identities
-const BrandIdentityModal: React.FC<BrandIdentityModalProps> = ({ isOpen, onClose, identityToEdit }) => {
-    const { user, handleCreateBrandIdentity, handleUpdateBrandIdentity, addToast } = useAppContext();
+const BrandIdentityModal: React.FC<BrandIdentityModalProps> = ({ isOpen, onClose, identityToEdit, onSave }) => {
+    const { user, addToast } = useAppContext();
     const [isUploadingLogo, setIsUploadingLogo] = useState(false);
     const [identity, setIdentity] = useState<Omit<BrandIdentity, 'id' | 'created_at' | 'user_id'> & { logoUrl?: string }>(() => {
         return identityToEdit || {
@@ -61,12 +62,20 @@ const BrandIdentityModal: React.FC<BrandIdentityModalProps> = ({ isOpen, onClose
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        if (identityToEdit) {
-            await handleUpdateBrandIdentity(identityToEdit.id, identity);
-        } else {
-            await handleCreateBrandIdentity(identity);
+        try {
+            let savedIdentity;
+            if (identityToEdit) {
+                savedIdentity = await updateBrandIdentity(identityToEdit.id, identity);
+                addToast("Brand Identity updated!", 'success');
+            } else {
+                savedIdentity = await createBrandIdentity(identity, user.id);
+                addToast("Brand Identity created!", 'success');
+            }
+            onSave(savedIdentity);
+            onClose();
+        } catch (err) {
+            addToast(`Failed to save: ${getErrorMessage(err)}`, 'error');
         }
-        onClose();
     };
 
     if (!isOpen) return null;
@@ -161,9 +170,14 @@ const BrandIdentityModal: React.FC<BrandIdentityModalProps> = ({ isOpen, onClose
     );
 };
 
+interface BrandIdentityHubProps {
+    brandIdentities: BrandIdentity[];
+    setBrandIdentities: React.Dispatch<React.SetStateAction<BrandIdentity[]>>;
+    isLoading: boolean;
+}
 
-const BrandIdentityHub: React.FC = () => {
-    const { brandIdentities, handleDeleteBrandIdentity } = useAppContext();
+const BrandIdentityHub: React.FC<BrandIdentityHubProps> = ({ brandIdentities, setBrandIdentities, isLoading }) => {
+    const { addToast } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [identityToEdit, setIdentityToEdit] = useState<BrandIdentity | null>(null);
 
@@ -175,6 +189,22 @@ const BrandIdentityHub: React.FC = () => {
     const openEditModal = (identity: BrandIdentity) => {
         setIdentityToEdit(identity);
         setIsModalOpen(true);
+    };
+
+    const handleSave = (savedIdentity: BrandIdentity) => {
+        if (identityToEdit) {
+            setBrandIdentities(prev => prev.map(b => b.id === savedIdentity.id ? savedIdentity : b));
+        } else {
+            setBrandIdentities(prev => [...prev, savedIdentity]);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteBrandIdentity(id);
+            setBrandIdentities(prev => prev.filter(b => b.id !== id));
+            addToast("Brand Identity deleted!", 'success');
+        } catch (e) { addToast(getErrorMessage(e), 'error'); }
     };
 
     return (
@@ -193,7 +223,7 @@ const BrandIdentityHub: React.FC = () => {
              </div>
 
              <div className="space-y-4">
-                {brandIdentities.length > 0 ? (
+                {isLoading ? <p className="text-center text-gray-400">Loading identities...</p> : brandIdentities.length > 0 ? (
                     brandIdentities.map((identity: BrandIdentity) => (
                         <div key={identity.id} className="bg-gray-900/50 p-4 rounded-lg flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -205,7 +235,7 @@ const BrandIdentityHub: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => openEditModal(identity)} className="p-2 text-gray-400 hover:text-indigo-400"><PencilIcon className="w-5 h-5" /></button>
-                                <button onClick={() => handleDeleteBrandIdentity(identity.id)} className="p-2 text-gray-400 hover:text-red-400"><TrashIcon className="w-5 h-5" /></button>
+                                <button onClick={() => handleDelete(identity.id)} className="p-2 text-gray-400 hover:text-red-400"><TrashIcon className="w-5 h-5" /></button>
                             </div>
                         </div>
                     ))
@@ -214,7 +244,7 @@ const BrandIdentityHub: React.FC = () => {
                 )}
              </div>
              
-             <BrandIdentityModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} identityToEdit={identityToEdit} />
+             <BrandIdentityModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} identityToEdit={identityToEdit} onSave={handleSave} />
          </div>
     );
 };

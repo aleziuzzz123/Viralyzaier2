@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SparklesIcon, XCircleIcon } from './Icons';
 import { getSchedulingSuggestion } from '../services/geminiService';
 import { useAppContext } from '../contexts/AppContext';
 import { Project } from '../types';
+import * as supabaseService from '../services/supabaseService';
 
 interface CalendarProps {
 }
@@ -30,16 +31,25 @@ const ParsedSuggestion: React.FC<ParsedSuggestionProps> = ({ text }) => {
 };
 
 const ContentCalendar: React.FC<CalendarProps> = () => {
-    const { projects, consumeCredits, addToast, setActiveProjectId, t } = useAppContext();
+    const { user, consumeCredits, addToast, setActiveProjectId, t } = useAppContext();
     const today = new Date();
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
+    const [projects, setProjects] = useState<Project[]>([]);
     
     // State for AI Assistant
     const [isAssistantLoading, setIsAssistantLoading] = useState(false);
     const [assistantResult, setAssistantResult] = useState<string | null>(null);
     const [assistantTopic, setAssistantTopic] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            supabaseService.getProjectsForUser(user.id)
+                .then(setProjects)
+                .catch(() => addToast("Failed to load projects for calendar.", "error"));
+        }
+    }, [user, addToast]);
 
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);

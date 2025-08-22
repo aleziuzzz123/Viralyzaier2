@@ -11,7 +11,7 @@ interface ProjectKickoffProps {
 }
 
 const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExit }) => {
-    const { t, addToast, lockAndExecute, user, addProjects, consumeCredits } = useAppContext();
+    const { t, addToast, lockAndExecute, user, consumeCredits } = useAppContext();
     const [topic, setTopic] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -50,7 +50,6 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
             };
             
             const createdProject = await supabase.createProject(newProjectData, user.id);
-            addProjects([createdProject]);
             
             addToast("Project idea captured! Now, let's build the blueprint.", 'success');
             onProjectCreated(createdProject.id);
