@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "preinstall": "npx -y npm-force-resolutions || true",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -33,7 +34,12 @@
     "pixi.js": "7.4.2",
     "@pixi/*": "7.4.2"
   },
+  "resolutions": {
+    "pixi.js": "7.4.2",
+    "@pixi/*": "7.4.2"
+  },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "packageManager": "npm@10"
 }
