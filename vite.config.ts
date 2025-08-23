@@ -17,10 +17,6 @@ export default defineConfig({
       '@pixi/compressed-textures', '@pixi/text', '@pixi/spritesheet'
     ],
     preserveSymlinks: false,
-    alias: {
-      'pixi.js': path.resolve(__dirname, 'node_modules/pixi.js'),
-      '@shotstack/shotstack-studio': path.resolve(__dirname, 'node_modules/@shotstack/shotstack-studio')
-    }
   },
   optimizeDeps: {
     include: ['@shotstack/shotstack-studio']
