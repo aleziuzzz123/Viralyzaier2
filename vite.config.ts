@@ -11,12 +11,15 @@ export default defineConfig({
   resolve: {
     dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
     alias: {
-      "pixi.js": path.resolve(__dirname, "node_modules/pixi.js"),
+      // point all pixi imports to our compat shim
+      "pixi.js": path.resolve(__dirname, "src/shims/pixi7-compat.ts"),
       "@pixi/core": path.resolve(__dirname, "node_modules/@pixi/core")
     }
   },
   optimizeDeps: {
-    include: ["@shotstack/shotstack-studio", "pixi.js"]
+    // don’t prebundle pixi itself; let Rollup use our alias
+    exclude: ["pixi.js"],
+    include: ["@shotstack/shotstack-studio"]
   },
   build: {
     rollupOptions: {
