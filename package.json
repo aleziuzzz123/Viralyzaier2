@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "preinstall": "npx -y npm-force-resolutions || true",
     "dev": "vite",
     "build": "vite build",
+    "build:ci": "node ./vite-diagnose.cjs && vite build --debug",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -30,7 +32,12 @@
     "vite": "^5.2.0"
   },
   "overrides": {
-    "pixi.js": "7.4.2"
+    "pixi.js": "7.4.2",
+    "@pixi/*": "7.4.2"
+  },
+  "resolutions": {
+    "pixi.js": "7.4.2",
+    "@pixi/*": "7.4.2"
   },
   "engines": {
     "node": "20.x"

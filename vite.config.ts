@@ -9,12 +9,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Deduplicating pixi.js ensures that @shotstack/shotstack-studio
-    // and our app use the exact same instance, which is required for it to work correctly.
-    dedupe: [
-      "pixi.js",
-      "@pixi/core",
-    ],
+    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
+    alias: {
+      "pixi.js": path.resolve(__dirname, "node_modules/pixi.js"),
+      "@pixi/core": path.resolve(__dirname, "node_modules/@pixi/core")
+    },
+    preserveSymlinks: false
+  },
+  optimizeDeps: {
+    include: ["@shotstack/shotstack-studio", "pixi.js"]
   },
   build: {
     rollupOptions: {
