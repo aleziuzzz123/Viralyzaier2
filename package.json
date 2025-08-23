@@ -1,41 +1,23 @@
 {
-  "name": "viralyzaier-app",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
+    "preinstall": "npx -y npm-force-resolutions || true",
+    "postinstall": "node -e \"(async()=>{const m=await import('pixi.js');console.log('[pixi-version]',m.VERSION||(m.Application&&m.Application.VERSION)||'unknown')})().catch(e=>{console.error('[pixi-check-failed]',e?.message||e);process.exit(1)})\"",
     "dev": "vite",
     "build": "vite build",
-    "build:ci": "node ./vite-diagnose.cjs && vite build --debug",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.15.0",
     "@shotstack/shotstack-studio": "1.5.0",
-    "@supabase/supabase-js": "^2.44.4",
-    "pixi.js": "7.2.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/uuid": "^9.0.8",
-    "@vercel/node": "^3.0.25",
-    "@vitejs/plugin-react": "4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "typescript": "^5.5.3",
-    "vite": "5.3.1"
+    "pixi.js": "7.4.2"
   },
   "overrides": {
-    "pixi.js": "7.2.4",
-    "@pixi/*": "7.2.4"
+    "pixi.js": "7.4.2",
+    "@pixi/*": "7.4.2"
   },
-  "engines": {
-    "node": "20.x"
+  "resolutions": {
+    "pixi.js": "7.4.2",
+    "@pixi/*": "7.4.2"
   },
+  "engines": { "node": "20.x" },
   "packageManager": "npm@10"
 }
