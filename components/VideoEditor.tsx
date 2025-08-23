@@ -9,9 +9,12 @@ export interface VideoEditorHandles {
   stop: () => void;
   undo: () => void;
   redo: () => void;
-  getEditorState: () => any;
-  setEditorState: (state: any) => void;
+  getEdit: () => any;
+  loadEdit: (state: any) => void;
   updateClip: (trackIndex: number, clipIndex: number, newProps: any) => void;
+  removeClip: (trackIndex: number, clipIndex: number) => void;
+  addClip: (trackIndex: number, clip: any) => void;
+  getPlaybackTime: () => number;
 }
 
 interface VideoEditorProps {
@@ -76,7 +79,8 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         controlsRef.current = controls;
         
         const tlWidth = timelineHost.current?.clientWidth || size.width;
-        timeline = new Timeline(edit, { width: tlWidth, height: 300 }, customEditorTheme);
+        timeline = new Timeline(edit, { width: tlWidth, height: 300 });
+        timeline.setTheme(customEditorTheme);
         await timeline.load(timelineHost.current!);
         if (disposed) return;
         timelineRef.current = timeline;
@@ -121,13 +125,12 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
     stop: () => controlsRef.current?.stop(),
     undo: () => editRef.current?.undo(),
     redo: () => editRef.current?.redo(),
-    getEditorState: () => editRef.current?.getEdit(),
-    setEditorState: (state: any) => editRef.current?.loadEdit(state),
-    updateClip: (trackIndex: number, clipIndex: number, newProps: any) => {
-        if (editRef.current) {
-            editRef.current.updateClip(trackIndex, clipIndex, newProps);
-        }
-    }
+    getEdit: () => editRef.current?.getEdit(),
+    loadEdit: (state: any) => editRef.current?.loadEdit(state),
+    updateClip: (trackIndex, clipIndex, newProps) => editRef.current?.updateClip(trackIndex, clipIndex, newProps),
+    removeClip: (trackIndex, clipIndex) => editRef.current?.removeClip(trackIndex, clipIndex),
+    addClip: (trackIndex, clip) => editRef.current?.addClip(trackIndex, clip),
+    getPlaybackTime: () => editRef.current?.playbackTime ?? 0,
   }), []);
 
   if (err) {

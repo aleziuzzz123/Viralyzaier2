@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { NormalizedStockAsset, Project } from '../types';
+import { NormalizedStockAsset, Project, User } from '../types';
 import { SearchIcon, SparklesIcon, XCircleIcon, UploadIcon } from './Icons';
 import * as geminiService from '../services/geminiService';
 import { generateAiImage } from '../services/generativeMediaService';
+import * as supabase from '../services/supabaseService';
+import { v4 as uuidv4 } from 'uuid';
 
 type AssetType = 'Video' | 'Image' | 'Music' | 'Stickers' | 'AI' | 'Upload';
 
@@ -57,20 +59,37 @@ const AiAssetGenerator: React.FC<AiAssetGeneratorProps> = ({ project, onAddClip,
     )
 }
 
-const Uploader: React.FC<{ onAddClip: (assetType: 'video' | 'image' | 'audio', url: string, name: string) => void }> = ({ onAddClip }) => {
+const Uploader: React.FC<{
+    onAddClip: (assetType: 'video' | 'image' | 'audio', url: string, name: string) => void;
+    project: Project | null;
+    session: any | null;
+    addToast: (message: string, type: 'info' | 'success' | 'error') => void;
+}> = ({ onAddClip, project, session, addToast }) => {
+    
     const inferType = (file: File): "image"|"video"|"audio" => {
         if (file.type.startsWith("image/")) return "image";
         if (file.type.startsWith("video/")) return "video";
         return "audio";
     }
 
-    const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onPickFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        files.forEach(f => {
-            const url = URL.createObjectURL(f);
-            const type = inferType(f);
-            onAddClip(type, url, f.name);
-        });
+        if (!session || !project) {
+            addToast("Cannot upload file: user session or project is missing.", "error");
+            return;
+        }
+
+        for (const f of files) {
+            addToast(`Uploading ${f.name}...`, 'info');
+            try {
+                const path = `${session.user.id}/${project.id}/uploads/${uuidv4()}_${f.name}`;
+                const publicUrl = await supabase.uploadFile(f, path, f.type);
+                const type = inferType(f);
+                onAddClip(type, publicUrl, f.name);
+            } catch (err) {
+                addToast(`Failed to upload ${f.name}: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+            }
+        }
     };
 
     return (
@@ -87,13 +106,14 @@ const Uploader: React.FC<{ onAddClip: (assetType: 'video' | 'image' | 'audio', u
 
 interface AssetBrowserModalProps {
     project: Project | null;
+    session: any | null;
     onClose: () => void;
     onAddClip: (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => void;
     addToast: (message: string, type: 'info' | 'success' | 'error') => void;
     lockAndExecute: <T>(asyncFunction: () => Promise<T>) => Promise<T | undefined>;
 }
 
-const AssetBrowserModal: React.FC<AssetBrowserModalProps> = ({ project, onClose, onAddClip, addToast, lockAndExecute }) => {
+const AssetBrowserModal: React.FC<AssetBrowserModalProps> = ({ project, session, onClose, onAddClip, addToast, lockAndExecute }) => {
     const [activeTab, setActiveTab] = useState<AssetType>('Video');
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<NormalizedStockAsset[]>([]);
@@ -129,7 +149,7 @@ const AssetBrowserModal: React.FC<AssetBrowserModalProps> = ({ project, onClose,
 
     const renderContent = () => {
         if (activeTab === 'AI') return <AiAssetGenerator project={project} onAddClip={onAddClip} addToast={addToast} lockAndExecute={lockAndExecute} />;
-        if (activeTab === 'Upload') return <Uploader onAddClip={handleLocalFileAdd} />;
+        if (activeTab === 'Upload') return <Uploader onAddClip={handleLocalFileAdd} project={project} session={session} addToast={addToast} />;
 
         return (
             <div className="p-4">

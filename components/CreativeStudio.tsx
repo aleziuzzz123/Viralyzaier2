@@ -3,7 +3,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 const CreativeStudio: React.FC = () => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const { activeProjectDetails, handleUpdateProject, addToast } = useAppContext();
+    const { activeProjectDetails, handleUpdateProject, addToast, handleRenderProject, session } = useAppContext();
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -14,13 +14,22 @@ const CreativeStudio: React.FC = () => {
                     case 'studio:ready':
                         iframeRef.current.contentWindow?.postMessage({
                             type: 'app:load_project',
-                            payload: activeProjectDetails,
+                            payload: {
+                                project: activeProjectDetails,
+                                session: session, // Pass the session token to the iframe
+                            },
                         }, '*');
                         break;
                     // The editor is sending an updated timeline to be saved
                     case 'studio:save_project':
                         if (activeProjectDetails && payload) {
                             handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: payload });
+                        }
+                        break;
+                    // The editor has requested to start the render process
+                    case 'studio:request_render':
+                        if (activeProjectDetails && payload) {
+                           handleRenderProject(activeProjectDetails.id, payload);
                         }
                         break;
                     // The editor is requesting a toast notification
@@ -35,7 +44,7 @@ const CreativeStudio: React.FC = () => {
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [activeProjectDetails, handleUpdateProject, addToast]);
+    }, [activeProjectDetails, handleUpdateProject, addToast, handleRenderProject, session]);
     
     return (
         <div style={{ height: 'calc(100vh - 10rem)', width: '100%' }}>
