@@ -10,8 +10,7 @@ export default defineConfig({
     alias: {
       "pixi.js": resolve(__dirname, "node_modules/pixi.js"),
       "@pixi/core": resolve(__dirname, "node_modules/@pixi/core")
-    },
-    preserveSymlinks: false
+    }
   },
   optimizeDeps: {
     include: ["@shotstack/shotstack-studio", "pixi.js"]
@@ -20,7 +19,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        studio: resolve(__dirname, "studio.html") // if you’re using the isolated page
+        studio: resolve(__dirname, "studio.html")
       }
     }
   }
