@@ -30,8 +30,7 @@
     "vite": "^5.2.0"
   },
   "overrides": {
-    "pixi.js": "7.4.2",
-    "@pixi/*": "7.4.2"
+    "pixi.js": "7.4.2"
   },
   "engines": {
     "node": "20.x"
