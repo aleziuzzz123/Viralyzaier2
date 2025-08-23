@@ -1,62 +1,107 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getShotstackSDK } from '../lib/shotstackSdk';
+import { Project, ShotstackClipSelection } from '../types';
+import TopInspectorPanel from './TopInspectorPanel';
+import AssetBrowserModal from './AssetBrowserModal';
+import EditorToolbar from './EditorToolbar';
+import HelpModal from './HelpModal';
 
-// Get the type definition of the SDK module without importing it directly
 type SDK = typeof import("@shotstack/shotstack-studio");
 
 export default function StudioPage() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const timelineHostRef = useRef<HTMLDivElement>(null);
-  const editRef = useRef<any>(null);
+  const editorRef = useRef<any>(null); // Actually VideoEditorHandles, but type is in that file
+  const controlsRef = useRef<any>(null);
+  const executionLock = useRef(false);
 
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [sdk, setSdk] = useState<SDK | null>(null);
-  const [assets, setAssets] = useState<Array<{url:string; type:"image"|"video"|"audio"; name:string}>>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  
+  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // --- Asset Management Functions ---
-
-  function inferType(file: File): "image"|"video"|"audio" {
-    if (file.type.startsWith("image/")) return "image";
-    if (file.type.startsWith("video/")) return "video";
-    return "audio";
-  }
-
-  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const newAssets = files.map(f => ({
-      url: URL.createObjectURL(f),
-      type: inferType(f),
-      name: f.name
-    }));
-    setAssets(prev => [...prev, ...newAssets]);
+  // --- Parent Window Communication ---
+  const postToParent = (type: string, payload?: any) => {
+    window.parent.postMessage({ type, payload }, '*');
   };
 
-  const addClipAtPlayhead = (asset:{url:string;type:"image"|"video"|"audio"; name:string}) => {
-    if (!editRef.current || !sdk) return;
-    const edit = editRef.current as InstanceType<SDK["Edit"]>;
+  const aic_addToast = (message: string, type: 'success' | 'error' | 'info') => {
+      postToParent('studio:addToast', { message, type });
+  };
+  
+  const aic_lockAndExecute = async <T,>(asyncFunction: () => Promise<T>): Promise<T | undefined> => {
+      if (executionLock.current) {
+          aic_addToast('Another AI process is already running. Please wait.', 'info');
+          return;
+      }
+      executionLock.current = true;
+      try {
+          return await asyncFunction();
+      } catch (error) {
+          aic_addToast(error instanceof Error ? error.message : 'An AI operation failed', 'error');
+      } finally {
+          executionLock.current = false;
+      }
+  };
+
+  // --- Clip Management ---
+  const addClip = (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => {
+    if (!editorRef.current) return;
+    const edit = editorRef.current;
     const ms = edit.playbackTime ?? 0;
     const startSec = Math.max(0, ms / 1000);
-    const defaultLen = asset.type === "audio" ? 10 : 5; // seconds
+    const defaultLen = (assetType === "audio" || assetType === 'video') ? 10 : 5;
 
-    // Place audio on track 2, and visuals on track 0
-    const trackIndex = asset.type === "audio" ? 2 : 0; 
+    let trackIndex = 0;
+    if (assetType === 'audio') trackIndex = 2;
+    if (assetType === 'sticker') trackIndex = 1;
 
     edit.addClip(trackIndex, {
-      asset: { type: asset.type, src: asset.url },
+      asset: { type: assetType, src: url },
       start: startSec,
       length: defaultLen,
       transition: { in: "fade", out: "fade" }
     });
   };
 
-  // --- Editor Initialization ---
+  const deleteClip = (trackIndex: number, clipIndex: number) => {
+    if (!editorRef.current) return;
+    editorRef.current.removeClip(trackIndex, clipIndex);
+    setSelection(null);
+  };
+  
+  const handleRender = () => {
+      if (!editorRef.current) return;
+      const finalJson = editorRef.current.getEdit();
+      postToParent('studio:save_project', finalJson);
+      // aic_addToast('Project saved! Starting render...', 'info');
+      // In a real app, you would now call your backend to start the render
+  }
 
+  // --- Editor Initialization and Communication ---
   useEffect(() => {
     let disposed = false;
-    let canvas: any, timeline: any;
+    let canvas: any, timeline: any, controls: any;
 
-    (async () => {
+    const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'app:load_project') {
+            const projectData: Project = event.data.payload;
+            if (projectData) {
+                setProject(projectData);
+                boot(projectData);
+            } else {
+                setErr("No project data received from the main application.");
+            }
+        }
+    };
+    window.addEventListener('message', handleMessage);
+    postToParent('studio:ready');
+
+    const boot = async (projectData: Project) => {
       try {
         for (let i = 0; i < 120; i++) {
           const c = canvasHostRef.current;
@@ -66,29 +111,29 @@ export default function StudioPage() {
         }
         if (disposed) return;
 
-        const SDK_MODULE = await getShotstackSDK();
+        const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (disposed) return;
-        setSdk(SDK_MODULE);
-        const { Edit, Canvas, Controls, Timeline } = SDK_MODULE;
 
-        const res = await fetch("https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json");
-        if (!res.ok) throw new Error(`Template fetch failed: ${res.status}`);
-        const template = await res.json();
-        const size = template.output?.size ?? { width: 1280, height: 720 };
+        const initialState = projectData.shotstackEditJson || {
+            timeline: { background: "#000000", tracks: [ { clips: [] }, { clips: [] }, { clips: [] } ]},
+            output: { format: 'mp4', size: { width: 1280, height: 720 }}
+        };
+        const size = initialState.output.size;
 
         const edit = new Edit(size);
         await edit.load();
-        editRef.current = edit;
+        editorRef.current = edit;
         if (disposed) return;
 
         canvas = new Canvas(size, edit);
         await canvas.load(canvasHostRef.current!);
         if (disposed) return;
 
-        await edit.loadEdit(template);
-
-        const controls = new Controls(edit);
+        await edit.loadEdit(initialState);
+        
+        controls = new Controls(edit);
         await controls.load();
+        controlsRef.current = controls;
         if (disposed) return;
 
         const tlWidth = timelineHostRef.current?.clientWidth || size.width;
@@ -96,20 +141,30 @@ export default function StudioPage() {
         await timeline.load(timelineHostRef.current!);
         if (disposed) return;
 
+        // Setup event listeners
         if (edit?.events?.on) {
-          edit.events.on("clip:selected", () => {});
-          edit.events.on("clip:updated", () => {});
+          edit.events.on("clip:selected", (sel: ShotstackClipSelection) => !disposed && setSelection(sel));
+          edit.events.on("clip:deselected", () => !disposed && setSelection(null));
+          controls.events.on('play', () => !disposed && setIsPlaying(true));
+          controls.events.on('pause', () => !disposed && setIsPlaying(false));
+          controls.events.on('stop', () => !disposed && setIsPlaying(false));
+          // Auto-save on change
+          edit.events.on('edit:updated', () => {
+              if (!disposed) {
+                  postToParent('studio:save_project', edit.getEdit());
+              }
+          });
         }
 
-        if (!disposed) setLoading(false);
+        if (!disposed) setIsLoading(false);
       } catch (e: any) {
-        console.error("[Shotstack] boot failed:", e);
-        if (!disposed) { setErr(e?.message ?? String(e)); setLoading(false); }
+        if (!disposed) { setErr(e?.message ?? String(e)); setIsLoading(false); }
       }
-    })();
+    };
 
     return () => {
       disposed = true;
+      window.removeEventListener('message', handleMessage);
       try { timeline?.dispose?.(); } catch {}
       try { canvas?.dispose?.(); } catch {}
     };
@@ -117,37 +172,65 @@ export default function StudioPage() {
 
   if (err) {
     return (
-      <div style={{padding:16,color:"#7f1d1d",background:"#fee2e2",borderRadius:8}}>
+      <div className="p-4 rounded-lg bg-red-900/50 border border-red-500/50 text-red-300">
         <strong>Creative Studio failed:</strong> {err}
       </div>
     );
   }
 
   return (
-    <div style={{padding:16, fontFamily: "system-ui, sans-serif"}}>
-      {/* --- Asset Panel --- */}
-       <div style={{marginBottom:"16px", display:"flex", gap:12, alignItems:"center", flexWrap:"wrap"}}>
-        <label style={{display:"inline-block"}}>
-          <span style={{padding:"8px 12px", background:"#374151", color:"#fff", borderRadius:8, cursor:"pointer", fontWeight: 600}}>Add Files</span>
-          <input type="file" multiple style={{display:"none"}} onChange={onPickFiles} accept="image/*,video/*,audio/*"/>
-        </label>
-        <div style={{display:"flex", gap:8, flexWrap:"wrap", alignItems: 'center'}}>
-          {assets.map((a, i) => (
-            <button key={i}
-              onClick={() => addClipAtPlayhead(a)}
-              title="Click to insert at playhead"
-              style={{border:"1px solid #4B5563", borderRadius:8, padding:"6px 10px", background:"#1F2937", color:"#fff", cursor: "pointer", fontSize: '0.875rem'}}
-            >
-              <span style={{fontWeight: 'bold', color: '#a78bfa', marginRight: '6px'}}>{a.type.toUpperCase()}</span>: {a.name}
-            </button>
-          ))}
-        </div>
+    <div className="h-full w-full flex flex-col bg-gray-900 text-white p-4 gap-4">
+      {isLoading && <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-50 text-white">Starting Creative Studio...</div>}
+      
+      <div className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${selection ? 'h-48' : 'h-0'}`}>
+        {selection && editorRef.current && (
+          <TopInspectorPanel
+            selection={selection}
+            edit={editorRef.current}
+            onDeleteClip={deleteClip}
+          />
+        )}
+      </div>
+
+      <div className="flex-grow relative min-h-0">
+        <div ref={canvasHostRef} data-shotstack-studio className="w-full h-full bg-black rounded-lg" />
+      </div>
+
+      <div className="flex-shrink-0">
+        <EditorToolbar
+            isPlaying={isPlaying}
+            onPlayPause={() => {
+                if (isPlaying) {
+                    controlsRef.current?.pause();
+                } else {
+                    controlsRef.current?.play();
+                }
+            }}
+            onStop={() => controlsRef.current?.stop()}
+            onUndo={() => editorRef.current?.undo()}
+            onRedo={() => editorRef.current?.redo()}
+            onAddMedia={() => setIsAssetModalOpen(true)}
+            onAiPolish={() => aic_addToast('AI Polish coming soon!', 'info')}
+            onRender={handleRender}
+            onOpenHelp={() => setIsHelpModalOpen(true)}
+        />
       </div>
       
-      {/* --- Editor --- */}
-      {loading && <div style={{color: 'white', opacity:.8, textAlign: 'center', padding: '50px'}}>Starting Editor…</div>}
-      <div ref={canvasHostRef} data-shotstack-studio style={{minHeight:420, background:"#000", borderRadius:8, display: loading ? 'none' : 'block'}} />
-      <div ref={timelineHostRef} data-shotstack-timeline style={{minHeight:300, background:"#111827", borderRadius:8, marginTop:16, display: loading ? 'none' : 'block'}} />
+      <div className="flex-shrink-0 h-72">
+        <div ref={timelineHostRef} data-shotstack-timeline className="w-full h-full bg-gray-800/50 rounded-lg" />
+      </div>
+      
+      {isAssetModalOpen && (
+        <AssetBrowserModal
+          project={project}
+          onClose={() => setIsAssetModalOpen(false)}
+          onAddClip={addClip}
+          addToast={aic_addToast}
+          lockAndExecute={aic_lockAndExecute}
+        />
+      )}
+      
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
     </div>
   );
 }
