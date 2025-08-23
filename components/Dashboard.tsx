@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Project } from '../types';
 import { FilePlusIcon } from './Icons';
 import KanbanBoard from './KanbanBoard';
-import { PLANS } from '../services/paymentService';
+import { PLANS } from '../services/plans';
 import { useAppContext } from '../contexts/AppContext';
 import Loader from './Loader';
 import * as supabase from '../services/supabaseService';
