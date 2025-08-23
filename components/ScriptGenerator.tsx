@@ -47,13 +47,21 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
                 start: start,
                 length: length,
                 transition: { in: 'fade', out: 'fade' },
-                effect: { motion: { in: index % 2 === 0 ? 'zoomIn' : 'zoomOut' } },
+                // FIX: The Studio SDK expects a string for the effect, not a nested object.
+                effect: index % 2 === 0 ? 'zoomIn' : 'zoomOut',
             });
         }
         
         if (scene.onScreenText && scene.onScreenText.trim() !== '') {
             timeline.tracks[1].clips.push({
-                asset: { type: 'title', text: scene.onScreenText, style: 'minimal', color: '#FFFFFF', background: 'rgba(0,0,0,0.5)' },
+                // FIX: The Studio SDK expects asset type 'text' not 'title' and has a different style schema.
+                // Simplifying to a compatible format.
+                asset: { 
+                    type: 'text', 
+                    text: scene.onScreenText,
+                    color: '#FFFFFF',
+                    // style, background etc. are handled differently in the SDK vs the API.
+                },
                 start: start,
                 length: length,
             });
@@ -77,7 +85,12 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
     if (script.cta && script.cta.trim() !== '') {
         timeline.tracks[1].clips.push({
-            asset: { type: 'title', text: script.cta, style: 'minimal', color: '#FFFFFF', background: 'rgba(0,0,0,0.7)' },
+            // FIX: Corrected asset type for the CTA as well.
+            asset: { 
+                type: 'text', 
+                text: script.cta,
+                color: '#FFFFFF',
+            },
             start: currentTime,
             length: 5,
         });
