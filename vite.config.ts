@@ -16,6 +16,10 @@ export default defineConfig({
       "@pixi/utils",
       "@pixi/*"
     ],
+    alias: {
+      "pixi.js": path.resolve(__dirname, "node_modules/pixi.js"),
+      "@pixi/core": path.resolve(__dirname, "node_modules/@pixi/core")
+    },
     preserveSymlinks: false,
   },
   optimizeDeps: {
