@@ -10,7 +10,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
-    preserveSymlinks: false
+    alias: {
+      "pixi.js": path.resolve(__dirname, "node_modules/pixi.js"),
+      "@pixi/core": path.resolve(__dirname, "node_modules/@pixi/core")
+    }
   },
   optimizeDeps: {
     include: ["@shotstack/shotstack-studio", "pixi.js"]
