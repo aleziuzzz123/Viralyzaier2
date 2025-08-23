@@ -5,6 +5,7 @@ import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
 import EditorToolbar from './EditorToolbar';
 import HelpModal from './HelpModal';
+import { supabaseUrl } from '../services/supabaseClient';
 
 type SDK = typeof import("@shotstack/shotstack-studio");
 
@@ -120,7 +121,8 @@ export default function StudioPage() {
         };
         const size = initialState.output.size;
 
-        const edit = new Edit(size);
+        const assetProxyUrl = `${supabaseUrl}/functions/v1/asset-proxy/`;
+        const edit = new Edit(size, assetProxyUrl);
         await edit.load();
         editorRef.current = edit;
         if (disposed) return;
