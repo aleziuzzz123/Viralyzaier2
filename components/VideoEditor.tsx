@@ -76,7 +76,7 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         controlsRef.current = controls;
         
         const tlWidth = timelineHost.current?.clientWidth || size.width;
-        timeline = new Timeline(edit, { width: tlWidth, height: 300, theme: customEditorTheme });
+        timeline = new Timeline(edit, { width: tlWidth, height: 300 }, customEditorTheme);
         await timeline.load(timelineHost.current!);
         if (disposed) return;
         timelineRef.current = timeline;
