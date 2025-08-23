@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "preinstall": "npx -y npm-force-resolutions || true",
+    "postinstall": "node -e \"console.log('[pixi-version]', require('pixi.js/package.json').version)\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
