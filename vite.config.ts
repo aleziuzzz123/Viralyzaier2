@@ -9,10 +9,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/graphics", "@pixi/color"],
+    // Only dedupe the top-level packages to ensure a single instance.
+    dedupe: ["@shotstack/shotstack-studio", "pixi.js"],
   },
   optimizeDeps: {
-    include: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/graphics", "@pixi/color"]
+    // Pre-bundle the main dependencies for faster dev server start.
+    include: ["@shotstack/shotstack-studio", "pixi.js"]
   },
   build: {
     rollupOptions: {
