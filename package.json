@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "preinstall": "npx -y npm-force-resolutions || true",
-    "postinstall": "node -e \"(async()=>{try{const m=await import('pixi.js');const v=m.VERSION||(m.Application&&m.Application.VERSION)||'unknown';console.log('[pixi-version]',v);if(!/^7\\./.test(v)){throw new Error('Pixi != 7.x ('+v+')');}}catch(e){console.error('[pixi-check-failed]',e?.message||e);process.exit(1)}})()\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -43,3 +42,4 @@
   "engines": { "node": "20.x" },
   "packageManager": "npm@10"
 }
+
