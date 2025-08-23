@@ -13,7 +13,6 @@ export default defineConfig({
     alias: {
       // point all pixi imports to our compat shim
       "pixi.js": path.resolve(__dirname, "src/shims/pixi7-compat.ts"),
-      "@pixi/core": path.resolve(__dirname, "node_modules/@pixi/core")
     }
   },
   optimizeDeps: {
