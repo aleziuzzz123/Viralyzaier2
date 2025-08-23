@@ -7,7 +7,8 @@ import {
     Project, User, PlanId, Blueprint, Toast, Platform, Opportunity, PerformanceReview, ContentGapSuggestion, 
     BrandIdentity, Notification, Script
 } from '../types';
-import { createCheckoutSession, PLANS } from '../services/paymentService';
+import { createCheckoutSession } from '../services/paymentService';
+import { PLANS } from '../services/plans';
 import { v4 as uuidv4 } from 'uuid';
 
 

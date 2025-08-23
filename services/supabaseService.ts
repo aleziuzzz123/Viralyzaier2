@@ -19,7 +19,7 @@ import {
     Json,
     Database,
 } from '../types';
-import { PLANS } from './paymentService';
+import { PLANS } from './plans';
 import { getErrorMessage } from '../utils';
 
 // Centralize the bucket name configuration
