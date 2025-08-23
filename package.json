@@ -4,19 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "preinstall": "npx -y npm-force-resolutions || true",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.13.0",
     "@shotstack/shotstack-studio": "1.5.0",
-    "@supabase/supabase-js": "^2.54.0",
     "pixi.js": "7.4.2",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "uuid": "^9.0.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
@@ -31,10 +27,6 @@
     "vite": "^5.2.0"
   },
   "overrides": {
-    "pixi.js": "7.4.2",
-    "@pixi/*": "7.4.2"
-  },
-  "resolutions": {
     "pixi.js": "7.4.2",
     "@pixi/*": "7.4.2"
   },
