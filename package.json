@@ -14,7 +14,7 @@
     "@google/genai": "^1.15.0",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "^2.44.4",
-    "pixi.js": "7.4.2",
+    "pixi.js": "7.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "uuid": "^9.0.1"
@@ -32,12 +32,12 @@
     "vite": "5.3.1"
   },
   "overrides": {
-    "pixi.js": "7.4.2",
-    "@pixi/*": "7.4.2"
+    "pixi.js": "7.2.4",
+    "@pixi/*": "7.2.4"
   },
   "resolutions": {
-    "pixi.js": "7.4.2",
-    "@pixi/*": "7.4.2"
+    "pixi.js": "7.2.4",
+    "@pixi/*": "7.2.4"
   },
   "engines": {
     "node": "20.x"
