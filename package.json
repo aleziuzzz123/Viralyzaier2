@@ -1,14 +1,36 @@
 {
+  "name": "viralyzaier-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "preinstall": "npx -y npm-force-resolutions || true",
-    "postinstall": "node -e \"(async()=>{const m=await import('pixi.js');console.log('[pixi-version]',m.VERSION||(m.Application&&m.Application.VERSION)||'unknown')})().catch(e=>{console.error('[pixi-check-failed]',e?.message||e);process.exit(1)})\"",
+    "postinstall": "node -e \"(async()=>{try{const m=await import('pixi.js');const v=m.VERSION||(m.Application&&m.Application.VERSION)||'unknown';console.log('[pixi-version]',v);if(!/^7\\./.test(v)){throw new Error('Pixi != 7.x ('+v+')');}}catch(e){console.error('[pixi-check-failed]',e?.message||e);process.exit(1)}})()\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "1.15.0",
     "@shotstack/shotstack-studio": "1.5.0",
-    "pixi.js": "7.4.2"
+    "@supabase/supabase-js": "2.44.4",
+    "pixi.js": "7.4.2",
+    "@pixi/core": "7.4.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "uuid": "9.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.66",
+    "@types/react-dom": "18.2.22",
+    "@types/uuid": "9.0.8",
+    "@vercel/node": "3.0.25",
+    "@vitejs/plugin-react": "4.2.1",
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.3",
+    "typescript": "5.2.2",
+    "vite": "5.2.0"
   },
   "overrides": {
     "pixi.js": "7.4.2",
