@@ -39,7 +39,7 @@
     "@pixi/*": "7.4.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "packageManager": "npm@10"
 }
