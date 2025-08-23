@@ -8,8 +8,116 @@ import { ELEVENLABS_VOICES, generateVoiceover, generateSfx } from '../services/g
 import { uploadFile, dataUrlToBlob, getBrandIdentitiesForUser } from '../services/supabaseService';
 import { searchJamendoMusic } from '../services/jamendoService';
 
-interface ScriptEditorProps {
-    project: Project;
+// --- Shotstack Studio JSON Sanitizer ---
+// Helper functions to sanitize Shotstack edit JSON before loading into the studio,
+// preventing crashes due to schema mismatches (ZodErrors).
+
+type AnyObj = Record<string, any>;
+
+const isObj = (v: any): v is AnyObj => v && typeof v === "object" && !Array.isArray(v);
+
+function normalizeEffect(effect: any): string | undefined {
+  if (effect == null) return undefined;
+  if (typeof effect === "string" && effect.trim()) return effect;
+  // Handle common UI pattern: { label: 'Zoom In', value: 'zoomIn' }
+  if (isObj(effect) && typeof effect.value === "string") return effect.value;
+  // Handle legacy Shotstack API format: { motion: { in: 'zoomIn' } }
+  if (isObj(effect) && isObj(effect.motion) && typeof effect.motion.in === 'string') return effect.motion.in;
+  return undefined;
+}
+
+function normalizeAsset(asset: any): AnyObj | undefined {
+  if (!isObj(asset)) {
+    // Attempt to recover if the entire asset is just a string (e.g., from a form field)
+    if (typeof asset === "string" && asset.trim()) {
+      return { type: "text", text: asset.trim() };
+    }
+    return undefined; // Invalid asset
+  }
+
+  const out: AnyObj = { ...asset };
+
+  // background must be an object, not a string
+  if (typeof out.background === "string") {
+    out.background = { color: out.background };
+  }
+  
+  // Explicitly correct invalid type 'title' to 'text'
+  if (out.type === 'title') {
+      out.type = 'text';
+  }
+
+  // Infer asset type if missing
+  if (typeof out.type !== "string") {
+    if (typeof out.text === "string") out.type = "text";
+    else if (typeof out.html === "string") out.type = "html";
+    else if (typeof out.src === "string" && /(\.mp4|\.mov|\/video)/i.test(out.src)) out.type = "video";
+    else if (typeof out.src === "string" && /(\.mp3|\.wav|\/audio)/i.test(out.src)) out.type = "audio";
+    else if (typeof out.src === "string") out.type = "image";
+    else if (out.shape) out.type = "shape";
+  }
+
+  // Ensure required fields exist for the given type
+  switch (out.type) {
+    case "text":
+      if (typeof out.text !== "string") out.text = String(out.text ?? "");
+      break;
+    case "html":
+      if (typeof out.html !== "string") out.html = "<div></div>";
+      if (typeof out.css !== "string") out.css = "";
+      break;
+    case "image":
+    case "video":
+    case "audio":
+    case "luma":
+      if (typeof out.src !== "string" || !out.src.trim()) return undefined; // Invalid if src is missing
+      break;
+    case "shape":
+      if (!["rectangle", "circle", "line"].includes(out.shape)) {
+         return undefined; // Invalid shape
+      }
+      break;
+    default:
+        return undefined; // Unknown type, drop the asset
+  }
+
+  return out;
+}
+
+function normalizeEdit(project: AnyObj): AnyObj {
+  const copy: AnyObj = JSON.parse(JSON.stringify(project));
+
+  if (!isObj(copy.timeline) || !Array.isArray(copy.timeline.tracks)) {
+    return copy;
+  }
+
+  copy.timeline.tracks = copy.timeline.tracks.map((track: any) => {
+    if (!isObj(track) || !Array.isArray(track.clips)) {
+      return { ...track, clips: [] };
+    }
+    const clips = track.clips
+      .map((clip: any) => {
+        if (!isObj(clip)) return null;
+        
+        const c: AnyObj = { ...clip };
+        const normalizedEffect = normalizeEffect(c.effect);
+        if (normalizedEffect) {
+            c.effect = normalizedEffect;
+        } else {
+            delete c.effect;
+        }
+
+        c.asset = normalizeAsset(c.asset);
+        
+        if (!c.asset) return null; // Drop clip if asset is invalid
+        return c;
+      })
+      .filter(Boolean);
+
+    return { ...track, clips };
+  });
+
+  return copy;
 }
 
 const buildTimelineFromProject = (project: Project): ShotstackEditJson | null => {
@@ -47,20 +155,16 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
                 start: start,
                 length: length,
                 transition: { in: 'fade', out: 'fade' },
-                // FIX: The Studio SDK expects a string for the effect, not a nested object.
                 effect: index % 2 === 0 ? 'zoomIn' : 'zoomOut',
             });
         }
         
         if (scene.onScreenText && scene.onScreenText.trim() !== '') {
             timeline.tracks[1].clips.push({
-                // FIX: The Studio SDK expects asset type 'text' not 'title' and has a different style schema.
-                // Simplifying to a compatible format.
                 asset: { 
                     type: 'text', 
                     text: scene.onScreenText,
                     color: '#FFFFFF',
-                    // style, background etc. are handled differently in the SDK vs the API.
                 },
                 start: start,
                 length: length,
@@ -85,7 +189,6 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
     if (script.cta && script.cta.trim() !== '') {
         timeline.tracks[1].clips.push({
-            // FIX: Corrected asset type for the CTA as well.
             asset: { 
                 type: 'text', 
                 text: script.cta,
@@ -119,11 +222,18 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
         });
     }
 
-    return {
+    const editJson = {
         timeline,
         output: { format: 'mp4', size: size },
     };
+
+    // Return the sanitized version to ensure compatibility with the Studio SDK
+    return normalizeEdit(editJson) as ShotstackEditJson;
 };
+
+interface ScriptEditorProps {
+    project: Project;
+}
 
 const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     const { t, user, consumeCredits, lockAndExecute, addToast, handleUpdateProject } = useAppContext();
