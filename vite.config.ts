@@ -1,15 +1,16 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { resolve } from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// __dirname is not available in ES modules, so we define it manually.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
-    alias: {
-      "pixi.js": resolve(__dirname, "node_modules/pixi.js"),
-      "@pixi/core": resolve(__dirname, "node_modules/@pixi/core")
-    }
+    preserveSymlinks: false
   },
   optimizeDeps: {
     include: ["@shotstack/shotstack-studio", "pixi.js"]
@@ -17,10 +18,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        studio: resolve(__dirname, "studio.html")
+        main: path.resolve(__dirname, 'index.html'),
+        studio: path.resolve(__dirname, 'studio.html')
       }
     }
   }
 });
-
