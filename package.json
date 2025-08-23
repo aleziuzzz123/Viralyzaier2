@@ -12,7 +12,7 @@
     "@google/genai": "^1.13.0",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "^2.54.0",
-    "pixi.js": "7.4.2",
+    "pixi.js": "7.4.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "uuid": "^9.0.1"
@@ -30,8 +30,8 @@
     "vite": "^5.2.0"
   },
   "overrides": {
-    "pixi.js": "7.4.2",
-    "@pixi/*": "7.4.2"
+    "pixi.js": "7.4.0",
+    "@pixi/*": "7.4.0"
   },
   "engines": {
     "node": ">=18"
