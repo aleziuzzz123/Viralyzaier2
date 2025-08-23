@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plan, PlanId } from '../types';
-import { PLANS } from '../services/paymentService';
+import { PLANS } from '../services/plans';
 import { CheckBadgeIcon, CrownIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { TranslationKey } from '../translations';
