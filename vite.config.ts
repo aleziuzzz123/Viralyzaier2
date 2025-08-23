@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/graphics", "@pixi/color", "@pixi/utils"],
+    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/graphics", "@pixi/color", "@pixi/utils", "@pixi/display"],
     alias: {
       // point all pixi imports to our compat shim
       "pixi.js": path.resolve(__dirname, "src/shims/pixi7-compat.ts"),

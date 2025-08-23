@@ -1,8 +1,14 @@
-// Re-export the aggregate API so generic imports from "pixi.js" still work
+// Make all default Pixi v7 exports available
 export * from "pixi.js";
 
-// Explicitly re-export the symbols Shotstack expects to find on "pixi.js"
-export { Filter, GpuProgram, GlProgram } from "@pixi/core";
+// Explicit re-exports that Shotstack’s bundle expects to exist on "pixi.js"
+export { Filter } from "@pixi/core";
 export { Graphics } from "@pixi/graphics";
 export { Color } from "@pixi/color";
 export { deprecation } from "@pixi/utils";
+export { Container } from "@pixi/display";
+
+// --- Pixi v8-only names used by Shotstack’s bundle ---
+// They do not exist in Pixi v7, so we provide harmless shims to satisfy Rollup.
+export const GpuProgram: any = undefined;
+export const GlProgram: any = undefined;
