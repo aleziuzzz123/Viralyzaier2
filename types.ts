@@ -129,7 +129,17 @@ export interface Script {
 export interface MoodboardImage { prompt: string; url: string; }
 export interface Blueprint { suggestedTitles: string[]; script: Script; moodboard: string[]; strategicSummary: string; platform: Platform; }
 export interface SceneAssets { visualUrl: string | null; voiceoverUrl: string | null; }
-export interface SoundDesign { musicUrl: string | null; sfxUrls: string[]; }
+
+export interface SfxObject {
+  description: string;
+  timecode: string;
+  url?: string; // Populated after generation
+}
+export interface SoundDesign {
+  musicQuery: string | null;
+  musicUrl: string | null;
+  sfx: SfxObject[];
+}
 export interface LaunchPlan {
   seo: { description: string; tags: string[]; };
   thumbnails: string[] | null;
@@ -170,6 +180,16 @@ export interface VideoPerformance { views: number; likes: number; comments: numb
 export interface PerformanceReview { summary: string; whatWorked: string[]; whatToImprove: string[]; }
 export interface Opportunity { idea: string; reason: string; suggestedTitle: string; type: 'Quick Win' | 'Growth Bet' | 'Experimental'; }
 export interface ContentGapSuggestion { idea: string; reason: string; potentialTitles: string[]; }
+export interface ViralTrendSuggestion {
+    topic: string;
+    angle: string;
+    hook: string;
+    suggestedTitle: string;
+    source: {
+        title: string;
+        uri: string;
+    };
+}
 export interface Notification {
   id: string;
   user_id: string;

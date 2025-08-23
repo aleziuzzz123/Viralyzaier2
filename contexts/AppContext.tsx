@@ -8,6 +8,7 @@ import {
     BrandIdentity, Notification, Script
 } from '../types';
 import { createCheckoutSession } from '../services/paymentService';
+import * as shotstackService from '../services/shotstackService';
 import { PLANS } from '../services/plans';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -71,6 +72,7 @@ interface AppContextType {
     handleCreateProjectForBlueprint: (topic: string, platform: Platform, title: string, voiceId: string | null, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint) => Promise<string | null>;
     handleCreateProjectFromIdea: (idea: Opportunity | ContentGapSuggestion, platform: Platform) => void;
     handleCreateProjectFromInsights: (review: PerformanceReview, project: Project) => void;
+    handleRenderProject: (projectId: string, editJson: any) => Promise<void>;
     
     // User Actions
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
@@ -382,6 +384,25 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         openConfirmationModal(t('confirmation_modal.delete_project_title'), t('confirmation_modal.delete_project_message'), confirmDelete);
     }, [activeProjectId, t, addToast, openConfirmationModal, setActiveProjectId]);
     
+    const handleRenderProject = useCallback(async (projectId: string, editJson: any) => {
+        await handleUpdateProject(projectId, { shotstackEditJson: editJson });
+        if (!await consumeCredits(10)) return; // Cost for rendering
+
+        try {
+            const { renderId } = await shotstackService.submitRender(editJson, projectId);
+            await handleUpdateProject(projectId, {
+                shotstackRenderId: renderId,
+                status: 'Rendering',
+                workflowStep: 4,
+            });
+            addToast('Render submitted! Your video is being created in the cloud.', 'success');
+        } catch (e) {
+            addToast(`Render submission failed: ${getErrorMessage(e)}`, 'error');
+            // Revert status if submission fails
+            handleUpdateProject(projectId, { status: 'Scripting', workflowStep: 3 });
+        }
+    }, [handleUpdateProject, consumeCredits, addToast]);
+    
     const openScheduleModal = (projectId: string) => { setProjectToSchedule(projectId); setIsScheduleModalOpen(true); };
     const closeScheduleModal = () => { setIsScheduleModalOpen(false); setProjectToSchedule(null); };
     const clearBackendError = () => setBackendError(null);
@@ -399,7 +420,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             openScheduleModal, closeScheduleModal, openConfirmationModal, handleConfirmation,
             handleCancelConfirmation, clearBackendError, dismissTutorial, lockAndExecute, handleUpdateProject,
             handleDeleteProject, handleCreateProjectForBlueprint, handleCreateProjectFromIdea,
-            handleCreateProjectFromInsights,
+            handleCreateProjectFromInsights, handleRenderProject,
             setUser
         }}>
             {children}

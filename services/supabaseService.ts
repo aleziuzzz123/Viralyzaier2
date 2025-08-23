@@ -328,41 +328,6 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
     return projectRowToProject(data);
 };
 
-/**
- * Dedicated function to safely update voiceover URLs.
- * This isolates the problematic jsonb update from the generic update function.
- */
-export const saveVoiceovers = async (projectId: string, urls: { [key: number]: string }): Promise<Project> => {
-    const payloadObject: Record<string, string> = {};
-    for (const key in urls) {
-        if (Object.prototype.hasOwnProperty.call(urls, key)) {
-            payloadObject[String(key)] = urls[key];
-        }
-    }
-
-    const payload: ProjectUpdate = { 
-        voiceover_urls: payloadObject as unknown as Json,
-        last_updated: new Date().toISOString()
-    };
-    
-    const table = supabase.from('projects');
-    const { data, error } = await table
-        .update(payload as any)
-        .eq('id', projectId)
-        .select('*')
-        .single();
-    
-    if (error) {
-        console.error('Failed to save voiceover URLs:', { projectId, urls, error });
-        throw new Error(`Failed to save voiceovers: ${getErrorMessage(error)}`);
-    }
-    if (!data) {
-        throw new Error("Failed to save voiceovers: no data returned from update.");
-    }
-
-    return projectRowToProject(data);
-};
-
 export const updateProject = async (projectId: string, updates: Partial<Project>): Promise<Project> => {
     const dbUpdates: ProjectUpdate = { last_updated: new Date().toISOString() };
     

@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset, JamendoTrack, GiphyAsset } from '../types.ts';
+import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset, JamendoTrack, GiphyAsset, ViralTrendSuggestion } from '../types.ts';
 import * as supabase from './supabaseService.ts';
 
 const parseGeminiJson = <T>(res: { text: string | null | undefined }, fallback: T | null = null): T => {
@@ -44,6 +44,54 @@ const urlToDataUrl = async (url: string): Promise<string> => {
     });
 };
 
+export const exploreViralTrends = async (niche: string): Promise<{ trends: ViralTrendSuggestion[], sources: any[] }> => {
+    const prompt = `You are a viral trend analyst. Your task is to identify emerging and popular video ideas for a specific niche using Google Search.
+
+**Niche:** "${niche}"
+
+**Instructions:**
+1.  Use the Google Search tool to find recent (last 30 days), highly engaging articles, blog posts, or popular videos related to the specified niche.
+2.  Analyze the search results to identify 3 distinct, actionable, and timely video ideas that have high viral potential.
+3.  For each idea, synthesize the information into a specific format.
+
+**Output Format:**
+Your response **MUST** be a valid JSON object. Do not include any other text or markdown formatting. The JSON object must contain a single key, "trends", which is an array of 3 objects. Each object must have the following structure:
+{
+  "topic": "The core subject of the video idea.",
+  "angle": "The unique perspective or hook that makes this trend interesting.",
+  "hook": "A short, punchy opening sentence for the video script.",
+  "suggestedTitle": "A clickable, optimized title for the video."
+}`;
+
+    const response = await supabase.invokeEdgeFunction<{ text: string, candidates?: any[] }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash', 
+            contents: prompt,
+            config: {
+                tools: [{googleSearch: {}}],
+            }
+        }
+    });
+    
+    const trendsResult = parseGeminiJson<{ trends: Omit<ViralTrendSuggestion, 'source'>[] }>(response, { trends: [] });
+    
+    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
+      ?.map((chunk: any) => ({
+        uri: chunk.web?.uri,
+        title: chunk.web?.title,
+      }))
+      .filter((source: any) => source.uri && source.title) || [];
+      
+    // Augment each trend with the most relevant source
+    const finalTrends: ViralTrendSuggestion[] = trendsResult.trends.map((trend, index) => ({
+        ...trend,
+        source: sources[index % sources.length] || { title: 'General Web Search', uri: '#' }
+    }));
+
+    return { trends: finalTrends, sources };
+};
+
 export const generateVideoBlueprint = async (
     topicOrUrl: string, 
     platform: Platform,
@@ -52,9 +100,10 @@ export const generateVideoBlueprint = async (
     desiredLengthInSeconds: number,
     brandIdentity?: BrandIdentity | null,
     shouldGenerateMoodboard: boolean = true,
-    isNarratorEnabled: boolean = true
+    isNarratorEnabled: boolean = true,
+    creativeIntent?: string
 ): Promise<Blueprint> => {
-    onProgress("Consulting AI strategist for core concepts...");
+    onProgress("Consulting AI Creative Director...");
     
     const formatDescription = platform === 'youtube_long' 
         ? "a horizontal, long-form YouTube video" 
@@ -76,14 +125,23 @@ export const generateVideoBlueprint = async (
     const narratorInstruction = isNarratorEnabled
         ? "The 'voiceover' field for each scene should contain the spoken script for the narrator."
         : "CRITICAL: The narrator is disabled. All 'voiceover' fields in the 'scenes' array MUST be empty strings (''). The story must be told exclusively through compelling 'visual' descriptions and engaging 'onScreenText'.";
+
+    const styleInstructions = {
+        'High-Energy Viral': "Adopt a high-energy, fast-paced, and bold style. Use strong claims, quick cuts, and enthusiastic language. Visuals should be dynamic and eye-catching.",
+        'Cinematic Documentary': "Adopt a thoughtful, narrative, and elegant style. Focus on storytelling, evocative language, and cinematic visual descriptions. The pacing should be deliberate.",
+        'Clean & Corporate': "Adopt a clear, professional, and trustworthy tone. Structure information logically and use polished language. Visuals should be clean and modern.",
+        'Animation': "The script's 'visual' descriptions must be written as directions for an animator. The 'moodboardDescription' prompts should generate concept art in a consistent style (e.g., 'concept art for a friendly robot character in a flat 2D style').",
+        'Vlog': "Write the script in a first-person, conversational, and relatable tone. 'Visual' descriptions should suggest typical vlogging shots (e.g., 'Talking head shot, slightly off-center', 'Quick cut to a B-roll of making coffee').",
+        'Historical Documentary': "Adopt a formal, narrative, and authoritative tone, like a historian. 'Visual' descriptions must call for archival-style footage, old maps, or historical recreations. 'MoodboardDescription' prompts should be for generating historically-styled images.",
+        'Whiteboard': "The script should be educational and structured for a whiteboard animation. 'Visual' descriptions must detail what should be drawn on the whiteboard to illustrate the voiceover (e.g., 'A simple line drawing of a lightbulb turning on as the idea is explained').",
+    };
         
-    const textPrompt = `You are a world-class viral video strategist for ${formatDescription}. Your task is to generate a complete video blueprint based on the following parameters:
+    const textPrompt = `You are a world-class AI Creative Director for ${formatDescription}. Your task is to generate a complete video blueprint based on the following parameters:
 **Topic/URL:** "${topicOrUrl}"
 **Desired Video Length:** Approximately ${desiredLengthInSeconds} seconds. Your script's pacing and scene count must reflect this.
-**Chosen Video Style:** "${style}". This style MUST heavily influence every aspect of your output.
-- For 'High-Energy Viral': Fast pacing, bold claims, quick cuts, high-enthusiasm language.
-- For 'Cinematic Documentary': Thoughtful pacing, narrative structure, elegant language, evocative visuals.
-- For 'Clean & Corporate': Clear, professional language, structured information, trustworthy tone.
+**Chosen Video Style:** "${style}". Your output MUST be deeply influenced by this style. Follow these specific instructions: ${styleInstructions[style] || styleInstructions['High-Energy Viral']}
+
+**User's Creative Intent:** "${creativeIntent || 'No specific intent provided, follow the main style guide.'}"
 
 **Brand Identity to Adhere To:**
 ${brandIdentityPrompt}
@@ -92,7 +150,7 @@ Your output MUST be a JSON object with the following structure:
 1. "strategicSummary": A concise summary explaining WHY this video concept, in this style and for this brand, will perform well.
 2. "suggestedTitles": An array of 5 S-Tier titles, tailored to the chosen style and brand identity.
 3. "script": A full script object, with hooks, scenes, and a CTA, all written in the chosen style and brand voice. The total duration should match the desired length. ${narratorInstruction}
-4. "moodboardDescription": An array of descriptive prompts for an AI image generator. CRITICAL: This array MUST have the exact same number of elements as the "script.scenes" array. Each prompt must correspond to the "visual" description of its respective scene.`;
+4. "moodboardDescription": An array of descriptive prompts for an AI image generator. CRITICAL: This array MUST have the exact same number of elements as the "script.scenes" array. Each prompt must correspond to the "visual" description of its respective scene and match the chosen video style.`;
     
     const systemInstruction = `You are a world-class viral video strategist and your response MUST be a valid JSON object that strictly adheres to the provided schema. Ensure all fields, especially arrays like 'scenes' and 'suggestedTitles', are populated with high-quality, relevant content and are never empty. The output must reflect the chosen video style, desired length, and brand identity.`;
 
@@ -515,117 +573,16 @@ export const analyzeCompetitorVideo = async (url: string): Promise<CompetitorAna
     return analysisResult;
 };
 
-export const performChannelAudit = async (videos: {title: string; views: number; likes: number; comments: number}[]): Promise<ChannelAudit> => {
-    const videoDataSummary = videos.map(v => `Title: "${v.title}", Views: ${v.views}, Likes: ${v.likes}`).join('\n');
-
-    const prompt = `
-**Primary Directive: YouTube Channel Audit**
-
-**Role:** You are an expert YouTube channel strategist. I am providing you with a list of a channel's recent videos and their performance metrics.
-
-**Video Data:**
-${videoDataSummary}
-
-**Task:** Analyze this data to identify patterns of success. Based *only* on this data, perform a comprehensive channel audit. Your analysis must be sharp and actionable.
-
-**Your final response MUST be a valid JSON object.** Do not include any other text or markdown formatting. The JSON structure must be:
-{
-    "contentPillars": ["An array of 3-5 distinct content categories or themes the channel focuses on based on the video titles."],
-    "audiencePersona": "A detailed paragraph describing the target viewer, their interests, and pain points, as inferred from the video topics and performance.",
-    "viralFormula": "A concise, actionable formula that breaks down the recurring elements in their most successful videos (e.g., 'Fast-paced editing + Controversial opinion hook + Relatable problem-solving'). Infer this from the titles of high-performing videos.",
-    "opportunities": [
-        {
-            "idea": "A specific, new video idea that combines successful themes.",
-            "reason": "Why this idea will resonate with their audience and align with their successful formula.",
-            "suggestedTitle": "A clickable, optimized title for the video.",
-            "type": "Categorize as 'Quick Win', 'Growth Bet', or 'Experimental'."
-        }
-    ]
-}`;
-
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash', 
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        contentPillars: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        audiencePersona: { type: Type.STRING },
-                        viralFormula: { type: Type.STRING },
-                        opportunities: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    idea: { type: Type.STRING },
-                                    reason: { type: Type.STRING },
-                                    suggestedTitle: { type: Type.STRING },
-                                    type: { type: Type.STRING }
-                                },
-                                required: ["idea", "reason", "suggestedTitle", "type"]
-                            }
-                        }
-                    },
-                    required: ["contentPillars", "audiencePersona", "viralFormula", "opportunities"]
-                }
-            }
-        }
-    });
-
-    return parseGeminiJson<ChannelAudit>(response);
-};
-
-export const generateSoundDesign = async (script: Script, vibe: string, topic: string): Promise<SoundDesign> => {
-    const prompt = `You are an AI sound designer for viral videos. The video is about "${topic}" and needs a "${vibe}" vibe. Here is the script:
-${JSON.stringify(script.scenes.map(s => ({ timecode: s.timecode, voiceover: s.voiceover })), null, 2)}
-
-Your task is to suggest background music and specific sound effects (SFX).
-
-Your output MUST be a JSON object with this structure:
-1. "music": A detailed description of the suggested background music track. Describe its genre, tempo, mood, and instrumentation (e.g., "Uplifting, driving synth-pop with a strong beat and optimistic synth melodies.").
-2. "sfx": An array of SFX objects. Each object needs a "timecode" matching the script and a "description" of the sound effect (e.g., "whoosh", "camera shutter", "gentle notification ping"). Only include SFX for key moments.`;
-
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        music: { type: Type.STRING },
-                        sfx: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    timecode: { type: Type.STRING },
-                                    description: { type: Type.STRING }
-                                },
-                                required: ["timecode", "description"]
-                            }
-                        }
-                    },
-                    required: ["music", "sfx"]
-                }
-            }
-        }
-    });
-    
-    return parseGeminiJson<SoundDesign>(response);
-};
-
 export const rewriteScriptScene = async (scene: Scene, action: string): Promise<Partial<Scene>> => {
-    const prompt = `Rewrite the following video scene to be "${action}". Respond ONLY with a JSON object containing the updated "visual" and "voiceover" fields.
-    Original scene:
-    Visual: ${scene.visual}
-    Voiceover: ${scene.voiceover}`;
+    const prompt = `You are an AI script co-writer. Your task is to rewrite a single scene from a video script based on a specific action.
+
+**Original Scene:**
+- **Visual:** "${scene.visual}"
+- **Voiceover:** "${scene.voiceover}"
+
+**Action:** "${action}"
+
+Rewrite the 'visual' and 'voiceover' fields for this scene to accomplish the requested action. Your output MUST be a JSON object with the 'visual' and 'voiceover' keys.`;
 
     const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
         type: 'generateContent',
@@ -645,33 +602,168 @@ export const rewriteScriptScene = async (scene: Scene, action: string): Promise<
             }
         }
     });
+
     return parseGeminiJson<Partial<Scene>>(response);
 };
 
-export const generateStoryboardImage = async (visualDescription: string): Promise<string> => {
-    const prompt = `Create a cinematic, visually stunning storyboard image for a video scene with the following description: "${visualDescription}". The style should be slightly painterly and evocative, focusing on composition and mood.`;
+export const generateSeo = async (title: string, script: Script, platform: Platform): Promise<LaunchPlan['seo']> => {
+    const scriptSummary = script.scenes.map(s => s.voiceover).join(' ').substring(0, 1000);
+    const prompt = `You are a YouTube SEO expert. Based on the video title and script summary, generate an optimized description and relevant tags.
 
-    const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
-        type: 'generateImages',
-        params: {
-            model: 'imagen-3.0-generate-002',
-            prompt: prompt,
-            config: {
-                numberOfImages: 1,
-                outputMimeType: 'image/jpeg',
-                aspectRatio: '16:9'
-            }
-        }
-    });
-    return `data:image/jpeg;base64,${imageResult.generatedImages[0].image.imageBytes}`;
-};
+**Title:** "${title}"
+**Platform:** ${platform}
+**Script Summary:** "${scriptSummary}"
 
-export const reviewVideoPerformance = async (performance: VideoPerformance, videoTitle: string): Promise<PerformanceReview> => {
-    const prompt = `Analyze the performance of a YouTube video titled "${videoTitle}" with the following stats: ${JSON.stringify(performance)}. Provide a concise summary, 3 bullet points on what worked well, and 3 on what to improve. Output a JSON object.`;
+Your output must be a JSON object with:
+1. "description": A paragraph-based, SEO-rich description that includes keywords naturally.
+2. "tags": An array of 15-20 relevant, high-traffic tags.`;
+    
     const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
         type: 'generateContent',
         params: {
             model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        description: { type: Type.STRING },
+                        tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ["description", "tags"]
+                }
+            }
+        }
+    });
+
+    return parseGeminiJson<LaunchPlan['seo']>(response);
+};
+
+export const analyzeAndGenerateThumbnails = async (title: string, platform: Platform): Promise<string[]> => {
+    const thumbnailPrompt = `You are a viral thumbnail designer. Your task is to generate 2 distinct, high-CTR thumbnail concepts for a video titled "${title}". Focus on bold text, clear subject matter, and emotional expression. Generate an array of 2 detailed prompts for an AI image generator.`;
+
+    const promptResponse = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash',
+            contents: thumbnailPrompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            }
+        }
+    });
+
+    const prompts = parseGeminiJson<string[]>(promptResponse);
+    if (!prompts || prompts.length === 0) {
+        throw new Error("AI failed to generate thumbnail prompts.");
+    }
+    
+    const imagePromises = prompts.slice(0, 2).map(prompt => {
+        return supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
+            type: 'generateImages',
+            params: {
+                model: 'imagen-3.0-generate-002',
+                prompt: `YouTube thumbnail for a video titled "${title}". Style: ${prompt}. High contrast, bold colors, clear subject.`,
+                config: {
+                    numberOfImages: 1,
+                    outputMimeType: 'image/jpeg',
+                    aspectRatio: platform === 'youtube_long' ? '16:9' : '9:16'
+                }
+            }
+        });
+    });
+
+    const results = await Promise.all(imagePromises);
+    return results.map(res => `data:image/jpeg;base64,${res.generatedImages[0].image.imageBytes}`);
+};
+
+export const getSchedulingSuggestion = async (topic: string): Promise<string> => {
+    const prompt = `You are a social media expert. Based on the topic "${topic}", what is the absolute best day and time to post this video for maximum engagement? Provide a short, direct answer. Example: "For this topic, the best time to post is **Tuesday at 2 PM EST** to catch the afternoon browsing wave."`;
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        }
+    });
+    return response.text ?? 'Could not determine a suggestion.';
+};
+
+export const repurposeProject = async (script: Script, title: string, fromPlatform: Platform, toPlatform: Platform): Promise<Script> => {
+    const prompt = `You are a content repurposing expert. Convert this script from a ${fromPlatform} video to a ${toPlatform} video.
+**Original Title:** ${title}
+**Original Script:** ${JSON.stringify(script)}
+You must re-format the script, shorten the scenes, and adapt the language for the new platform. Your output must be a valid JSON object containing only the new script.`;
+    
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        scenes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { timecode: { type: Type.STRING }, visual: { type: Type.STRING }, voiceover: { type: Type.STRING }, onScreenText: { type: Type.STRING } }, required: ["timecode", "visual", "voiceover", "onScreenText"] } },
+                        cta: { type: Type.STRING }
+                    },
+                    required: ["hooks", "scenes", "cta"]
+                }
+            }
+        }
+    });
+
+    return parseGeminiJson<Script>(response);
+};
+
+
+export const performChannelAudit = async (videos: { title: string, views: number, likes: number, comments: number }[]): Promise<ChannelAudit> => {
+    const videoData = JSON.stringify(videos.slice(0, 10)); // Use top 10 videos
+    const prompt = `You are a world-class YouTube strategist. Analyze this list of a creator's recent videos and their performance metrics.
+**Video Data:** ${videoData}
+Based SOLELY on this data, perform a channel audit. Your output must be a JSON object with:
+1. "contentPillars": An array of 3-5 strings identifying the core recurring themes or topics that perform well.
+2. "audiencePersona": A concise paragraph describing the channel's likely target viewer.
+3. "viralFormula": A short, actionable sentence describing the repeatable pattern in their successful videos (e.g., "Combining historical facts with fast-paced editing and a mysterious hook creates high engagement.").
+4. "opportunities": An array of 3 distinct "Opportunity" objects for new video ideas. Each object must have: "idea" (the concept), "reason" (why it will work based on the data), "suggestedTitle", and "type" ('Quick Win', 'Growth Bet', or 'Experimental').`;
+
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash', 
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        contentPillars: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        audiencePersona: { type: Type.STRING },
+                        viralFormula: { type: Type.STRING },
+                        opportunities: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { idea: { type: Type.STRING }, reason: { type: Type.STRING }, suggestedTitle: { type: Type.STRING }, type: { type: Type.STRING } }, required: ["idea", "reason", "suggestedTitle", "type"] } }
+                    },
+                    required: ["contentPillars", "audiencePersona", "viralFormula", "opportunities"]
+                }
+            }
+        }
+    });
+
+    return parseGeminiJson(response);
+};
+
+export const reviewVideoPerformance = async (performance: VideoPerformance, title: string): Promise<PerformanceReview> => {
+    const prompt = `Analyze the performance of a YouTube video titled "${title}" with these stats: ${JSON.stringify(performance)}. Your output must be a JSON object with a "summary", a "whatWorked" array of strings, and a "whatToImprove" array of strings.`;
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gemini-2.5-flash', 
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -691,7 +783,7 @@ export const reviewVideoPerformance = async (performance: VideoPerformance, vide
 };
 
 export const suggestContentGaps = async (successfulTopics: string[], channelTopic: string): Promise<ContentGapSuggestion[]> => {
-    const prompt = `Based on these successful video topics for a channel about "${channelTopic}": ${successfulTopics.join(', ')}. Suggest 3 new, related video ideas that fill a content gap. For each idea, provide a reason why it would work and 3 potential titles. Output a JSON array.`;
+    const prompt = `Based on a channel's main topic "${channelTopic}" and these successful video topics: ${JSON.stringify(successfulTopics)}, identify 3 content gaps. Your output must be a JSON array of objects, each with an "idea", a "reason" it will work, and an array of 3 "potentialTitles".`;
     const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
         type: 'generateContent',
         params: {
@@ -717,18 +809,14 @@ export const suggestContentGaps = async (successfulTopics: string[], channelTopi
     return parseGeminiJson<ContentGapSuggestion[]>(response);
 };
 
-export const getSchedulingSuggestion = async (topic: string): Promise<string> => {
-    const prompt = `For a video about "${topic}", what is the absolute best day and time to post for maximum engagement? Provide a short, direct answer with a brief justification. Example: "Post on **Saturday at 11:00 AM EST**. This timing catches the weekend audience...".`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: { model: 'gemini-2.5-flash', contents: prompt }
-    });
-    return response.text || "Could not determine a suggestion.";
-};
+export const generateSoundDesign = async (script: Script, videoStyle: VideoStyle, topic: string): Promise<SoundDesign> => {
+    const scriptSummary = script.scenes.map((s, i) => `Scene ${i+1}: ${s.voiceover} (${s.timecode})`).join('\n');
+    const prompt = `You are a sound designer for a "${videoStyle}" style video about "${topic}". Based on the script, suggest background music and 3-5 sound effects.
+Script Summary: ${scriptSummary}
+Your output must be a JSON object with:
+1. "musicQuery": A search query for a stock music library (e.g., "upbeat corporate synth pop").
+2. "sfx": An array of objects, each with "description" (e.g., "subtle whoosh") and "timecode" (the exact timecode from the script where it should be placed).`;
 
-export const generateSeo = async (title: string, script: Script, platform: Platform): Promise<LaunchPlan['seo']> => {
-    const scriptSummary = script.scenes.map(s => s.voiceover).join(' ').substring(0, 1000);
-    const prompt = `Generate an optimized YouTube description and relevant tags for a video on ${platform}. Title: "${title}". Summary: "${scriptSummary}". The description should be engaging and include relevant keywords. Provide 15-20 relevant tags. Respond with a JSON object.`;
     const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
         type: 'generateContent',
         params: {
@@ -739,153 +827,56 @@ export const generateSeo = async (title: string, script: Script, platform: Platf
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        description: { type: Type.STRING },
-                        tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        musicQuery: { type: Type.STRING },
+                        sfx: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { description: { type: Type.STRING }, timecode: { type: Type.STRING } }, required: ["description", "timecode"] } }
                     },
-                    required: ["description", "tags"]
+                    required: ["musicQuery", "sfx"]
                 }
             }
         }
     });
-    return parseGeminiJson<LaunchPlan['seo']>(response);
-};
 
-export const analyzeAndGenerateThumbnails = async (title: string, platform: Platform): Promise<string[]> => {
-    const prompt = `Based on the video title "${title}", generate 2 distinct, high-CTR thumbnail concepts. For each, provide a detailed prompt for an AI image generator. The style should be vibrant, high-contrast, and eye-catching. Respond with a JSON object containing a "prompts" array.`;
-    const promptResponse = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        prompts: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ["prompts"]
-                }
-            }
-        }
-    });
-    const { prompts } = parseGeminiJson<{ prompts: string[] }>(promptResponse);
-    const aspectRatio = platform === 'youtube_long' ? '16:9' : '16:9';
-    const imagePromises = prompts.slice(0, 2).map(p =>
-        supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
-            type: 'generateImages',
-            params: {
-                model: 'imagen-3.0-generate-002',
-                prompt: p,
-                config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio }
-            }
-        })
-    );
-    const imageResults = await Promise.all(imagePromises);
-    return imageResults.map(res => `data:image/jpeg;base64,${res.generatedImages[0].image.imageBytes}`);
-};
-
-export const repurposeProject = async (script: Script, title: string, fromPlatform: Platform, toPlatform: Platform): Promise<Script> => {
-    const prompt = `Adapt the following script for a "${title}" video from ${fromPlatform} to ${toPlatform}. Adjust pacing, tone, and structure. The new script should be concise and engaging for the new platform. Respond with a JSON object of the new script. Original script: ${JSON.stringify(script)}`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        scenes: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: { timecode: { type: Type.STRING }, visual: { type: Type.STRING }, voiceover: { type: Type.STRING }, onScreenText: { type: Type.STRING } },
-                                required: ["timecode", "visual", "voiceover", "onScreenText"]
-                            }
-                        },
-                        cta: { type: Type.STRING }
-                    },
-                    required: ["hooks", "scenes", "cta"]
-                }
-            }
-        }
-    });
-    return parseGeminiJson<Script>(response);
-};
-
-export const emphasizeSubtitleText = async (text: string): Promise<Partial<SubtitleWord>[]> => {
-    const prompt = `For the subtitle text "${text}", identify 1-3 key words to emphasize for virality. Respond with a JSON array where each object has a "word" (the word to change) and a "style" object (with "fontWeight": 900 and "color": "#facc15").`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            word: { type: Type.STRING },
-                            style: { type: Type.OBJECT, properties: { fontWeight: { type: Type.INTEGER }, color: { type: Type.STRING } } }
-                        },
-                        required: ["word", "style"]
-                    }
-                }
-            }
-        }
-    });
-    const result = parseGeminiJson<{ word: string, style: { fontWeight: number, color: string } }[]>(response);
-    // This is a bit of a hack to match the type, but it works for this purpose
-    return text.split(' ').map(word => {
-        const emphasized = result.find(r => r.word.toLowerCase().includes(word.toLowerCase()));
-        return { word, style: emphasized ? emphasized.style : undefined };
-    });
-};
-
-export const getAiBrollSuggestion = async (scriptText: string): Promise<{ type: 'stock' | 'ai_video'; query?: string; prompt?: string }> => {
-    return await supabase.invokeEdgeFunction('ai-broll-generator', { scriptText });
+    const result = parseGeminiJson<Omit<SoundDesign, 'musicUrl'>>(response);
+    return { ...result, musicUrl: null };
 };
 
 export const searchPexels = async (query: string, type: 'videos' | 'photos'): Promise<NormalizedStockAsset[]> => {
-    const response = await supabase.invokeEdgeFunction<{ photos?: StockAsset[], videos?: StockAsset[] }>('pexels-proxy', { query, type });
-    const assets = type === 'videos' ? response.videos : response.photos;
-    return (assets || []).map((asset: any) => ({
+    const data = await supabase.invokeEdgeFunction<{ [key: string]: StockAsset[] }>(`pexels-proxy`, { query, type });
+    const key = type === 'videos' ? 'videos' : 'photos';
+    const assets = data[key] || [];
+    return assets.map(asset => ({
         id: asset.id,
         previewImageUrl: type === 'videos' ? asset.image! : asset.src!.medium,
-        downloadUrl: type === 'videos' ? asset.video_files!.find((f: any) => f.quality === 'hd')?.link || asset.video_files![0].link : asset.src!.large2x,
+        downloadUrl: type === 'videos' ? asset.video_files!.find(f => f.quality === 'hd')?.link || asset.video_files![0].link : asset.src!.large2x,
         type: type === 'videos' ? 'video' : 'image',
-        description: type === 'videos' ? `Video by ${asset.photographer}` : asset.alt || `Photo by ${asset.photographer}`,
+        description: type === 'videos' ? `Video by ${asset.photographer}` : asset.alt!,
         duration: asset.duration,
-        provider: 'pexels'
+        provider: 'pexels',
     }));
 };
 
 export const searchJamendoMusic = async (query: string): Promise<NormalizedStockAsset[]> => {
-    const response = await supabase.invokeEdgeFunction<{ results: JamendoTrack[] }>('jamendo-proxy', { query });
-    return (response.results || []).map(track => ({
+    const data = await supabase.invokeEdgeFunction<{ results: JamendoTrack[] }>('jamendo-proxy', { query });
+    return (data.results || []).map(track => ({
         id: track.id,
         previewImageUrl: track.image,
         downloadUrl: track.audio,
         type: 'audio',
         description: `${track.name} by ${track.artist_name}`,
         duration: track.duration,
-        provider: 'jamendo'
+        provider: 'jamendo',
     }));
 };
 
-export const searchGiphy = async (query: string, type: 'stickers' | 'gifs' = 'stickers'): Promise<NormalizedStockAsset[]> => {
-    const response = await supabase.invokeEdgeFunction<GiphyAsset[]>('giphy-proxy', { query, type });
-    return (response || []).map(gif => ({
-        id: gif.id,
-        previewImageUrl: gif.images.fixed_height.webp || gif.images.fixed_height.url,
-        downloadUrl: gif.images.original.webp || gif.images.original.url,
+
+export const searchGiphy = async (query: string, type: 'gifs' | 'stickers'): Promise<NormalizedStockAsset[]> => {
+    const assets = await supabase.invokeEdgeFunction<GiphyAsset[]>('giphy-proxy', { query, type });
+    return assets.map(asset => ({
+        id: asset.id,
+        previewImageUrl: asset.images.fixed_height.webp || asset.images.fixed_height.url,
+        downloadUrl: asset.images.original.webp || asset.images.original.url,
         type: 'sticker',
-        description: gif.title,
-        provider: 'giphy'
+        description: asset.title,
+        provider: 'giphy',
     }));
 };
