@@ -7,7 +7,8 @@
     "preinstall": "npx -y npm-force-resolutions || true",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node -e \"try{console.log('[pixi]',require('pixi.js').VERSION)}catch(e){console.error('[pixi-check-failed]',e?.message||e);process.exit(1)}\""
   },
   "dependencies": {
     "@google/genai": "1.15.0",
@@ -42,4 +43,3 @@
   "engines": { "node": "20.x" },
   "packageManager": "npm@10"
 }
-
