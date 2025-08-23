@@ -60,8 +60,9 @@ const VideoEditor = forwardRef<VideoEditorHandles, VideoEditorProps>((
         if (disposed) return;
         
         const size = initialState.output?.size ?? { width: 1024, height: 576 };
+        const backgroundColor = initialState.timeline?.background ?? '#000000';
         
-        const edit = new Edit(size);
+        const edit = new Edit(size, backgroundColor);
         await edit.load();
         if (disposed) return;
         editRef.current = edit;
