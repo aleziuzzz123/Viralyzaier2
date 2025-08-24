@@ -171,7 +171,7 @@ export default function StudioPage() {
         {selection && editorRef.current && (
           <TopInspectorPanel
             selection={selection}
-            edit={editorRef.current as any}
+            studio={editorRef.current as any}
             onDeleteClip={deleteClip}
           />
         )}
