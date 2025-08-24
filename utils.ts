@@ -85,13 +85,15 @@ export const createAssetProxyUrl = (url: string | null | undefined): string => {
         return url || ''; // Don't proxy local/invalid URLs, return empty string for null/undefined
     }
      // Prevent double-proxying
-    if (url.includes('/functions/v1/asset-proxy/')) {
+    if (url.includes('/functions/v1/asset-proxy')) {
         return url;
     }
     // The proxy function is at /functions/v1/asset-proxy
     const filename = url.split('/').pop()?.split('?')[0] || 'asset';
-    // Return an absolute URL to ensure compatibility with the SDK in all contexts.
-    const proxyUrl = new URL(`/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`, window.location.origin);
+    // Use query parameters for a more robust URL structure
+    const proxyUrl = new URL(`/functions/v1/asset-proxy`, window.location.origin);
+    proxyUrl.searchParams.set('url', url);
+    proxyUrl.searchParams.set('filename', filename);
     return proxyUrl.href;
 };
 
