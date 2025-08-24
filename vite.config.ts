@@ -9,19 +9,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Add an alias to point 'pixi.js' imports to our compatibility shim.
-    // This resolves the missing 'deprecation' export required by @shotstack/shotstack-studio.
-    alias: {
-      'pixi.js': path.resolve(__dirname, 'src/shims/pixi7-compat.ts'),
-    },
-    // Only dedupe the top-level packages to ensure a single instance.
-    // 'pixi.js' is removed from dedupe as the alias now handles its resolution.
-    dedupe: ["@shotstack/shotstack-studio"],
+    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
+    preserveSymlinks: false
   },
   optimizeDeps: {
-    // Pre-bundle the main dependencies for faster dev server start.
-    // 'pixi.js' is removed to prevent conflicts with the alias above.
-    include: ["@shotstack/shotstack-studio"]
+    include: ["@shotstack/shotstack-studio", "pixi.js"]
   },
   build: {
     rollupOptions: {
