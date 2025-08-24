@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "1.15.0",
-    "@pixi/sound": "8.2.4",
+    "@pixi/sound": "^6.0.1",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "2.44.4",
     "pixi.js": "8.2.4",
@@ -31,8 +31,7 @@
     "vite": "5.2.0"
   },
   "overrides": {
-    "pixi.js": "8.2.4",
-    "@pixi/*": "8.2.4"
+    "pixi.js": "8.2.4"
   },
   "engines": {
     "node": "20.x"
