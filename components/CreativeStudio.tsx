@@ -1,7 +1,7 @@
+import '@pixi/sound';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK } from '../utils';
-import { sanitizeShotstackJson } from '../utils';
+import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
 
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
@@ -64,7 +64,8 @@ const CreativeStudio: React.FC = () => {
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (cancelled) return;
         
-        const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
+        const proxiedJson = proxyifyEdit(activeProjectDetails.shotstackEditJson);
+        const sanitizedJson = sanitizeShotstackJson(proxiedJson);
 
         const template = sanitizedJson || {
             timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
