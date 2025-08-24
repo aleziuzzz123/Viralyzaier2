@@ -81,13 +81,13 @@ const CreativeStudio: React.FC = () => {
             output: { format: 'mp4', size: activeProjectDetails.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
         };
         
-        edit = new Edit(template.output.size.width, template.output.size.height);
+        edit = new Edit(template.output.size);
         editRef.current = edit;
         await edit.load();
         await edit.loadEdit(template);
         if (cancelled) return;
 
-        canvas = new Canvas(studioRef.current!, edit);
+        canvas = new Canvas(edit, studioRef.current!);
         await canvas.load();
         if (cancelled) return;
 
@@ -96,7 +96,7 @@ const CreativeStudio: React.FC = () => {
         await controls.load();
         if (cancelled) return;
         
-        timeline = new Timeline(timelineRef.current!, edit);
+        timeline = new Timeline(edit, timelineRef.current!);
         await timeline.load();
         if (cancelled) return;
 
