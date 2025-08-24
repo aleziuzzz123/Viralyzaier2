@@ -87,7 +87,7 @@ const CreativeStudio: React.FC = () => {
         await edit.loadEdit(template);
         if (cancelled) return;
 
-        canvas = new Canvas(edit, studioRef.current!);
+        canvas = new Canvas(studioRef.current!, edit);
         await canvas.load();
         if (cancelled) return;
 
@@ -96,7 +96,7 @@ const CreativeStudio: React.FC = () => {
         await controls.load();
         if (cancelled) return;
         
-        timeline = new Timeline(edit, timelineRef.current!);
+        timeline = new Timeline(timelineRef.current!, edit);
         await timeline.load();
         if (cancelled) return;
 
