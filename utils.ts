@@ -78,7 +78,7 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
 /**
  * Creates a proxied URL for an external asset to bypass CORS issues.
  * @param url The direct URL to the asset.
- * @returns A relative URL that routes through the `asset-proxy` edge function.
+ * @returns An absolute URL that routes through the `asset-proxy` edge function.
  */
 export const createAssetProxyUrl = (url: string | null | undefined): string => {
     if (!url || !url.startsWith('http')) {
@@ -86,7 +86,9 @@ export const createAssetProxyUrl = (url: string | null | undefined): string => {
     }
     // The proxy function is at /functions/v1/asset-proxy
     const filename = url.split('/').pop()?.split('?')[0] || 'asset';
-    return `/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`;
+    // Return an absolute URL to ensure compatibility with the SDK in all contexts.
+    const proxyUrl = new URL(`/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`, window.location.origin);
+    return proxyUrl.href;
 };
 
 /**
