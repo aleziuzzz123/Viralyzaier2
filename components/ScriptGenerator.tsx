@@ -3,7 +3,7 @@ import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice, Shotsta
 import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon, ScriptIcon, InfoIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { rewriteScriptScene, generateVideoBlueprint, generateSoundDesign } from '../services/geminiService';
-import { getErrorMessage, sanitizeShotstackJson } from '../utils';
+import { getErrorMessage, sanitizeShotstackJson, createAssetProxyUrl } from '../utils';
 import { ELEVENLABS_VOICES, generateVoiceover, generateSfx } from '../services/generativeMediaService';
 import { uploadFile, dataUrlToBlob, getBrandIdentitiesForUser } from '../services/supabaseService';
 import { searchJamendoMusic } from '../services/jamendoService';
@@ -39,7 +39,7 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
         if (scene.storyboardImageUrl) {
             timeline.tracks[0].clips.push({
-                asset: { type: 'image', src: scene.storyboardImageUrl },
+                asset: { type: 'image', src: createAssetProxyUrl(scene.storyboardImageUrl) },
                 start: start,
                 length: length,
                 transition: { in: 'fade', out: 'fade' },
@@ -61,7 +61,7 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
         if (voiceoverUrls && voiceoverUrls[index]) {
             timeline.tracks[2].clips.push({
-                asset: { type: 'audio', src: voiceoverUrls[index] },
+                asset: { type: 'audio', src: createAssetProxyUrl(voiceoverUrls[index]) },
                 start: start,
                 length: length,
             });
@@ -90,7 +90,7 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
     if (soundDesign?.musicUrl && totalDuration > 0) {
         timeline.tracks[4].clips.push({
-            asset: { type: 'audio', src: soundDesign.musicUrl },
+            asset: { type: 'audio', src: createAssetProxyUrl(soundDesign.musicUrl) },
             volume: 0.3,
             start: 0,
             length: totalDuration,
@@ -103,7 +103,7 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
                 const timeParts = sfx.timecode.split('-').map(parseFloat);
                 const start = timeParts.length > 0 && !isNaN(timeParts[0]) ? timeParts[0] : 0;
                 timeline.tracks[3].clips.push({
-                    asset: { type: 'audio', src: sfx.url },
+                    asset: { type: 'audio', src: createAssetProxyUrl(sfx.url) },
                     volume: 0.7,
                     start: start,
                     length: 2,

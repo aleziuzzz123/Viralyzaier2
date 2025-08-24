@@ -76,6 +76,20 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
 
 // --- URL Hygiene ---
 /**
+ * Creates a proxied URL for an external asset to bypass CORS issues.
+ * @param url The direct URL to the asset.
+ * @returns A relative URL that routes through the `asset-proxy` edge function.
+ */
+export const createAssetProxyUrl = (url: string | null | undefined): string => {
+    if (!url || !url.startsWith('http')) {
+        return url || ''; // Don't proxy local/invalid URLs, return empty string for null/undefined
+    }
+    // The proxy function is at /functions/v1/asset-proxy
+    const filename = url.split('/').pop()?.split('?')[0] || 'asset';
+    return `/functions/v1/asset-proxy/${encodeURIComponent(url)}/${encodeURIComponent(filename)}`;
+};
+
+/**
  * Normalizes a URL by trimming whitespace and decoding any accidental proxy wrapping.
  * Ensures that only clean, direct URLs are used in the application.
  */
