@@ -133,6 +133,7 @@ const MainApp = () => {
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
 
     useEffect(() => {
         if(activeProjectId) {
@@ -232,7 +233,7 @@ const MainApp = () => {
                 </div>
             </header>
           
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <main className={`flex-1 overflow-y-auto ${isStudioActive ? 'p-2' : 'p-4 sm:p-6 lg:p-8'}`}>
                 <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
             </main>
             

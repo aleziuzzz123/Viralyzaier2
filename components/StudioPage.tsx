@@ -8,6 +8,7 @@ import HelpModal from './HelpModal';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
 import { invokeEdgeFunction } from '../services/supabaseService';
+import { sanitizeShotstackJson } from '../utils';
 
 // This Supabase client instance is scoped to the iframe and will be authenticated
 // once the session is received from the parent window.
@@ -155,8 +156,11 @@ export default function StudioPage() {
       return <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-50 text-white">Authenticating & Loading Editor...</div>
   }
 
+  // Sanitize the project JSON before passing it to the editor to prevent crashes.
+  const sanitizedJson = sanitizeShotstackJson(project.shotstackEditJson);
+
   // Define the initial state for the editor, with a fallback for new projects
-  const initialState = project.shotstackEditJson || {
+  const initialState = sanitizedJson || {
       timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
       output: { format: 'mp4', size: project.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
   };

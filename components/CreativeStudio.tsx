@@ -47,7 +47,7 @@ const CreativeStudio: React.FC = () => {
     }, [activeProjectDetails, handleUpdateProject, addToast, handleRenderProject, session]);
     
     return (
-        <div style={{ height: 'calc(100vh - 10rem)', width: '100%' }}>
+        <div style={{ height: 'calc(100vh - 9rem)', width: '100%' }}>
             <iframe
                 ref={iframeRef}
                 src="/studio.html"

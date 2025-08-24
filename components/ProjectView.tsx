@@ -15,6 +15,8 @@ interface ProjectViewProps {
 export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const { handleUpdateProject, t, dismissedTutorials } = useAppContext();
     
+    const isStudioActive = project.workflowStep === 3;
+
     const handleProceedToLaunchpad = () => {
         handleUpdateProject(project.id, {
             workflowStep: 5,
@@ -61,7 +63,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     ];
 
     return (
-        <div className="space-y-8">
+        <div className={isStudioActive ? 'space-y-2' : 'space-y-8'}>
             <nav className="p-4 bg-gray-800/50 rounded-xl">
                 <ol className="flex items-center justify-center space-x-2 sm:space-x-4">
                     {steps.map((step, index) => {
@@ -98,7 +100,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
                 </TutorialCallout>
             )}
 
-            <div className="mt-8">
+            <div className={isStudioActive ? 'mt-2' : 'mt-8'}>
                 {renderContent()}
             </div>
         </div>
