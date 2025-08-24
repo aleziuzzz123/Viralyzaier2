@@ -1,6 +1,7 @@
 {
   "buildCommand": "vite build",
   "outputDirectory": "dist",
+  "functions": {},
   "rewrites": [
     { "source": "/studio", "destination": "/studio.html" },
     { "source": "/studio/", "destination": "/studio.html" },
