@@ -1,31 +1,23 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 
 const CreativeStudio: React.FC = () => {
     const { activeProjectDetails, session, handleUpdateProject, handleRenderProject, addToast } = useAppContext();
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [isIframeReady, setIsIframeReady] = useState(false);
 
+    // Effect for handling all incoming messages from the iframe
     useEffect(() => {
         const handleMessageFromIframe = (event: MessageEvent) => {
-            // Basic security: Check origin in production
-            // if (process.env.NODE_ENV === 'production' && event.origin !== window.location.origin) {
-            //     return;
-            // }
-
             if (event.source !== iframeRef.current?.contentWindow) {
-                return; // Ignore messages from other sources
+                return;
             }
 
             const { type, payload } = event.data;
 
             switch (type) {
                 case 'studio:ready':
-                    if (iframeRef.current?.contentWindow && activeProjectDetails && session) {
-                        iframeRef.current.contentWindow.postMessage(
-                            { type: 'app:load_project', payload: { project: activeProjectDetails, session } },
-                            '*'
-                        );
-                    }
+                    setIsIframeReady(true);
                     break;
                 case 'studio:save_project':
                     if (activeProjectDetails) {
@@ -47,7 +39,17 @@ const CreativeStudio: React.FC = () => {
 
         window.addEventListener('message', handleMessageFromIframe);
         return () => window.removeEventListener('message', handleMessageFromIframe);
-    }, [activeProjectDetails, session, handleUpdateProject, handleRenderProject, addToast]);
+    }, [activeProjectDetails, handleUpdateProject, handleRenderProject, addToast]);
+    
+    // Effect for sending the initial project data once all conditions are met
+    useEffect(() => {
+        if (isIframeReady && iframeRef.current?.contentWindow && activeProjectDetails && session) {
+            iframeRef.current.contentWindow.postMessage(
+                { type: 'app:load_project', payload: { project: activeProjectDetails, session } },
+                '*'
+            );
+        }
+    }, [isIframeReady, activeProjectDetails, session]);
 
     if (!activeProjectDetails) {
         return <div className="text-center py-10">Loading project...</div>;
