@@ -34,9 +34,6 @@
     "pixi.js": "8.2.4",
     "@pixi/sound": "6.0.1"
   },
-  "engines": {
-    "node": "20.x"
-  },
   "packageManager": "npm@10",
   "sideEffects": [
     "@pixi/sound"
