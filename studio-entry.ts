@@ -15,7 +15,7 @@ import '@pixi/sound';
     await edit.load();
     
     // Corrected Canvas initialization
-    const canvas = new Canvas(edit, document.querySelector('[data-shotstack-studio]')!);
+    const canvas = new Canvas(document.querySelector('[data-shotstack-studio]')!, edit);
     await canvas.load();
 
     await edit.loadEdit(template);
@@ -24,7 +24,7 @@ import '@pixi/sound';
     await controls.load();
 
     // Corrected Timeline initialization
-    const timeline = new Timeline(edit, document.querySelector('[data-shotstack-timeline]')!);
+    const timeline = new Timeline(document.querySelector('[data-shotstack-timeline]')!, edit);
     await timeline.load();
 
     if (loadingIndicator) {
