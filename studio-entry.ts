@@ -1,6 +1,8 @@
-import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
 // This import is for side-effects only and is critical for audio support.
+// It MUST come before any other imports.
 import '@pixi/sound';
+import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
+
 
 (async () => {
   const loadingIndicator = document.getElementById('loading-indicator');

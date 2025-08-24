@@ -94,10 +94,11 @@ export const createAssetProxyUrl = (url: string | null | undefined): string => {
     
     const assetProxyBase = `${supabaseUrl}/functions/v1/asset-proxy`;
     const encoded = encodeURIComponent(url);
-    // Extract filename, remove query params if any.
     const filename = url.split('/').pop()?.split('?')[0] || 'file';
 
-    // The filename might contain special characters, so it should be encoded as a URL path segment.
+    // The SDK appears to have a bug where it appends the filename again, causing a duplicate.
+    // By providing the filename in the path, we allow the proxy to correctly set MIME types,
+    // which is crucial for loaders.
     return `${assetProxyBase}/${encoded}/${encodeURIComponent(filename)}`;
 };
 
@@ -244,7 +245,7 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
         let bgColor: string | undefined;
         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
           bgColor = asset.background;
-        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) {
+        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-gA-F]{3}){1,2}$/i.test(asset.background.color)) {
           bgColor = asset.background.color;
         }
         

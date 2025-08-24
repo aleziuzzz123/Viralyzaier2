@@ -21,6 +21,13 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html'),
+      },
+      treeshake: {
+        // This is critical to prevent Vite from removing the side-effectful
+        // import of @pixi/sound, which registers the audio loader globally.
+        moduleSideEffects: (id) => {
+          return id.includes('@pixi/sound');
+        }
       }
     }
   }
