@@ -21,11 +21,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html'),
-      },
-      // CRITICAL: tell Rollup not to tree-shake the module's side-effects
-      treeshake: {
-        moduleSideEffects: (id) => id.includes('/node_modules/@pixi/sound'),
-      },
+      }
     }
   }
 });
