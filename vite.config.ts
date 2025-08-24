@@ -20,7 +20,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pre-bundle the main dependencies for faster dev server start.
-    include: ["@shotstack/shotstack-studio", "pixi.js"]
+    // 'pixi.js' is removed to prevent conflicts with the alias above.
+    include: ["@shotstack/shotstack-studio"]
   },
   build: {
     rollupOptions: {
