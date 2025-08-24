@@ -90,7 +90,8 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
 
     if (soundDesign?.musicUrl && totalDuration > 0) {
         timeline.tracks[4].clips.push({
-            asset: { type: 'audio', src: soundDesign.musicUrl, volume: 0.3 },
+            asset: { type: 'audio', src: soundDesign.musicUrl },
+            volume: 0.3,
             start: 0,
             length: totalDuration,
         });
@@ -102,7 +103,8 @@ const buildTimelineFromProject = (project: Project): ShotstackEditJson | null =>
                 const timeParts = sfx.timecode.split('-').map(parseFloat);
                 const start = timeParts.length > 0 && !isNaN(timeParts[0]) ? timeParts[0] : 0;
                 timeline.tracks[3].clips.push({
-                    asset: { type: 'audio', src: sfx.url, volume: 0.7 },
+                    asset: { type: 'audio', src: sfx.url },
+                    volume: 0.7,
                     start: start,
                     length: 2,
                 });
