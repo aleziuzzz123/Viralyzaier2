@@ -1,7 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit } from '../utils';
+import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
+
+// Singleton promise so we never import @pixi/sound twice (StrictMode safe)
+let _pixiSoundReady: Promise<void> | null = null;
+function ensurePixiSound(): Promise<void> {
+  if (!_pixiSoundReady) {
+    _pixiSoundReady = import('@pixi/sound').then(() => {
+      // Optional: mark for debugging
+      (window as any).__pixi_sound_loaded = true;
+    });
+  }
+  return _pixiSoundReady;
+}
 
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
   new Promise<void>((resolve) => {
@@ -11,19 +23,9 @@ const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
       return el.offsetParent !== null && r.width >= minW && r.height >= minH;
     };
     if (ok()) return resolve();
-
     const ro = new ResizeObserver(() => ok() && (ro.disconnect(), resolve()));
     ro.observe(el);
-
-    const id = window.setInterval(() => {
-      if (ok()) {
-        clearInterval(id);
-        ro.disconnect();
-        resolve();
-      }
-    }, 100);
   });
-
 
 const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
@@ -31,6 +33,7 @@ const CreativeStudio: React.FC = () => {
   const studioRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<any>(null);
+  const startedRef = useRef(false); // StrictMode double-mount guard
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,10 @@ const CreativeStudio: React.FC = () => {
   useEffect(() => {
     if (!activeProjectDetails) return;
     
+    // StrictMode in dev mounts twice — do not initialize twice
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     let edit: any, canvas: any, controls: any, timeline: any;
     let onResize: () => void;
     let cancelled = false;
@@ -56,6 +63,9 @@ const CreativeStudio: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
+
+        // 1) Ensure @pixi/sound side-effects are executed BEFORE any Studio init
+        await ensurePixiSound();
 
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
@@ -77,7 +87,7 @@ const CreativeStudio: React.FC = () => {
         await edit.loadEdit(template);
         if (cancelled) return;
 
-        canvas = new Canvas(template.output.size, edit, {
+        canvas = new Canvas(edit, {
           mount: studioRef.current!,
         });
         await canvas.load();
@@ -88,12 +98,12 @@ const CreativeStudio: React.FC = () => {
         if (cancelled) return;
 
         timeline = new Timeline(edit, {
-          mount: timelineRef.current!,
           height: 320,
           width: hostRef.current!.getBoundingClientRect().width,
         });
         await timeline.load();
         if (cancelled) return;
+        timeline.mount(timelineRef.current!);
 
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
@@ -128,8 +138,10 @@ const CreativeStudio: React.FC = () => {
 
   const onRender = () => {
       if (editRef.current && activeProjectDetails) {
-          const finalJson = editRef.current.getEdit();
-          handleRenderProject(activeProjectDetails.id, finalJson);
+          const finalJsonFromEditor = editRef.current.getEdit();
+          // De-proxy URLs before sending to the backend render service
+          const finalJsonForRender = deproxyifyEdit(finalJsonFromEditor);
+          handleRenderProject(activeProjectDetails.id, finalJsonForRender);
       }
   }
 
