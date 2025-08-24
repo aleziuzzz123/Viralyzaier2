@@ -1,4 +1,6 @@
 // A robust utility to extract a readable message from any error type.
+import { supabaseUrl } from './services/supabaseClient';
+
 export const getErrorMessage = (error: unknown): string => {
     // Default fallback message
     const fallbackMessage = 'An unknown error occurred. Please check the console for details.';
@@ -77,6 +79,7 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
 // --- URL Hygiene ---
 /**
  * Creates a proxied URL for an external asset to bypass CORS issues.
+ * This version uses a path-based structure for better compatibility with asset loaders.
  * @param url The direct URL to the asset.
  * @returns An absolute URL that routes through the `asset-proxy` edge function.
  */
@@ -88,31 +91,48 @@ export const createAssetProxyUrl = (url: string | null | undefined): string => {
     if (url.includes('/functions/v1/asset-proxy')) {
         return url;
     }
-    // The proxy function is at /functions/v1/asset-proxy
-    const filename = url.split('/').pop()?.split('?')[0] || 'asset';
-    // Use query parameters for a more robust URL structure
-    const proxyUrl = new URL(`/functions/v1/asset-proxy`, window.location.origin);
-    proxyUrl.searchParams.set('url', url);
-    proxyUrl.searchParams.set('filename', filename);
-    return proxyUrl.href;
+    
+    const assetProxyBase = `${supabaseUrl}/functions/v1/asset-proxy`;
+    const encoded = encodeURIComponent(url);
+    // Extract filename, remove query params if any.
+    const filename = url.split('/').pop()?.split('?')[0] || 'file';
+
+    // The filename might contain special characters, so it should be encoded as a URL path segment.
+    return `${assetProxyBase}/${encoded}/${encodeURIComponent(filename)}`;
 };
 
 /**
  * Normalizes a URL by trimming whitespace and decoding any accidental proxy wrapping.
  * Ensures that only clean, direct URLs are used in the application.
+ * This version handles both new path-based and old query-based proxy URLs.
  */
 export const normalizeUrl = (u: string | null | undefined): string => {
     if (!u) return '';
     const trimmed = u.trim();
-    // Use regex to robustly find and decode the URL from a proxy wrapper.
-    if (trimmed.includes('/asset-proxy?url=')) {
+    
+    // Check for the new path-based proxy format: /asset-proxy/<encoded_url>/<filename>
+    const pathMatch = trimmed.match(/\/asset-proxy\/(.+?)\//);
+    if (pathMatch && pathMatch[1]) {
         try {
-            return decodeURIComponent(trimmed.replace(/^.*\/asset-proxy\?url=/, ''));
+            return decodeURIComponent(pathMatch[1]);
         } catch (e) {
-            console.error('Failed to decode proxied URL:', trimmed, e);
+            console.error('Failed to decode path-based proxied URL:', trimmed, e);
             return '';
         }
     }
+    
+    // Check for the old query-param based proxy format: /asset-proxy?url=...
+    if (trimmed.includes('/asset-proxy?url=')) {
+        try {
+            const urlObj = new URL(trimmed);
+            const originalUrl = urlObj.searchParams.get('url');
+            return originalUrl || '';
+        } catch (e) {
+            console.error('Failed to decode query-based proxied URL:', trimmed, e);
+            return '';
+        }
+    }
+
     return trimmed;
 };
 
