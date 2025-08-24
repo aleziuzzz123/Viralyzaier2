@@ -15,23 +15,21 @@
       
       /* Shotstack Studio CSS Overrides */
       .shotstack-host {
-        width: 100%;
-        min-height: 896px; /* 560px canvas + 320px timeline + 16px gap */
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        gap: 16px;
       }
       [data-shotstack-studio] {
-        display: block;
-        width: 100%;
-        height: 560px;
+        flex: 1 1 auto;
+        min-height: 420px;
         background: #000;
         border-radius: 8px;
       }
       [data-shotstack-timeline] {
-        display: block;
-        width: 100%;
-        height: 320px;
+        flex: 0 0 320px;
         background: #111827;
         border-radius: 8px;
-        margin-top: 16px;
       }
       /* Neutralize hostile global CSS */
       .shotstack-host canvas {
