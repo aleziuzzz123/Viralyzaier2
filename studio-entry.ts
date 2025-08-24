@@ -11,11 +11,11 @@ import '@pixi/sound';
     if (!res.ok) throw new Error(`Failed to fetch template: ${res.statusText}`);
     const template = await res.json();
 
-    const edit = new Edit(template.output.size.width, template.output.size.height);
+    const edit = new Edit(template.output.size);
     await edit.load();
     
     // Corrected Canvas initialization
-    const canvas = new Canvas(document.querySelector('[data-shotstack-studio]')!, edit);
+    const canvas = new Canvas(edit, document.querySelector('[data-shotstack-studio]')!);
     await canvas.load();
 
     await edit.loadEdit(template);
@@ -24,7 +24,7 @@ import '@pixi/sound';
     await controls.load();
 
     // Corrected Timeline initialization
-    const timeline = new Timeline(document.querySelector('[data-shotstack-timeline]')!, edit);
+    const timeline = new Timeline(edit, document.querySelector('[data-shotstack-timeline]')!);
     await timeline.load();
 
     if (loadingIndicator) {

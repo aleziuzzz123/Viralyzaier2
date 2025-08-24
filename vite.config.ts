@@ -26,14 +26,6 @@ export default defineConfig({
       treeshake: {
         moduleSideEffects: (id) => id.includes('/node_modules/@pixi/sound'),
       },
-      output: {
-        // Optional: put pixi-sound in its own chunk (easier to see it load)
-        manualChunks(id) {
-          if (id.includes('/node_modules/@pixi/sound')) {
-            return 'pixi-sound';
-          }
-        },
-      },
     }
   }
 });
