@@ -1,7 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Project, ShotstackClipSelection } from '../types';
-import VideoEditor, { VideoEditorHandles } from './VideoEditor';
-import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
 import EditorToolbar from './EditorToolbar';
 import HelpModal from './HelpModal';
@@ -9,20 +7,23 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { sanitizeShotstackJson } from '../utils';
+import { getShotstackSDK } from '../lib/shotstackSdk';
+import TopInspectorPanel from './TopInspectorPanel';
+import { customEditorTheme } from '../themes/customEditorTheme';
 
-// This Supabase client instance is scoped to the iframe and will be authenticated
-// once the session is received from the parent window.
+// This Supabase client is scoped to the iframe and authenticated via postMessage
 let supabase: any = null;
 
 export default function StudioPage() {
-  const editorRef = useRef<VideoEditorHandles>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const studioRef = useRef<any>(null);
   const executionLock = useRef(false);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState('Authenticating...');
   const [err, setErr] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [session, setSession] = useState<any | null>(null);
-  
+
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
@@ -34,7 +35,7 @@ export default function StudioPage() {
   };
 
   const aic_addToast = (message: string, type: 'success' | 'error' | 'info') => {
-      postToParent('studio:addToast', { message, type });
+    postToParent('studio:addToast', { message, type });
   };
   
   const aic_lockAndExecute = async <T,>(asyncFunction: () => Promise<T>): Promise<T | undefined> => {
@@ -52,16 +53,115 @@ export default function StudioPage() {
       }
   };
 
-  // --- Clip Management ---
-  const addClip = (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => {
-    if (!editorRef.current) return;
-    const editor = editorRef.current;
-    const startSec = Math.max(0, (editor.getPlaybackTime() || 0) / 1000);
+  // --- SDK Initialization and Event Handling ---
+  useEffect(() => {
+    let studioInstance: any = null;
+    let isDisposed = false;
+
+    const initStudio = async (projectData: Project) => {
+      if (!hostRef.current) return;
+      setStatus('Initializing Editor...');
+
+      try {
+        const { Studio } = await getShotstackSDK();
+        if (isDisposed) return;
+
+        studioInstance = new Studio({
+          auth: { url: `${supabaseUrl}/functions/v1/shotstack-studio-token` },
+          theme: customEditorTheme,
+          assets: { proxy: `${supabaseUrl}/functions/v1/asset-proxy` },
+        });
+        studioRef.current = studioInstance;
+
+        await studioInstance.load(hostRef.current);
+        if (isDisposed) return;
+        
+        setStatus('Loading Project...');
+        const sanitizedJson = sanitizeShotstackJson(projectData.shotstackEditJson);
+        const initialState = sanitizedJson || {
+            timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
+            output: { format: 'mp4', size: projectData.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
+        };
+        await studioInstance.edit.loadEdit(initialState);
+        if (isDisposed) return;
+        
+        studioInstance.edit.events.on('edit:updated', (edit: any) => postToParent('studio:save_project', edit));
+        studioInstance.edit.events.on('clip:selected', (sel: any) => setSelection(sel));
+        studioInstance.edit.events.on('clip:deselected', () => setSelection(null));
+        studioInstance.controls.events.on('play', () => setIsPlaying(true));
+        studioInstance.controls.events.on('pause', () => setIsPlaying(false));
+        studioInstance.controls.events.on('stop', () => setIsPlaying(false));
+
+        setStatus('');
+      } catch (e: any) {
+        setErr(e.message || 'Failed to load Studio');
+      }
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data;
+      if (type === 'app:load_project') {
+        const { project: projectData, session: sessionData } = payload;
+        if (projectData && sessionData) {
+          setProject(projectData);
+          setSession(sessionData);
+          supabase = createClient(supabaseUrl, supabaseAnonKey);
+          supabase.auth.setSession(sessionData).then(({ error }: { error: any }) => {
+            if (error) {
+              setErr(`Iframe authentication failed: ${error.message}`);
+            } else {
+              initStudio(projectData);
+            }
+          });
+        } else {
+          setErr("No project or session data received.");
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    postToParent('studio:ready');
+
+    return () => {
+      isDisposed = true;
+      window.removeEventListener('message', handleMessage);
+      studioInstance?.dispose();
+    };
+  }, []);
+
+  // --- Toolbar Actions ---
+  const handleRender = () => {
+    if (!studioRef.current) return;
+    const finalJson = studioRef.current.edit.getEdit();
+    postToParent('studio:request_render', finalJson);
+  };
+  
+  const handleAiPolish = () => aic_lockAndExecute(async () => {
+    if (!studioRef.current || !project || !supabase) return;
+    aic_addToast('Applying AI Polish... this may take a moment.', 'info');
+    try {
+      const currentEdit = studioRef.current.edit.getEdit();
+      const { timeline: newTimeline } = await invokeEdgeFunction<{timeline: any}>('ai-polish', {
+        timeline: currentEdit.timeline,
+        script: project.script,
+        projectId: project.id,
+      });
+      studioRef.current.edit.loadEdit({ ...currentEdit, timeline: newTimeline });
+      aic_addToast('AI Polish complete!', 'success');
+    } catch (e) {
+      aic_addToast(e instanceof Error ? e.message : 'AI Polish failed.', 'error');
+    }
+  });
+
+  const addClip = useCallback((assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => {
+    if (!studioRef.current) return;
+    const { edit, controls } = studioRef.current;
+    const startSec = (controls.getTime() || 0) / 1000;
     const defaultLen = (assetType === "audio" || assetType === 'video') ? 10 : 5;
 
-    let trackIndex = 0; // A-Roll
-    if (assetType === 'audio') trackIndex = 2; // Audio
-    if (assetType === 'sticker') trackIndex = 1; // Overlays
+    let trackIndex = 0;
+    if (assetType === 'audio') trackIndex = 2;
+    if (assetType === 'sticker') trackIndex = 1;
 
     const newClip = {
       asset: { type: assetType, src: url },
@@ -69,137 +169,58 @@ export default function StudioPage() {
       length: defaultLen,
       transition: { in: "fade", out: "fade" }
     };
-
-    // The component's addClip method needs the track index and the clip object
-    // but the SDK method it calls might be different. Let's assume the handle is correct.
-    (editor as any).addClip(trackIndex, newClip);
-  };
-
-  const deleteClip = () => {
-    if (!editorRef.current || !selection) return;
-    editorRef.current.removeClip(selection.trackIndex, selection.clipIndex);
-    setSelection(null);
-  };
-  
-  const handleRender = () => {
-      if (!editorRef.current) return;
-      const finalJson = editorRef.current.getEdit();
-      postToParent('studio:request_render', finalJson);
-  }
-  
-  const handleAiPolish = () => aic_lockAndExecute(async () => {
-      if (!editorRef.current || !project || !supabase) {
-          aic_addToast("Cannot perform AI Polish: editor, project, or authenticated session is missing.", "error");
-          return;
-      }
-      aic_addToast('Applying AI Polish... this may take a moment.', 'info');
-      try {
-        const currentEdit = editorRef.current.getEdit();
-        // Use the authenticated `invokeEdgeFunction` for secure calls
-        const { timeline: newTimeline } = await invokeEdgeFunction<{timeline: any}>('ai-polish', {
-            timeline: currentEdit.timeline,
-            script: project.script,
-            projectId: project.id,
-        });
-        editorRef.current.loadEdit({ ...currentEdit, timeline: newTimeline });
-        aic_addToast('AI Polish complete!', 'success');
-      } catch (e) {
-        aic_addToast(e instanceof Error ? e.message : 'AI Polish failed.', 'error');
-      }
-  });
-
-  // --- Editor Initialization and Authentication ---
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-        const { type, payload } = event.data;
-        if (type === 'app:load_project') {
-            const { project: projectData, session: sessionData } = payload;
-            if (projectData && sessionData) {
-                setProject(projectData);
-                setSession(sessionData);
-
-                // **AUTHENTICATION BRIDGE: CRITICAL FIX**
-                // Create a new Supabase client for this iframe instance and set the session.
-                // This makes all subsequent `invokeEdgeFunction` calls within this iframe authenticated.
-                supabase = createClient(supabaseUrl, supabaseAnonKey);
-                supabase.auth.setSession(sessionData).then(({ error }: { error: any }) => {
-                    if (error) {
-                        setErr(`Iframe authentication failed: ${error.message}`);
-                        aic_addToast(`Iframe authentication failed: ${error.message}`, 'error');
-                    } else {
-                       setIsLoading(false); // Authentication successful, ready to render the editor
-                    }
-                });
-
-            } else {
-                setErr("No project or session data received from the main application.");
-                setIsLoading(false);
-            }
-        }
-    };
-    window.addEventListener('message', handleMessage);
-    // Signal to the parent window that the iframe is ready to receive data
-    postToParent('studio:ready');
-
-    return () => window.removeEventListener('message', handleMessage);
+    edit.addClip(trackIndex, newClip);
   }, []);
 
-  if (err) {
+  const deleteClip = useCallback(() => {
+    if (!studioRef.current || !selection) return;
+    studioRef.current.edit.removeClip(selection.trackIndex, selection.clipIndex);
+    setSelection(null);
+  }, [selection]);
+
+  if (status || err) {
     return (
-      <div className="p-4 rounded-lg bg-red-900/50 border border-red-500/50 text-red-300 h-full flex items-center justify-center">
-        <strong>Creative Studio failed to load:</strong> {err}
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white p-4">
+        <div className="text-center">
+            {err ? (
+                <>
+                    <h2 className="text-2xl font-bold text-red-400">Editor Failed to Load</h2>
+                    <p className="mt-2 text-gray-300">This is often due to missing or incorrect API keys in your Supabase function secrets.</p>
+                    <pre className="mt-4 p-4 text-left bg-gray-800 text-red-300 rounded-md text-sm whitespace-pre-wrap">{err}</pre>
+                </>
+            ) : (
+                <p className="text-lg font-semibold">{status}</p>
+            )}
+        </div>
       </div>
     );
   }
 
-  if (isLoading || !project) {
-      return <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-50 text-white">Authenticating & Loading Editor...</div>
-  }
-
-  // Sanitize the project JSON before passing it to the editor to prevent crashes.
-  const sanitizedJson = sanitizeShotstackJson(project.shotstackEditJson);
-
-  // Define the initial state for the editor, with a fallback for new projects
-  const initialState = sanitizedJson || {
-      timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
-      output: { format: 'mp4', size: project.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
-  };
-
   return (
-    <div className="h-full w-full flex flex-col bg-gray-900 text-white p-4 gap-4">
+    <div className="h-full w-full flex flex-col bg-gray-900 text-white p-2 md:p-4 gap-4">
       <div className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${selection ? 'h-48' : 'h-0'}`}>
-        {selection && editorRef.current && (
+        {selection && studioRef.current && (
           <TopInspectorPanel
             selection={selection}
-            studio={editorRef.current as any}
+            studio={studioRef.current.edit}
             onDeleteClip={deleteClip}
           />
         )}
       </div>
-
-      <div className="flex-grow relative min-h-0">
-         <VideoEditor 
-            ref={editorRef}
-            initialState={initialState}
-            onStateChange={(newState) => postToParent('studio:save_project', newState)}
-            onSelectionChange={setSelection}
-            onIsPlayingChange={setIsPlaying}
-        />
-      </div>
-
-      <div className="flex-shrink-0">
-        <EditorToolbar
-            isPlaying={isPlaying}
-            onPlayPause={() => isPlaying ? editorRef.current?.pause() : editorRef.current?.play()}
-            onStop={() => editorRef.current?.stop()}
-            onUndo={() => editorRef.current?.undo()}
-            onRedo={() => editorRef.current?.redo()}
-            onAddMedia={() => setIsAssetModalOpen(true)}
-            onAiPolish={handleAiPolish}
-            onRender={handleRender}
-            onOpenHelp={() => setIsHelpModalOpen(true)}
-        />
-      </div>
+      
+      <div ref={hostRef} className="flex-grow min-h-0" />
+      
+      <EditorToolbar
+        isPlaying={isPlaying}
+        onPlayPause={() => isPlaying ? studioRef.current?.controls.pause() : studioRef.current?.controls.play()}
+        onStop={() => studioRef.current?.controls.stop()}
+        onUndo={() => studioRef.current?.edit.undo()}
+        onRedo={() => studioRef.current?.edit.redo()}
+        onAddMedia={() => setIsAssetModalOpen(true)}
+        onAiPolish={handleAiPolish}
+        onRender={handleRender}
+        onOpenHelp={() => setIsHelpModalOpen(true)}
+      />
       
       {isAssetModalOpen && (
         <AssetBrowserModal
