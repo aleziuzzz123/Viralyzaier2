@@ -1,4 +1,3 @@
-import '@pixi/sound';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit } from '../utils';
@@ -64,10 +63,10 @@ const CreativeStudio: React.FC = () => {
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (cancelled) return;
         
-        const proxiedJson = proxyifyEdit(activeProjectDetails.shotstackEditJson);
-        const sanitizedJson = sanitizeShotstackJson(proxiedJson);
+        const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
+        const proxiedJson = proxyifyEdit(sanitizedJson);
 
-        const template = sanitizedJson || {
+        const template = proxiedJson || {
             timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
             output: { format: 'mp4', size: activeProjectDetails.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
         };
