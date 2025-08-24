@@ -3,7 +3,12 @@ import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
 
-// PIXI sound is now imported globally in index.tsx, so the local loader is removed to prevent double-initialization.
+// Singleton promise to ensure the module is imported only once.
+let pixiSoundReady: Promise<unknown> | null = null;
+function ensurePixiSound() {
+  // The import() is for side-effects only: it registers the AudioLoadParser.
+  return pixiSoundReady ??= import('@pixi/sound');
+}
 
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
   new Promise<void>((resolve) => {
@@ -54,7 +59,8 @@ const CreativeStudio: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // The global @pixi/sound import in index.tsx handles initialization. No need to await it here.
+        // Ensure Pixi Sound is loaded before the SDK which might use it.
+        await ensurePixiSound();
 
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
