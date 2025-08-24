@@ -12,9 +12,32 @@
     <style>
       body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
       .toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.75rem;align-items:flex-end}
-      /* Styles for the new editor */
-      [data-shotstack-studio]{background:#000;border-radius:8px; width: 100%; height: 100%;}
-      [data-shotstack-timeline]{background:#111827;border-radius:8px;}
+      
+      /* Shotstack Studio CSS Overrides */
+      .shotstack-host {
+        width: 100%;
+        min-height: 896px; /* 560px canvas + 320px timeline + 16px gap */
+      }
+      [data-shotstack-studio] {
+        display: block;
+        width: 100%;
+        height: 560px;
+        background: #000;
+        border-radius: 8px;
+      }
+      [data-shotstack-timeline] {
+        display: block;
+        width: 100%;
+        height: 320px;
+        background: #111827;
+        border-radius: 8px;
+        margin-top: 16px;
+      }
+      /* Neutralize hostile global CSS */
+      .shotstack-host canvas {
+        height: 100% !important;
+        width: 100% !important;
+      }
     </style>
     <script>
       // Fallback env for AI Studio preview only.

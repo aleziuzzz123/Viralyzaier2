@@ -4,8 +4,31 @@ import { getShotstackSDK } from '../utils';
 import { sanitizeShotstackJson } from '../utils';
 import { SparklesIcon } from './Icons';
 
+const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
+  new Promise<void>((resolve) => {
+    if (!el) return resolve();
+    const ok = () => {
+      const r = el.getBoundingClientRect();
+      return el.offsetParent !== null && r.width >= minW && r.height >= minH;
+    };
+    if (ok()) return resolve();
+
+    const ro = new ResizeObserver(() => ok() && (ro.disconnect(), resolve()));
+    ro.observe(el);
+
+    const id = window.setInterval(() => {
+      if (ok()) {
+        clearInterval(id);
+        ro.disconnect();
+        resolve();
+      }
+    }, 100);
+  });
+
+
 const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const studioRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<any>(null);
@@ -16,20 +39,31 @@ const CreativeStudio: React.FC = () => {
   useEffect(() => {
     if (!activeProjectDetails) return;
     
-    let cancelled = false;
     let edit: any, canvas: any, controls: any, timeline: any;
+    let onResize: () => void;
+    let cancelled = false;
+
+    const cleanup = () => {
+      cancelled = true;
+      if (onResize) window.removeEventListener("resize", onResize);
+      try { timeline?.destroy?.(); } catch(e) { console.error('timeline destroy error', e); }
+      try { controls?.destroy?.(); } catch(e) { console.error('controls destroy error', e); }
+      try { canvas?.destroy?.(); } catch(e) { console.error('canvas destroy error', e); }
+      try { edit?.destroy?.(); } catch(e) { console.error('edit destroy error', e); }
+      editRef.current = null;
+    };
 
     (async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // Wait for DOM containers to exist
-        await new Promise(r => requestAnimationFrame(() => r(null)));
-        if (cancelled || !studioRef.current || !timelineRef.current) return;
+        await waitUntilVisible(hostRef.current);
+        if (cancelled) return;
 
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (cancelled) return;
-
+        
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
         const template = sanitizedJson || {
             timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
@@ -39,32 +73,44 @@ const CreativeStudio: React.FC = () => {
         edit = new Edit(template.output.size, template.timeline.background);
         editRef.current = edit;
         await edit.load();
+        await edit.loadEdit(template);
+        if (cancelled) return;
 
         canvas = new Canvas(template.output.size, edit, {
           mount: studioRef.current!,
         });
         await canvas.load();
-
-        await edit.loadEdit(template);
+        if (cancelled) return;
 
         controls = new Controls(edit);
         await controls.load();
+        if (cancelled) return;
 
         timeline = new Timeline(edit, {
-          width: template.output.size.width,
-          height: 288,
           mount: timelineRef.current!,
+          height: 320,
+          width: hostRef.current!.getBoundingClientRect().width,
         });
         await timeline.load();
+        if (cancelled) return;
 
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
-                // Debounce this in a real app if performance is an issue
                 handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: newEdit });
             }
         };
         edit.events.on('edit:updated', onEditUpdated);
-
+        
+        onResize = () => {
+          if (hostRef.current) {
+            const w = Math.floor(hostRef.current.getBoundingClientRect().width);
+            canvas?.resize?.(w, undefined);
+            timeline?.resize?.(w, undefined);
+          }
+        };
+        onResize();
+        window.addEventListener("resize", onResize);
+        
         if (!cancelled) setLoading(false);
       } catch (e: any) {
         if (!cancelled) {
@@ -74,15 +120,9 @@ const CreativeStudio: React.FC = () => {
         }
       }
     })();
+    
+    return cleanup;
 
-    return () => {
-      cancelled = true;
-      try { timeline?.destroy?.(); } catch(e) { console.error('timeline destroy error', e); }
-      try { controls?.destroy?.(); } catch(e) { console.error('controls destroy error', e); }
-      try { canvas?.destroy?.(); } catch(e) { console.error('canvas destroy error', e); }
-      try { edit?.destroy?.(); } catch(e) { console.error('edit destroy error', e); }
-      editRef.current = null;
-    };
   }, [activeProjectDetails, handleUpdateProject]);
 
   const onRender = () => {
@@ -92,35 +132,33 @@ const CreativeStudio: React.FC = () => {
       }
   }
 
-  if (error) {
-    return (
-      <div style={{padding:'20px'}}>
-        <div style={{background:'#fce8e6',color:'#b3261e',padding:12,borderRadius:8}}>
-          Creative Studio failed: {error}
-        </div>
-      </div>
-    );
-  }
-  
   return (
-    <div className="flex flex-col h-full gap-4">
-      {loading && (
-        <div className="flex-grow flex items-center justify-center">
-            <div className="text-center text-lg font-semibold">Loading Editor...</div>
-        </div>
-      )}
-       <div className={`flex-grow min-h-0 ${loading ? 'hidden' : ''}`} ref={studioRef} data-shotstack-studio />
-       <div className={`flex-shrink-0 h-72 ${loading ? 'hidden' : ''}`} ref={timelineRef} data-shotstack-timeline />
-       <div className={`text-center flex-shrink-0 ${loading ? 'hidden' : ''}`}>
+    <div className="flex flex-col h-full">
+      <div ref={hostRef} className="shotstack-host flex-grow">
+        {loading && (
+          <div className="shotstack-loading absolute inset-0 grid place-items-center text-slate-400 font-semibold pointer-events-none z-10">
+            Loading Editor...
+          </div>
+        )}
+        {error && (
+          <div className="shotstack-error bg-red-200 text-red-900 border border-red-300 p-3 rounded-lg m-4 absolute z-10">
+            Error: {error}
+          </div>
+        )}
+        <div ref={studioRef} data-shotstack-studio className={loading || error ? 'invisible' : ''} />
+        <div ref={timelineRef} data-shotstack-timeline className={loading || error ? 'invisible' : ''} />
+      </div>
+       {!loading && !error && (
+        <div className="text-center py-4 flex-shrink-0">
            <button 
               onClick={onRender} 
-              disabled={loading}
               className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all disabled:bg-gray-600"
           >
               <SparklesIcon className="w-5 h-5 mr-2" />
               Render & Proceed to Analysis
           </button>
        </div>
+      )}
     </div>
   );
 };
