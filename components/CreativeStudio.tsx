@@ -3,17 +3,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
 
-// Singleton promise so we never import @pixi/sound twice (StrictMode safe)
-let _pixiSoundReady: Promise<void> | null = null;
-function ensurePixiSound(): Promise<void> {
-  if (!_pixiSoundReady) {
-    _pixiSoundReady = import('@pixi/sound').then(() => {
-      // Optional: mark for debugging
-      (window as any).__pixi_sound_loaded = true;
-    });
-  }
-  return _pixiSoundReady;
-}
+// PIXI sound is now imported globally in index.tsx, so the local loader is removed to prevent double-initialization.
 
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
   new Promise<void>((resolve) => {
@@ -64,8 +54,7 @@ const CreativeStudio: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // 1) Ensure @pixi/sound side-effects are executed BEFORE any Studio init
-        await ensurePixiSound();
+        // The global @pixi/sound import in index.tsx handles initialization. No need to await it here.
 
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
@@ -87,7 +76,7 @@ const CreativeStudio: React.FC = () => {
         await edit.loadEdit(template);
         if (cancelled) return;
 
-        canvas = new Canvas(edit, studioRef.current!);
+        canvas = new Canvas(studioRef.current!, edit);
         await canvas.load();
         if (cancelled) return;
 
@@ -96,13 +85,15 @@ const CreativeStudio: React.FC = () => {
         await controls.load();
         if (cancelled) return;
         
-        timeline = new Timeline(edit, timelineRef.current!);
+        timeline = new Timeline(timelineRef.current!, edit);
         await timeline.load();
         if (cancelled) return;
 
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
-                handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: newEdit });
+                // Deproxy URLs before saving to DB to maintain canonical URLs
+                const deproxiedEdit = deproxyifyEdit(newEdit);
+                handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
             }
         };
         edit.events.on('edit:updated', onEditUpdated);
