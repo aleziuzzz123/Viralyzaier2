@@ -302,3 +302,20 @@ export function sanitizeShotstackJson(project: any): any | null {
 
   return copy;
 }
+
+// --- Shotstack SDK Loader ---
+// Single-instance loader that uses dynamic import.
+declare global {
+  interface Window {
+    SHOTSTACK_SDK_PROMISE?: Promise<typeof import("@shotstack/shotstack-studio")>;
+  }
+}
+
+export function getShotstackSDK() {
+  if (!window.SHOTSTACK_SDK_PROMISE) {
+    // Dynamically import the npm package and cache the promise
+    // to ensure it's only fetched and evaluated once.
+    window.SHOTSTACK_SDK_PROMISE = import("@shotstack/shotstack-studio");
+  }
+  return window.SHOTSTACK_SDK_PROMISE;
+}
