@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, proxyifyEdit } from '../utils';
+import { getShotstackSDK } from '../utils';
 import { sanitizeShotstackJson } from '../utils';
 import { SparklesIcon } from './Icons';
 
@@ -65,9 +65,8 @@ const CreativeStudio: React.FC = () => {
         if (cancelled) return;
         
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
-        const proxiedTemplate = proxyifyEdit(sanitizedJson);
 
-        const template = proxiedTemplate || {
+        const template = sanitizedJson || {
             timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
             output: { format: 'mp4', size: activeProjectDetails.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
         };
