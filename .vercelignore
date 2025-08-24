@@ -1,1 +1,6 @@
+# don't upload server code to Vercel
+api/
+supabase/
+scripts/
+*.md
 
