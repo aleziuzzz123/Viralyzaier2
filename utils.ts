@@ -161,86 +161,112 @@ export const loadTimelineFromCache = async (projectId: string): Promise<any | nu
 // Helper functions to sanitize Shotstack edit JSON before loading into the studio,
 // preventing crashes due to schema mismatches (ZodErrors).
 
-type AnyObj = Record<string, any>;
+const isObj = (v: any): v is Record<string, any> => v && typeof v === 'object' && !Array.isArray(v);
 
-const isObj = (v: any): v is AnyObj => v && typeof v === "object" && !Array.isArray(v);
+/**
+ * Normalizes a clip's asset object to conform to the strict Shotstack SDK schema.
+ * It rebuilds the asset from scratch, only including valid properties for its type.
+ * This is the core fix for the ZodError crashes.
+ * @param asset The potentially malformed asset object.
+ * @returns A clean, valid asset object or undefined if the asset is unsalvageable.
+ */
+function normalizeAsset(asset: any): Record<string, any> | undefined {
+  if (!isObj(asset)) return undefined;
 
-function normalizeEffect(effect: any): string | undefined {
-  if (effect == null) return undefined;
-  if (typeof effect === "string" && effect.trim()) return effect;
-  // Handle common UI pattern: { label: 'Zoom In', value: 'zoomIn' }
-  if (isObj(effect) && typeof effect.value === "string") return effect.value;
-  // Handle legacy Shotstack API format: { motion: { in: 'zoomIn' } }
-  if (isObj(effect) && isObj(effect.motion) && typeof effect.motion.in === 'string') return effect.motion.in;
-  return undefined;
-}
+  const out: Record<string, any> = {};
 
-function normalizeAsset(asset: any): AnyObj | undefined {
-  if (!isObj(asset)) {
-    // Attempt to recover if the entire asset is just a string (e.g., from a form field)
-    if (typeof asset === "string" && asset.trim()) {
-      return { type: "text", text: asset.trim() };
-    }
-    return undefined; // Invalid asset
+  // 1. Determine and validate the asset type
+  let type = asset.type;
+  if (type === 'title') type = 'text'; // Correct legacy type
+
+  if (typeof type !== 'string') {
+    if (typeof asset.text === 'string') type = 'text';
+    else if (typeof asset.html === 'string') type = 'html';
+    else if (typeof asset.src === 'string' && (asset.src.includes('.mp3') || asset.src.includes('/audio'))) type = 'audio';
+    else if (typeof asset.src === 'string' && (asset.src.includes('.mp4') || asset.src.includes('/video'))) type = 'video';
+    else if (typeof asset.src === 'string') type = 'image';
+    else if (asset.shape) type = 'shape';
+    else return undefined; // Cannot determine type, discard asset
   }
+  out.type = type;
 
-  const out: AnyObj = { ...asset };
-
-  // background must be an object, not a string
-  if (typeof out.background === "string") {
-    out.background = { color: out.background };
-  }
-  
-  // Explicitly correct invalid type 'title' to 'text'
-  if (out.type === 'title') {
-      out.type = 'text';
-  }
-
-  // Infer asset type if missing
-  if (typeof out.type !== "string") {
-    if (typeof out.text === "string") out.type = "text";
-    else if (typeof out.html === "string") out.type = "html";
-    else if (typeof out.src === "string" && /(\.mp4|\.mov|\/video)/i.test(out.src)) out.type = "video";
-    else if (typeof out.src === "string" && /(\.mp3|\.wav|\/audio)/i.test(out.src)) out.type = "audio";
-    else if (typeof out.src === "string") out.type = "image";
-    else if (out.shape) out.type = "shape";
-  }
-
-  // Ensure required fields exist for the given type
-  switch (out.type) {
-    case "text":
-      if (typeof out.text !== "string") out.text = String(out.text ?? "");
-      break;
-    case "html":
-      if (typeof out.html !== "string") out.html = "<div></div>";
-      if (typeof out.css !== "string") out.css = "";
-      break;
-    case "image":
-    case "video":
-    case "audio":
-    case "luma":
-      if (typeof out.src !== "string" || !out.src.trim()) return undefined; // Invalid if src is missing
-      break;
-    case "shape":
-      if (!["rectangle", "circle", "line"].includes(out.shape)) {
-         return undefined; // Invalid shape
+  // 2. Build the new, clean asset object based on the determined type
+  switch (type) {
+    case 'text':
+      out.text = String(asset.text ?? '');
+      if (asset.color && typeof asset.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.color)) {
+        out.color = asset.color;
+      }
+      // **CRITICAL FIX**: background must be an object with a valid color and opacity.
+      if (asset.background) {
+        let bgColor: string | undefined;
+        if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
+          bgColor = asset.background;
+        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) {
+          bgColor = asset.background.color;
+        }
+        
+        if (bgColor) {
+            out.background = {
+                color: bgColor,
+                opacity: typeof asset.background.opacity === 'number' ? asset.background.opacity : 1,
+            };
+        }
       }
       break;
+
+    case 'image':
+    case 'video':
+    case 'audio':
+    case 'luma':
+      if (typeof asset.src !== 'string' || !asset.src.trim()) return undefined;
+      out.src = asset.src;
+      if (typeof asset.volume === 'number' && (type === 'audio' || type === 'video')) {
+        out.volume = asset.volume;
+      }
+      break;
+
+    case 'shape':
+      if (!['rectangle', 'circle', 'line'].includes(asset.shape)) return undefined;
+      out.shape = asset.shape;
+      // Shapes require a background color to be visible
+      let shapeBgColor = '#FFFFFF'; // Default color
+      if (asset.background) {
+         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
+          shapeBgColor = asset.background;
+        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) {
+          shapeBgColor = asset.background.color;
+        }
+      }
+      out.background = { color: shapeBgColor, opacity: 1 };
+      break;
+
+    case 'html':
+      out.html = String(asset.html ?? '<div></div>');
+      out.css = String(asset.css ?? '');
+      break;
+
     default:
-        return undefined; // Unknown type, drop the asset
+      return undefined; // Unknown type, discard the asset
   }
 
   return out;
 }
 
-export function sanitizeShotstackJson(project: AnyObj | null): AnyObj | null {
+function normalizeEffect(effect: any): string | undefined {
+    if (effect == null) return undefined;
+    if (typeof effect === "string" && effect.trim()) return effect;
+    if (isObj(effect) && typeof effect.value === "string") return effect.value;
+    return undefined; // Discard other complex object formats
+}
+
+export function sanitizeShotstackJson(project: any): any | null {
   if (!project || typeof project !== 'object') return null;
 
-  // Make a deep copy to avoid mutating the original object.
-  const copy: AnyObj = JSON.parse(JSON.stringify(project));
+  const copy = JSON.parse(JSON.stringify(project));
 
   if (!isObj(copy.timeline) || !Array.isArray(copy.timeline.tracks)) {
-    return copy; // Return as-is if the structure is not what we expect
+    return copy;
   }
 
   copy.timeline.tracks = copy.timeline.tracks.map((track: any) => {
@@ -251,7 +277,8 @@ export function sanitizeShotstackJson(project: AnyObj | null): AnyObj | null {
       .map((clip: any) => {
         if (!isObj(clip)) return null;
         
-        const c: AnyObj = { ...clip };
+        const c: Record<string, any> = { ...clip };
+        
         const normalizedEffect = normalizeEffect(c.effect);
         if (normalizedEffect) {
             c.effect = normalizedEffect;
@@ -261,7 +288,11 @@ export function sanitizeShotstackJson(project: AnyObj | null): AnyObj | null {
 
         c.asset = normalizeAsset(c.asset);
         
-        if (!c.asset) return null; // Drop clip if asset is invalid
+        if (!c.asset) return null; // Drop clip if asset becomes invalid
+        
+        c.start = typeof c.start === 'number' ? c.start : 0;
+        c.length = typeof c.length === 'number' && c.length > 0 ? c.length : 5;
+
         return c;
       })
       .filter(Boolean);
