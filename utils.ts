@@ -215,7 +215,7 @@ const isObj = (v: any): v is Record<string, any> => v && typeof v === 'object' &
 function normalizeAsset(asset: any): Record<string, any> | undefined {
   if (!isObj(asset)) return undefined;
 
-  const out: Record<string, any> = {};
+  const out: Record<string, any> = { ...asset };
 
   // 1. Determine and validate the asset type
   let type = asset.type;
@@ -360,6 +360,40 @@ export function proxyifyEdit(editJson: any): any {
     
             if (asset.src && typeof asset.src === 'string') {
                 asset.src = createAssetProxyUrl(asset.src);
+            }
+        }
+    }
+    return newEditJson;
+}
+
+/**
+ * Reverts proxied URLs in an edit JSON back to their original, direct URLs.
+ * This is crucial before sending the JSON to the Shotstack Render API,
+ * as the cloud renderer cannot access the Supabase function proxy.
+ * @param editJson The edit JSON object with proxied asset URLs.
+ * @returns A new edit JSON object with direct, public asset URLs.
+ */
+export function deproxyifyEdit(editJson: any): any {
+    if (!editJson || typeof editJson !== 'object') return editJson;
+    
+    const newEditJson = JSON.parse(JSON.stringify(editJson));
+  
+    const tracks = newEditJson?.timeline?.tracks || [];
+    for (const track of tracks) {
+        if (!track.clips || !Array.isArray(track.clips)) continue;
+        for (const clip of track.clips) {
+            const asset = clip?.asset;
+            if (!asset || typeof asset !== 'object' || !asset.src || typeof asset.src !== 'string') continue;
+            
+            // Match the proxy format: .../asset-proxy/<encoded_url>/...
+            const proxyMatch = asset.src.match(/\/asset-proxy\/(.+?)\//);
+            if (proxyMatch && proxyMatch[1]) {
+                try {
+                    asset.src = decodeURIComponent(proxyMatch[1]);
+                } catch (e) {
+                    console.error("Failed to de-proxy URL:", asset.src, e);
+                    // Leave it as is if decoding fails, though rendering will likely fail.
+                }
             }
         }
     }
