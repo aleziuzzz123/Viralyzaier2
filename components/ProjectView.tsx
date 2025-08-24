@@ -63,8 +63,8 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     ];
 
     return (
-        <div className={isStudioActive ? 'space-y-2' : 'space-y-8'}>
-            <nav className="p-4 bg-gray-800/50 rounded-xl">
+        <div className={`h-full flex flex-col ${isStudioActive ? 'gap-2' : 'gap-8'}`}>
+            <nav className="p-4 bg-gray-800/50 rounded-xl flex-shrink-0">
                 <ol className="flex items-center justify-center space-x-2 sm:space-x-4">
                     {steps.map((step, index) => {
                         const isCompleted = project.workflowStep > step.step;
@@ -100,7 +100,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
                 </TutorialCallout>
             )}
 
-            <div className={isStudioActive ? 'mt-2' : 'mt-8'}>
+            <div className="flex-grow min-h-0">
                 {renderContent()}
             </div>
         </div>

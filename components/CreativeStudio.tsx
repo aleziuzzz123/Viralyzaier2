@@ -4,40 +4,8 @@ import { getShotstackSDK } from '../utils';
 import { sanitizeShotstackJson } from '../utils';
 import { SparklesIcon } from './Icons';
 
-// Helper to wait for an element to be visible and have a minimum size
-function waitForVisible(el: HTMLElement, minW = 300, minH = 200): Promise<void> {
-  return new Promise((resolve) => {
-    const checkVisibility = () => {
-      const rect = el.getBoundingClientRect();
-      return el.offsetParent !== null && rect.width >= minW && rect.height >= minH;
-    };
-
-    if (checkVisibility()) {
-      return resolve();
-    }
-
-    const observer = new ResizeObserver(() => {
-      if (checkVisibility()) {
-        observer.disconnect();
-        clearInterval(intervalId);
-        resolve();
-      }
-    });
-    observer.observe(el);
-
-    const intervalId = setInterval(() => {
-      if (checkVisibility()) {
-        observer.disconnect();
-        clearInterval(intervalId);
-        resolve();
-      }
-    }, 100);
-  });
-}
-
 const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
-  const wrapRef = useRef<HTMLDivElement | null>(null);
   const studioRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<any>(null);
@@ -50,17 +18,14 @@ const CreativeStudio: React.FC = () => {
     
     let cancelled = false;
     let edit: any, canvas: any, controls: any, timeline: any;
-    let onResize: (() => void) | null = null;
 
     (async () => {
       try {
         setLoading(true);
 
-        // 1. Wait until the main container is visible and sized
-        const wrap = wrapRef.current;
-        if (!wrap) return;
-        await waitForVisible(wrap);
-        if (cancelled) return;
+        // Wait for DOM containers to exist
+        await new Promise(r => requestAnimationFrame(() => r(null)));
+        if (cancelled || !studioRef.current || !timelineRef.current) return;
 
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (cancelled) return;
@@ -75,10 +40,8 @@ const CreativeStudio: React.FC = () => {
         editRef.current = edit;
         await edit.load();
 
-        if (cancelled || !studioRef.current || !timelineRef.current) return;
-
         canvas = new Canvas(template.output.size, edit, {
-          mount: studioRef.current,
+          mount: studioRef.current!,
         });
         await canvas.load();
 
@@ -89,24 +52,14 @@ const CreativeStudio: React.FC = () => {
 
         timeline = new Timeline(edit, {
           width: template.output.size.width,
-          height: 300, // Matches CSS height
-          mount: timelineRef.current,
+          height: 288,
+          mount: timelineRef.current!,
         });
         await timeline.load();
 
-        // 2. Add resize handler
-        onResize = () => {
-          if (studioRef.current && timelineRef.current) {
-            const r = studioRef.current.getBoundingClientRect();
-            canvas?.resize?.(Math.floor(r.width), undefined); // keep aspect
-            timeline?.resize?.(Math.floor(r.width), undefined);
-          }
-        };
-        onResize();
-        window.addEventListener("resize", onResize);
-
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
+                // Debounce this in a real app if performance is an issue
                 handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: newEdit });
             }
         };
@@ -124,7 +77,6 @@ const CreativeStudio: React.FC = () => {
 
     return () => {
       cancelled = true;
-      if (onResize) window.removeEventListener("resize", onResize);
       try { timeline?.destroy?.(); } catch(e) { console.error('timeline destroy error', e); }
       try { controls?.destroy?.(); } catch(e) { console.error('controls destroy error', e); }
       try { canvas?.destroy?.(); } catch(e) { console.error('canvas destroy error', e); }
@@ -140,17 +92,26 @@ const CreativeStudio: React.FC = () => {
       }
   }
 
+  if (error) {
+    return (
+      <div style={{padding:'20px'}}>
+        <div style={{background:'#fce8e6',color:'#b3261e',padding:12,borderRadius:8}}>
+          Creative Studio failed: {error}
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div ref={wrapRef} className="shotstack-stage3-wrap">
-      {error && (
-        <div className="shotstack-alert">Error Loading Video Editor: {error}</div>
+    <div className="flex flex-col h-full gap-4">
+      {loading && (
+        <div className="flex-grow flex items-center justify-center">
+            <div className="text-center text-lg font-semibold">Loading Editor...</div>
+        </div>
       )}
-      {loading && <div className="shotstack-loading">Loading Editor...</div>}
-      
-      <div ref={studioRef} data-shotstack-studio />
-      <div ref={timelineRef} data-shotstack-timeline />
-      
-       <div className="text-center mt-4">
+       <div className={`flex-grow min-h-0 ${loading ? 'hidden' : ''}`} ref={studioRef} data-shotstack-studio />
+       <div className={`flex-shrink-0 h-72 ${loading ? 'hidden' : ''}`} ref={timelineRef} data-shotstack-timeline />
+       <div className={`text-center flex-shrink-0 ${loading ? 'hidden' : ''}`}>
            <button 
               onClick={onRender} 
               disabled={loading}

@@ -234,7 +234,7 @@ const MainApp = () => {
             </header>
           
             <main className={`flex-1 overflow-y-auto ${isStudioActive ? 'p-2' : 'p-4 sm:p-6 lg:p-8'}`}>
-                <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
+                <div className="w-full max-w-7xl mx-auto h-full">{renderCurrentView()}</div>
             </main>
             
             <ScheduleModal />
