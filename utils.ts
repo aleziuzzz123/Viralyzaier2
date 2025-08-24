@@ -84,6 +84,10 @@ export const createAssetProxyUrl = (url: string | null | undefined): string => {
     if (!url || !url.startsWith('http')) {
         return url || ''; // Don't proxy local/invalid URLs, return empty string for null/undefined
     }
+     // Prevent double-proxying
+    if (url.includes('/functions/v1/asset-proxy/')) {
+        return url;
+    }
     // The proxy function is at /functions/v1/asset-proxy
     const filename = url.split('/').pop()?.split('?')[0] || 'asset';
     // Return an absolute URL to ensure compatibility with the SDK in all contexts.
@@ -318,6 +322,28 @@ export function sanitizeShotstackJson(project: any): any | null {
 
   return copy;
 }
+
+export function proxyifyEdit(editJson: any): any {
+    if (!editJson || typeof editJson !== 'object') return editJson;
+    
+    // Deep copy to avoid mutating the original object from context
+    const newEditJson = JSON.parse(JSON.stringify(editJson));
+  
+    const tracks = newEditJson?.timeline?.tracks || [];
+    for (const track of tracks) {
+        if (!track.clips || !Array.isArray(track.clips)) continue;
+        for (const clip of track.clips) {
+            const asset = clip?.asset;
+            if (!asset || typeof asset !== 'object') continue;
+    
+            if (asset.src && typeof asset.src === 'string') {
+                asset.src = createAssetProxyUrl(asset.src);
+            }
+        }
+    }
+    return newEditJson;
+}
+
 
 // --- Shotstack SDK Loader ---
 // Single-instance loader that uses dynamic import.
