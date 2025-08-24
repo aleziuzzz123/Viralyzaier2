@@ -96,6 +96,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [backendError, setBackendError] = useState<BackendError | null>(null);
     const [dismissedTutorials, setDismissedTutorials] = useState<string[]>([]);
     const [language, setLanguageState] = useState<Language>('en');
+    const initialLoadPerformed = useRef(false);
 
     const executionLock = useRef(false);
 
@@ -144,14 +145,27 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, [setIsInitialLoading, setUser, setBackendError]);
 
     useEffect(() => {
-        supabaseService.getSession().then(({ session }) => setSession(session));
-        const authListener = supabaseService.onAuthStateChange((_event, session) => {
+        supabaseService.getSession().then(({ session }) => {
+            setSession(session);
+            // If there's no session on initial check, we are done loading.
+            if (!session) {
+                setIsInitialLoading(false);
+            }
+        });
+    
+        const { data: authListener } = supabaseService.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) {
-                loadInitialData(session.user.id);
+                // Only trigger the main load if it hasn't been done yet for this session.
+                if (!initialLoadPerformed.current) {
+                    initialLoadPerformed.current = true;
+                    loadInitialData(session.user.id);
+                }
             } else {
+                // User logged out, reset state.
                 setUser(null);
                 setIsInitialLoading(false);
+                initialLoadPerformed.current = false;
             }
         });
         return () => authListener.subscription.unsubscribe();

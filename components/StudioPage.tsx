@@ -11,8 +11,12 @@ import { getShotstackSDK } from '../lib/shotstackSdk';
 import TopInspectorPanel from './TopInspectorPanel';
 import { customEditorTheme } from '../themes/customEditorTheme';
 
-// This Supabase client is scoped to the iframe and authenticated via postMessage
-let supabase: any = null;
+// Create a non-persisting client for the iframe's scope to avoid localStorage conflicts.
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: false
+    }
+});
 
 export default function StudioPage() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -105,7 +109,6 @@ export default function StudioPage() {
         if (projectData && sessionData) {
           setProject(projectData);
           setSession(sessionData);
-          supabase = createClient(supabaseUrl, supabaseAnonKey);
           supabase.auth.setSession(sessionData).then(({ error }: { error: any }) => {
             if (error) {
               setErr(`Iframe authentication failed: ${error.message}`);
