@@ -14,7 +14,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pre-bundle the main dependencies for faster dev server start.
-    include: ["@shotstack/shotstack-studio", "pixi.js"]
+    include: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/sound"]
   },
   build: {
     rollupOptions: {

@@ -147,8 +147,27 @@ const CreativeStudio: React.FC = () => {
             Error: {error}
           </div>
         )}
-        <div ref={studioRef} data-shotstack-studio className={loading || error ? 'invisible' : ''} />
-        <div ref={timelineRef} data-shotstack-timeline className={loading || error ? 'invisible' : ''} />
+        <div
+          ref={studioRef}
+          data-shotstack-studio
+          className={loading || error ? 'invisible' : ''}
+          style={{
+            height: 'min(62vh, 640px)',
+            minHeight: 420,
+            width: '100%',
+            overflow: 'hidden',
+          }}
+        />
+        <div
+          ref={timelineRef}
+          data-shotstack-timeline
+          className={loading || error ? 'invisible' : ''}
+          style={{
+            height: 260,
+            minHeight: 220,
+            width: '100%',
+          }}
+        />
       </div>
        {!loading && !error && (
         <div className="text-center py-4 flex-shrink-0">
