@@ -6,7 +6,6 @@ import AssetBrowserModal from './AssetBrowserModal';
 import HelpModal from './HelpModal';
 import TopInspectorPanel from './TopInspectorPanel'; // The new inspector panel
 import { sanitizeShotstackJson } from '../utils';
-import { customEditorTheme } from '../themes/customEditorTheme';
 
 // Direct import of the Shotstack SDK components, removing the need for a separate loader.
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
@@ -49,7 +48,7 @@ const CreativeStudio: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    let edit: InstanceType<typeof Edit>, canvas: InstanceType<typeof Canvas>, controls: InstanceType<typeof Controls>, timeline: InstanceType<typeof Timeline>;
+    let edit: InstanceType<typeof Edit>, canvas: any, controls: InstanceType<typeof Controls>, timeline: any;
 
     const initializeEditor = async () => {
       if (!studioHostRef.current || !timelineHostRef.current || !activeProjectDetails) {
@@ -68,15 +67,18 @@ const CreativeStudio: React.FC = () => {
         editRef.current = edit;
         
         canvas = new Canvas(initialState.output.size, edit);
-        await canvas.load(studioHostRef.current);
+        await canvas.load();
+        if (disposed) return;
+        (studioHostRef.current as any).replaceChildren(canvas.view);
         
         controls = new Controls(edit);
         await controls.load();
         controlsRef.current = controls;
 
         timeline = new Timeline(edit, { width: timelineHostRef.current.clientWidth, height: 300 });
-        timeline.setTheme(customEditorTheme);
-        await timeline.load(timelineHostRef.current);
+        await timeline.load();
+        if (disposed) return;
+        (timelineHostRef.current as any).replaceChildren(timeline.view);
         
         await edit.loadEdit(initialState);
         
@@ -90,9 +92,9 @@ const CreativeStudio: React.FC = () => {
         edit.events.on('edit:updated', handleStateChange);
         edit.events.on('clip:selected', handleSelection);
         edit.events.on('clip:deselected', () => handleSelection(null));
-        controls.events.on('play', handlePlay);
-        controls.events.on('pause', handlePause);
-        controls.events.on('stop', handleStop);
+        edit.events.on('play', handlePlay);
+        edit.events.on('pause', handlePause);
+        edit.events.on('stop', handleStop);
 
         if (!disposed) setIsLoading(false);
       } catch (e) {
@@ -105,7 +107,6 @@ const CreativeStudio: React.FC = () => {
 
     return () => {
       disposed = true;
-      try { timeline?.dispose(); } catch {}
       try { canvas?.dispose(); } catch {}
       editRef.current = null;
       controlsRef.current = null;
@@ -145,7 +146,7 @@ const CreativeStudio: React.FC = () => {
   
   const handleDeleteClip = () => {
     if (editRef.current && selection) {
-        editRef.current.removeClip(selection.trackIndex, selection.clipIndex);
+        editRef.current.deleteClip(selection.trackIndex, selection.clipIndex);
         setSelection(null);
     }
   };
@@ -175,8 +176,8 @@ const CreativeStudio: React.FC = () => {
        <div className="flex-shrink-0">
           <EditorToolbar
             isPlaying={isPlaying}
-            onPlayPause={() => isPlaying ? controlsRef.current?.pause() : controlsRef.current?.play()}
-            onStop={() => controlsRef.current?.stop()}
+            onPlayPause={() => isPlaying ? editRef.current?.pause() : editRef.current?.play()}
+            onStop={() => editRef.current?.stop()}
             onUndo={() => editRef.current?.undo()}
             onRedo={() => editRef.current?.redo()}
             onAddMedia={() => setIsAssetModalOpen(true)}
