@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit, ensurePixiSound } from '../utils';
 import { SparklesIcon } from './Icons';
-import { supabaseUrl } from '../services/supabaseClient';
+import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
 
 // Helper to wait until a DOM element is rendered and has a minimum size.
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
@@ -50,8 +50,15 @@ const CreativeStudio: React.FC = () => {
         setError(null);
 
         // Fetch the short-lived authentication token required by the Studio SDK.
-        // This is now a direct, unauthenticated GET call to our public proxy function.
-        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`);
+        // This call must now be authenticated since JWT verification is ON for the function.
+        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                // CRITICAL: Supabase requires this header for functions with JWT verification enabled.
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+            },
+        });
         
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();

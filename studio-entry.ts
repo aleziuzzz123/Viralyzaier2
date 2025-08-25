@@ -1,6 +1,7 @@
 // This import is for side-effects only and is critical for audio support.
 // It MUST come before any other Shotstack Studio imports.
 import '@pixi/sound';
+
 import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
 
 // Main async function to initialize the editor
