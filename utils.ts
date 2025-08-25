@@ -223,15 +223,21 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
       if (asset.color && typeof asset.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.color)) {
         out.color = asset.color;
       }
-      if (asset.background) {
+      if ('background' in out) {
         let bgColor: string | undefined;
-        if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
-          bgColor = asset.background;
-        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-gA-F]{3}){1,2}$/i.test(asset.background.color)) {
-          bgColor = asset.background.color;
+        let bgOpacity = 1;
+
+        if (typeof out.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(out.background)) {
+          bgColor = out.background;
+        } else if (isObj(out.background) && typeof out.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(out.background.color)) {
+          bgColor = out.background.color;
+          if (typeof out.background.opacity === 'number') bgOpacity = out.background.opacity;
         }
+
         if (bgColor) {
-            out.background = { color: bgColor, opacity: typeof asset.background.opacity === 'number' ? asset.background.opacity : 1, };
+          out.background = { color: bgColor, opacity: bgOpacity };
+        } else {
+          delete out.background;
         }
       }
       break;

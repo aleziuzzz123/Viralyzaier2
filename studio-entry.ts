@@ -33,14 +33,14 @@ import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
     const template = await res.json();
 
     // 3. Create and load the core Edit instance FIRST
-    const edit = new Edit(template.output.size, { background: template.timeline.background });
+    const edit = new Edit({ size: template.output.size, background: template.timeline.background });
     await edit.load();
     await edit.loadEdit(template);
     
     // 4. Now, create and load the UI components that depend on the Edit instance
-    const canvas = new Canvas(edit, studioEl as HTMLElement);
-    const controls = new Controls(edit, studioEl as HTMLElement);
-    const timeline = new Timeline(edit, timelineEl as HTMLElement);
+    const canvas = new Canvas(studioEl as HTMLElement, edit);
+    const controls = new Controls(edit);
+    const timeline = new Timeline(timelineEl as HTMLElement, edit);
     
     // 5. Load/mount the components to the DOM
     await Promise.all([
