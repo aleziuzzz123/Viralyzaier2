@@ -1,23 +1,22 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, deproxyifyEdit } from '../utils';
+import { deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
-import type Studio from '@shotstack/shotstack-studio';
 
-// Define instance types from the SDK's default export
-type Application = InstanceType<Studio['Application']>;
-type Edit = InstanceType<Studio['Edit']>;
+// Correct, modular imports
+import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
+// Import the required CSS
+import '@shotstack/shotstack-studio/dist/style.css';
 
 
 export const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
   
-  const studioRef = useRef<HTMLDivElement>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const instancesRef = useRef<{ app: Application; edit: Edit; ro: ResizeObserver; changeHandler: () => void; } | null>(null);
+  // Use a ref to hold instances for cleanup and event handlers
+  const instancesRef = useRef<{ edit: Edit, canvas: Canvas, controls: Controls, timeline: Timeline } | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
   const normalizeTemplate = useCallback((rawTemplate: any) => {
@@ -36,11 +35,11 @@ export const CreativeStudio: React.FC = () => {
     return deproxyifyEdit(template);
   }, []);
   
-  const debouncedUpdateProject = useCallback((edit: Edit) => {
+  const debouncedUpdateProject = useCallback((editInstance: Edit) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
         if (activeProjectDetails) {
-            const editJson = edit.getEdit();
+            const editJson = editInstance.getEdit();
             const deproxiedEdit = deproxyifyEdit(editJson);
             handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
         }
@@ -48,9 +47,10 @@ export const CreativeStudio: React.FC = () => {
   }, [activeProjectDetails, handleUpdateProject]);
 
   useEffect(() => {
-    if (!activeProjectDetails || !studioRef.current || !timelineRef.current) return;
+    if (!activeProjectDetails) return;
     
     let isMounted = true;
+    let changeHandler: () => void;
 
     const boot = async () => {
       try {
@@ -58,32 +58,38 @@ export const CreativeStudio: React.FC = () => {
         if (!isMounted) return;
 
         setLoading(true);
-        const StudioSDK = await getShotstackSDK();
-        const Studio = StudioSDK.default;
-        
-        if (!Studio || !Studio.Application || !Studio.Edit) {
-             throw new Error("Shotstack SDK loaded incorrectly. Core classes (Studio.Application, Studio.Edit) are missing.");
-        }
 
         const template = normalizeTemplate(activeProjectDetails.shotstackEditJson);
+        const size = template.output.size;
+        const bg = template.timeline.background;
 
-        const app = new Studio.Application({
-            studio: studioRef.current!,
-            timeline: timelineRef.current!,
+        // 1. Create Edit
+        const edit = new Edit(size, bg);
+        await edit.load();
+
+        // 2. Mount Canvas (renders into [data-shotstack-studio])
+        const canvas = new Canvas(size, edit);
+        await canvas.load();
+
+        // 3. Load the template data into the editor
+        await edit.loadEdit(template);
+
+        // 4. Controls (keyboard, transport)
+        const controls = new Controls(edit);
+        await controls.load();
+
+        // 5. Timeline (renders into [data-shotstack-timeline])
+        const timelineContainer = document.querySelector<HTMLElement>('[data-shotstack-timeline]');
+        const timeline = new Timeline(edit, {
+            width: timelineContainer?.clientWidth || size.width,
+            height: 300,
         });
-        const edit = new Studio.Edit(app, template);
+        await timeline.load();
 
-        await app.load(edit);
-
-        const fit = () => app.fit();
-        fit();
-        const ro = new ResizeObserver(fit);
-        if(timelineRef.current) ro.observe(timelineRef.current);
-
-        if(isMounted) {
-            const changeHandler = () => debouncedUpdateProject(edit);
+        if (isMounted) {
+            instancesRef.current = { edit, canvas, controls, timeline };
+            changeHandler = () => debouncedUpdateProject(edit);
             edit.events.on("change", changeHandler);
-            instancesRef.current = { app, edit, ro, changeHandler };
             setLoading(false);
         }
 
@@ -99,9 +105,10 @@ export const CreativeStudio: React.FC = () => {
       isMounted = false;
       const instances = instancesRef.current;
       if (instances) {
-        instances.ro?.disconnect();
-        try { instances.edit.events.off("change", instances.changeHandler); } catch {}
-        try { instances.app?.dispose?.(); } catch {}
+        try { instances.edit.events.off("change", changeHandler); } catch {}
+        try { instances.timeline?.destroy?.(); } catch {}
+        try { instances.canvas?.destroy?.(); } catch {}
+        // Controls/Edit don’t usually need manual dispose, but safe to drop refs
       }
       instancesRef.current = null;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -120,7 +127,8 @@ export const CreativeStudio: React.FC = () => {
     return (
         <div className="flex flex-col items-center justify-center h-full bg-red-900/20 text-red-300 p-4 rounded-lg">
             <h3 className="font-bold text-lg mb-2">Error Loading Creative Studio</h3>
-            <pre className="text-xs text-left font-mono whitespace-pre-wrap">{error}</pre>
+            <p className="mb-4">Shotstack SDK loaded incorrectly. Core classes are missing.</p>
+            <pre className="text-xs text-left font-mono whitespace-pre-wrap bg-gray-900/50 p-2 rounded">{error}</pre>
         </div>
     );
   }
@@ -135,8 +143,9 @@ export const CreativeStudio: React.FC = () => {
           </div>
         </div>
       )}
-      <div ref={studioRef} className="flex-1 min-h-0" />
-      <div ref={timelineRef} className="h-[300px] border-t-2 border-gray-700" />
+      {/* The SDK will automatically find and mount to these data attributes */}
+      <div data-shotstack-studio className="flex-1 min-h-0" />
+      <div data-shotstack-timeline className="h-[300px] border-t-2 border-gray-700" />
       
       {!loading && (
         <button
