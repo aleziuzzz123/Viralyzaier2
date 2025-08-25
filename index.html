@@ -9,33 +9,12 @@
     <!-- Use Tailwind CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Shotstack Studio CSS -->
+    <link rel="stylesheet" href="https://esm.sh/@shotstack/shotstack-studio@1.5.0/dist/style.css">
+    
     <style>
       body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
       .toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.75rem;align-items:flex-end}
-      
-      /* Shotstack Studio CSS Overrides */
-      .shotstack-host {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        gap: 16px;
-      }
-      [data-shotstack-studio] {
-        flex: 1 1 auto;
-        min-height: 420px;
-        background: #000;
-        border-radius: 8px;
-      }
-      [data-shotstack-timeline] {
-        flex: 0 0 320px;
-        background: #111827;
-        border-radius: 8px;
-      }
-      /* Neutralize hostile global CSS */
-      .shotstack-host canvas {
-        height: 100% !important;
-        width: 100% !important;
-      }
     </style>
     <script>
       // Fallback env for AI Studio preview only.
@@ -64,8 +43,7 @@
     "@pixi/sound": "https://esm.sh/@pixi/sound@^6.0.1",
     "url": "https://esm.sh/url@^0.11.4",
     "react-dom/": "https://esm.sh/react-dom@^18.3.1/",
-    "@shotstack/shotstack-studio": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0",
-    "@shotstack/shotstack-studio/": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0/"
+    "@shotstack/shotstack-studio": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0"
   }
 }
 </script>
