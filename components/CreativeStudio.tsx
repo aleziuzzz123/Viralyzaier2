@@ -2,7 +2,12 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
-import type { Edit, Application } from '@shotstack/shotstack-studio';
+import type Studio from '@shotstack/shotstack-studio';
+
+// Define instance types from the SDK's default export
+type Application = InstanceType<Studio['Application']>;
+type Edit = InstanceType<Studio['Edit']>;
+
 
 export const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
@@ -53,19 +58,20 @@ export const CreativeStudio: React.FC = () => {
         if (!isMounted) return;
 
         setLoading(true);
-        const sdk = await getShotstackSDK();
-        const { Application, Edit } = sdk;
-        if (!Application || !Edit) {
-             throw new Error("Shotstack SDK loaded incorrectly. Core classes are missing.");
+        const StudioSDK = await getShotstackSDK();
+        const Studio = StudioSDK.default;
+        
+        if (!Studio || !Studio.Application || !Studio.Edit) {
+             throw new Error("Shotstack SDK loaded incorrectly. Core classes (Studio.Application, Studio.Edit) are missing.");
         }
 
         const template = normalizeTemplate(activeProjectDetails.shotstackEditJson);
 
-        const app = new Application({
+        const app = new Studio.Application({
             studio: studioRef.current!,
             timeline: timelineRef.current!,
         });
-        const edit = new Edit(app, template);
+        const edit = new Studio.Edit(app, template);
 
         await app.load(edit);
 

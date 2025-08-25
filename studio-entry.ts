@@ -65,7 +65,8 @@ function proxyifyEdit(editJson: any): any {
     }
 
     // Dynamically import the SDK to resolve module issues
-    const { default: Application, Edit } = await import('@shotstack/shotstack-studio');
+    const StudioSDK = await import('@shotstack/shotstack-studio');
+    const Studio = StudioSDK.default;
     
     // 2. Fetch a simple template to load
     const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
@@ -76,12 +77,12 @@ function proxyifyEdit(editJson: any): any {
     const template = proxyifyEdit(rawTemplate);
 
     // 3. Create and load the core Edit instance
-    const app = new Application({
+    const app = new Studio.Application({
       studio: studioEl as HTMLElement,
       timeline: timelineEl as HTMLElement,
       controls: controlsEl as HTMLElement,
     });
-    const edit = new Edit(app, template);
+    const edit = new Studio.Edit(app, template);
 
     // 4. Load the assets for the timeline
     await app.load(edit);
