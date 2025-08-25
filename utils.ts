@@ -199,6 +199,21 @@ export const loadTimelineFromCache = async (projectId: string): Promise<any | nu
 // --- Shotstack Studio JSON Sanitizer ---
 const isObj = (v: any): v is Record<string, any> => v && typeof v === 'object' && !Array.isArray(v);
 
+function anyColorToHex(v: any): string | null {
+  if (typeof v === 'string') {
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim())) return v.trim().toUpperCase();
+    return null;
+  }
+  if (isObj(v)) {
+    if (typeof v.hex === 'string') return anyColorToHex(v.hex);
+    if (typeof v.r === 'number' && typeof v.g === 'number' && typeof v.b === 'number') {
+      const toHexPart = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+      return `#${toHexPart(v.r)}${toHexPart(v.g)}${toHexPart(v.b)}`.toUpperCase();
+    }
+  }
+  return null;
+}
+
 function normalizeAsset(asset: any): Record<string, any> | undefined {
   if (!isObj(asset)) return undefined;
 
@@ -220,24 +235,15 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
   switch (type) {
     case 'text':
       out.text = String(asset.text ?? '');
-      if (asset.color && typeof asset.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.color)) {
-        out.color = asset.color;
+      if (asset.color) {
+        out.color = anyColorToHex(asset.color) || '#FFFFFF';
       }
       if ('background' in out) {
-        let bgColor: string | undefined;
-        let bgOpacity = 1;
-
-        if (typeof out.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(out.background)) {
-          bgColor = out.background;
-        } else if (isObj(out.background) && typeof out.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(out.background.color)) {
-          bgColor = out.background.color;
-          if (typeof out.background.opacity === 'number') bgOpacity = out.background.opacity;
-        }
-
+        const bgColor = anyColorToHex(out.background);
         if (bgColor) {
-          out.background = { color: bgColor, opacity: bgOpacity };
+           out.background = bgColor;
         } else {
-          delete out.background;
+           delete out.background;
         }
       }
       break;
@@ -251,11 +257,7 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
     case 'shape':
       if (!['rectangle', 'circle', 'line'].includes(asset.shape)) return undefined;
       out.shape = asset.shape;
-      let shapeBgColor = '#FFFFFF';
-      if (asset.background) {
-         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) { shapeBgColor = asset.background; }
-         else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) { shapeBgColor = asset.background.color; }
-      }
+      let shapeBgColor = anyColorToHex(asset.background) || '#FFFFFF';
       out.background = { color: shapeBgColor, opacity: 1 };
       break;
     case 'html':
@@ -277,7 +279,16 @@ function normalizeEffect(effect: any): string | undefined {
 export function sanitizeShotstackJson(project: any): any | null {
   if (!project || typeof project !== 'object') return null;
   const copy = JSON.parse(JSON.stringify(project));
-  if (!isObj(copy.timeline) || !Array.isArray(copy.timeline.tracks)) return copy;
+  if (!isObj(copy.timeline)) {
+    copy.timeline = {};
+  }
+  
+  copy.timeline.background = anyColorToHex(copy.timeline.background) || '#000000';
+
+  if (!Array.isArray(copy.timeline.tracks)) {
+    copy.timeline.tracks = [];
+    return copy;
+  }
 
   copy.timeline.tracks = copy.timeline.tracks.map((track: any) => {
     if (!isObj(track) || !Array.isArray(track.clips)) return { ...track, clips: [] };
