@@ -49,13 +49,30 @@ const CreativeStudio: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch the short-lived authentication token required by the Studio SDK
-        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, { method: 'POST' });
+        // Fetch the short-lived authentication token required by the Studio SDK.
+        // This is now a direct, unauthenticated call to our public proxy function.
+        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
         if (!tokenResponse.ok) {
-            const text = await tokenResponse.text();
-            throw new Error(`Failed to obtain Studio token: ${tokenResponse.status} ${text.slice(0,120)}`);
+            const errorText = await tokenResponse.text();
+            let errorMessage = `Failed to obtain Studio token: ${tokenResponse.status}.`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage += ` ${errorJson.error || errorJson.detail || errorJson.message || errorText}`;
+            } catch (e) {
+                errorMessage += ` ${errorText}`;
+            }
+            throw new Error(errorMessage);
         }
-        const { token: studioToken } = await tokenResponse.json();
+
+        const tokenData = await tokenResponse.json();
+        if (!tokenData?.token) {
+            throw new Error(`Failed to obtain Studio token: The function did not return a token.`);
+        }
+        const { token: studioToken } = tokenData;
 
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
