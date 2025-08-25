@@ -24,23 +24,38 @@
       import { Edit, Canvas, Controls, Timeline } from 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio/+esm';
 
       (async () => {
-        // load a simple template
-        const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
-        const template = await res.json();
+        // 1. Retrieve an edit from a template
+        const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
+        const response = await fetch(templateUrl);
+        if (!response.ok) throw new Error(`Failed to fetch template: ${response.statusText}`);
+        const template = await response.json();
 
+        // 2. Initialize the edit with dimensions and background color
         const edit = new Edit(template.output.size, template.timeline.background);
         await edit.load();
 
+        // 3. Create a canvas to display the edit
         const canvas = new Canvas(template.output.size, edit);
-        await canvas.load();
+        
+        // 4. Add keyboard controls
+        const controls = new Controls(edit);
 
+        // 5. Add timeline for visual editing
+        const timeline = new Timeline(edit, {
+          width: template.output.size.width,
+          height: 300
+        });
+
+        // 6. Load all components, which will render them to their respective data-attributes
+        await Promise.all([
+          canvas.load(),
+          controls.load(),
+          timeline.load(),
+        ]);
+        
+        // 7. Finally, load the template data into the edit
         await edit.loadEdit(template);
 
-        const controls = new Controls(edit);
-        await controls.load();
-
-        const timeline = new Timeline(edit, { width: template.output.size.width, height: 300 });
-        await timeline.load();
       })().catch(e => {
         document.body.insertAdjacentHTML('beforeend',
           `<div style="background:#fce4e4;color:#900;padding:12px;border-radius:6px;margin-top:12px">
