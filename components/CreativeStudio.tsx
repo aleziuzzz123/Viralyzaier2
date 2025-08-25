@@ -3,49 +3,28 @@ import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
 
-type Size = { width: number; height: number };
-
-const RES_MAP: Record<string, Record<string, Size>> = {
-  sd:    { '16:9': { width: 640,  height: 360  }, '9:16': { width: 360,  height: 640  }, '1:1': { width: 480,  height: 480  }, '4:5': { width: 608,  height: 760  } },
-  hd:    { '16:9': { width: 1280, height: 720  }, '9:16': { width: 720,  height: 1280 }, '1:1': { width: 1080, height: 1080 }, '4:5': { width: 1080, height: 1350 } },
-  '1080':{ '16:9': { width: 1920, height: 1080 }, '9:16': { width: 1080, height: 1920 }, '1:1': { width: 1080, height: 1080 }, '4:5': { width: 1080, height: 1350 } },
-  '4k':  { '16:9': { width: 3840, height: 2160 }, '9:16': { width: 2160, height: 3840 }, '1:1': { width: 2160, height: 2160 }, '4:5': { width: 2160, height: 2700 } },
-};
-
-function resolveSizeFromTemplate(template: any): Size {
-  // 1) if explicit size exists (and is numeric), use it
-  const w = Number(template?.output?.size?.width);
-  const h = Number(template?.output?.size?.height);
-  if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
-    return { width: w, height: h };
-  }
-
-  // 2) else compute from resolution + aspectRatio
-  const resolution = String(template?.output?.resolution ?? 'hd');
-  const aspect = String(template?.output?.aspectRatio ?? '16:9');
-  const size = RES_MAP[resolution]?.[aspect] ?? RES_MAP.hd['16:9'];
-  return size;
-}
-
+// Type placeholders for the dynamic SDK imports
+type StudioApplication = any;
+type StudioEdit = any;
 
 export const CreativeStudio: React.FC = () => {
   const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
   
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const instancesRef = useRef<{ edit: any; canvas: any; controls: any; timeline: any } | null>(null);
+  const instancesRef = useRef<{ app: StudioApplication; edit: StudioEdit } | null>(null);
   const startedRef = useRef(false);
   const timeoutRef = useRef<number | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const debouncedUpdateProject = useCallback((editInstance: any) => {
+  const debouncedUpdateProject = useCallback((editJson: any) => {
     if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = window.setTimeout(() => {
         if (activeProjectDetails) {
-            const deproxiedEdit = deproxyifyEdit(editInstance.getEdit());
+            const deproxiedEdit = deproxyifyEdit(editJson);
             handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
         }
     }, 1000);
@@ -62,7 +41,7 @@ export const CreativeStudio: React.FC = () => {
 
     const save = () => {
       if (instancesRef.current?.edit) {
-        debouncedUpdateProject(instancesRef.current.edit);
+        debouncedUpdateProject(instancesRef.current.edit.getEdit());
       }
     };
 
@@ -71,17 +50,10 @@ export const CreativeStudio: React.FC = () => {
       cancelled = true;
       startedRef.current = false;
       const instances = instancesRef.current;
-      if (instances) {
+      if (instances?.app) {
         try {
-          instances.edit.events.off('clip:updated', save);
-          instances.edit.events.off('clip:added', save);
-          instances.edit.events.off('clip:deleted', save);
-          instances.edit.events.off('track:added', save);
-          instances.edit.events.off('track:deleted', save);
-          
-          instances.canvas.dispose();
-          instances.controls.dispose();
-          instances.timeline.dispose();
+          instances.edit.events.off('change', save);
+          instances.app.dispose();
         } catch(e) { console.error('Studio cleanup error', e); }
       }
       instancesRef.current = null;
@@ -98,9 +70,11 @@ export const CreativeStudio: React.FC = () => {
 
         const sdk = await getShotstackSDK();
         if (cancelled) return;
-        const { Edit, Canvas, Controls, Timeline } = sdk;
-        if (!Edit || !Canvas || !Controls || !Timeline) {
-            throw new Error("Shotstack SDK loaded incorrectly. Core components are missing.");
+        
+        // The default export from the SDK module is the Application class
+        const { default: Application, Edit } = sdk;
+        if (!Application || !Edit) {
+            throw new Error("Shotstack SDK loaded incorrectly. `Application` or `Edit` class is missing.");
         }
         
         const template = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson) || {
@@ -108,35 +82,31 @@ export const CreativeStudio: React.FC = () => {
             output: { resolution: 'hd', aspectRatio: activeProjectDetails.videoSize || '16:9' }
         };
         
-        const size = resolveSizeFromTemplate(template);
-        const background = template?.timeline?.background ?? '#000000';
         const proxiedTemplate = proxyifyEdit(template);
 
-        const edit = new Edit(size, background);
-        await edit.load();
-        if (cancelled) return;
-        
-        const canvas = new Canvas(size, edit);
-        const controls = new Controls(edit);
-        const timeline = new Timeline(edit, { width: size.width, height: 300 });
-        
-        instancesRef.current = { edit, canvas, controls, timeline };
+        const studioEl = hostRef.current?.querySelector('[data-shotstack-studio]');
+        const timelineEl = hostRef.current?.querySelector('[data-shotstack-timeline]');
+        const controlsEl = hostRef.current?.querySelector('[data-shotstack-controls]');
 
-        await Promise.all([
-          canvas.load(),
-          controls.load(),
-          timeline.load(),
-        ]);
+        if (!studioEl || !timelineEl || !controlsEl) {
+          throw new Error("Required Shotstack DOM elements not found inside the host component.");
+        }
+
+        const app = new Application({
+            studio: studioEl as HTMLElement,
+            timeline: timelineEl as HTMLElement,
+            controls: controlsEl as HTMLElement,
+        });
+
+        const edit = new Edit(app, proxiedTemplate);
+        
+        instancesRef.current = { app, edit };
+
+        await app.load(edit);
         if (cancelled) return;
         
-        await edit.loadEdit(proxiedTemplate);
-        if (cancelled) return;
-
-        edit.events.on('clip:updated', save);
-        edit.events.on('clip:added', save);
-        edit.events.on('clip:deleted', save);
-        edit.events.on('track:added', save);
-        edit.events.on('track:deleted', save);
+        // Use the 'change' event for more efficient debounced saving
+        edit.events.on('change', save);
         
         if (!cancelled) setLoading(false);
       } catch (e: any) {
@@ -185,7 +155,7 @@ export const CreativeStudio: React.FC = () => {
         
         <button
             onClick={handleRender}
-            className="absolute bottom-52 right-4 z-10 inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors text-sm shadow-lg"
+            className="absolute bottom-[320px] mb-4 right-4 z-10 inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors text-sm shadow-lg"
         >
             <SparklesIcon className="w-5 h-5 mr-2" /> Render & Proceed
         </button>

@@ -20,43 +20,43 @@
     <div data-shotstack-timeline style="height:300px;"></div>
 
     <script type="module">
-      import '@pixi/sound'; // ensure audio loader is registered
-      import { Edit, Canvas, Controls, Timeline } from 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio/+esm';
+      // This side-effectful import is critical for audio support
+      import '@pixi/sound';
+      // The default export from the SDK is the Application class
+      import Application, { Edit } from 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio/+esm';
 
       (async () => {
-        // 1. Retrieve an edit from a template
+        // Find the DOM elements where the editor components will be mounted
+        const studioEl = document.querySelector('[data-shotstack-studio]');
+        const timelineEl = document.querySelector('[data-shotstack-timeline]');
+        const controlsEl = document.querySelector('[data-shotstack-controls]');
+
+        if (!studioEl || !timelineEl || !controlsEl) {
+          throw new Error("Could not find all the required DOM elements for the studio.");
+        }
+
+        // 1. Retrieve a template to display
         const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
         const response = await fetch(templateUrl);
         if (!response.ok) throw new Error(`Failed to fetch template: ${response.statusText}`);
         const template = await response.json();
 
-        // 2. Initialize the edit with dimensions and background color
-        const edit = new Edit(template.output.size, template.timeline.background);
-        await edit.load();
-
-        // 3. Create a canvas to display the edit
-        const canvas = new Canvas(template.output.size, edit);
-        
-        // 4. Add keyboard controls
-        const controls = new Controls(edit);
-
-        // 5. Add timeline for visual editing
-        const timeline = new Timeline(edit, {
-          width: template.output.size.width,
-          height: 300
+        // 2. Initialize the Application with the DOM elements
+        const app = new Application({
+          studio: studioEl,
+          timeline: timelineEl,
+          controls: controlsEl,
         });
-
-        // 6. Load all components, which will render them to their respective data-attributes
-        await Promise.all([
-          canvas.load(),
-          controls.load(),
-          timeline.load(),
-        ]);
         
-        // 7. Finally, load the template data into the edit
-        await edit.loadEdit(template);
+        // 3. Create the Edit instance, passing the app and the template data
+        const edit = new Edit(app, template);
+
+        // 4. Load the application. This will automatically load the edit,
+        // its assets, and render all components into the specified DOM elements.
+        await app.load(edit);
 
       })().catch(e => {
+        // Display a user-friendly error message if initialization fails
         document.body.insertAdjacentHTML('beforeend',
           `<div style="background:#fce4e4;color:#900;padding:12px;border-radius:6px;margin-top:12px">
              Failed to load studio: ${e?.message || e}
