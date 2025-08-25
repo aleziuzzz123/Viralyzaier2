@@ -1,25 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
+import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit, ensurePixiSound } from '../utils';
 import { SparklesIcon } from './Icons';
 
-// Singleton promise to ensure the module is imported only once.
-let pixiSoundReady: Promise<unknown> | null = null;
-function ensurePixiSound() {
-  // The import() is for side-effects only: it registers the AudioLoadParser.
-  return pixiSoundReady ??= import('@pixi/sound');
-}
-
+// Helper to wait until a DOM element is rendered and has a minimum size.
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
   new Promise<void>((resolve) => {
     if (!el) return resolve();
-    const ok = () => {
-      const r = el.getBoundingClientRect();
-      return el.offsetParent !== null && r.width >= minW && r.height >= minH;
+    const isVisible = () => {
+      const rect = el.getBoundingClientRect();
+      return el.offsetParent !== null && rect.width >= minW && rect.height >= minH;
     };
-    if (ok()) return resolve();
-    const ro = new ResizeObserver(() => ok() && (ro.disconnect(), resolve()));
-    ro.observe(el);
+    if (isVisible()) return resolve();
+    const observer = new ResizeObserver(() => isVisible() && (observer.disconnect(), resolve()));
+    observer.observe(el);
   });
 
 const CreativeStudio: React.FC = () => {
@@ -28,7 +22,7 @@ const CreativeStudio: React.FC = () => {
   const studioRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<any>(null);
-  const startedRef = useRef(false); // StrictMode double-mount guard
+  const startedRef = useRef(false); // Guard against React StrictMode's double mount in dev
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,21 +30,16 @@ const CreativeStudio: React.FC = () => {
   useEffect(() => {
     if (!activeProjectDetails) return;
     
-    // StrictMode in dev mounts twice — do not initialize twice
     if (startedRef.current) return;
     startedRef.current = true;
 
-    let edit: any, canvas: any, controls: any, timeline: any;
-    let onResize: () => void;
+    let edit: any;
     let cancelled = false;
 
+    // Cleanup function to destroy all SDK instances and remove listeners
     const cleanup = () => {
       cancelled = true;
-      if (onResize) window.removeEventListener("resize", onResize);
-      try { timeline?.destroy?.(); } catch(e) { console.error('timeline destroy error', e); }
-      try { controls?.destroy?.(); } catch(e) { console.error('controls destroy error', e); }
-      try { canvas?.destroy?.(); } catch(e) { console.error('canvas destroy error', e); }
-      try { edit?.destroy?.(); } catch(e) { console.error('edit destroy error', e); }
+      try { editRef.current?.destroy?.(); } catch(e) { console.error('Edit destroy error', e); }
       editRef.current = null;
     };
 
@@ -59,66 +48,68 @@ const CreativeStudio: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Ensure Pixi Sound is loaded before the SDK which might use it.
-        await ensurePixiSound();
+        // Fetch the short-lived authentication token required by the Studio SDK
+        const tokenResponse = await fetch('/functions/v1/shotstack-studio-token', { method: 'POST' });
+        if (!tokenResponse.ok) {
+            const err = await tokenResponse.json();
+            throw new Error(`Failed to obtain Studio token: ${err.detail || tokenResponse.statusText}`);
+        }
+        const { token: studioToken } = await tokenResponse.json();
 
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
 
+        // 1. Ensure Pixi Sound is registered before the Studio SDK is even imported.
+        await ensurePixiSound();
+        if (cancelled) return;
+
+        // 2. Load the Shotstack SDK. This utility now waits for the sound module.
         const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
         if (cancelled) return;
         
+        // 3. Prepare the timeline JSON
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
         const proxiedJson = proxyifyEdit(sanitizedJson);
-
         const template = proxiedJson || {
-            timeline: { background: "#000000", tracks: [ { name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Audio', clips: [] }, { name: 'SFX', clips: [] }, { name: 'Music', clips: [] } ]},
+            timeline: { background: "#000000", tracks: [] },
             output: { format: 'mp4', size: activeProjectDetails.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
         };
         
-        edit = new Edit(template.output.size);
+        // 4. Initialize and load the core Edit instance with the token.
+        edit = new Edit(template.output.size, { background: template.timeline.background, token: studioToken });
         editRef.current = edit;
         await edit.load();
         await edit.loadEdit(template);
         if (cancelled) return;
 
-        canvas = new Canvas(studioRef.current!, edit);
-        await canvas.load();
-        if (cancelled) return;
+        // 5. Only after Edit is ready, create and mount the UI components.
+        if (!studioRef.current || !timelineRef.current) throw new Error('DOM mount points are missing.');
 
-
-        controls = new Controls(edit);
-        await controls.load();
+        const canvas = new Canvas(edit, studioRef.current);
+        const controls = new Controls(edit, studioRef.current);
+        const timeline = new Timeline(edit, timelineRef.current);
+        
+        await Promise.all([
+          canvas.load(),
+          controls.load(),
+          timeline.load(),
+        ]);
         if (cancelled) return;
         
-        timeline = new Timeline(timelineRef.current!, edit);
-        await timeline.load();
-        if (cancelled) return;
-
+        // 6. Set up event listener for autosaving changes
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
-                // Deproxy URLs before saving to DB to maintain canonical URLs
                 const deproxiedEdit = deproxyifyEdit(newEdit);
                 handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
             }
         };
         edit.events.on('edit:updated', onEditUpdated);
         
-        onResize = () => {
-          if (hostRef.current) {
-            const w = Math.floor(hostRef.current.getBoundingClientRect().width);
-            canvas?.resize?.(w, undefined);
-            timeline?.resize?.(w, undefined);
-          }
-        };
-        onResize();
-        window.addEventListener("resize", onResize);
-        
         if (!cancelled) setLoading(false);
       } catch (e: any) {
         if (!cancelled) {
-          console.error('[studio init failed]', e);
-          setError(e?.message || 'Failed to load editor');
+          console.error('[Studio Init Failed]', e);
+          setError(e?.message || 'Failed to load the creative studio. Please try refreshing the page.');
           setLoading(false);
         }
       }
@@ -131,7 +122,6 @@ const CreativeStudio: React.FC = () => {
   const onRender = () => {
       if (editRef.current && activeProjectDetails) {
           const finalJsonFromEditor = editRef.current.getEdit();
-          // De-proxy URLs before sending to the backend render service
           const finalJsonForRender = deproxyifyEdit(finalJsonFromEditor);
           handleRenderProject(activeProjectDetails.id, finalJsonForRender);
       }
@@ -139,38 +129,15 @@ const CreativeStudio: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div ref={hostRef} className="shotstack-host flex-grow">
-        {loading && (
-          <div className="shotstack-loading absolute inset-0 grid place-items-center text-slate-400 font-semibold pointer-events-none z-10">
-            Loading Editor...
-          </div>
+      <div ref={hostRef} className="shotstack-host flex-grow relative">
+        {(loading || error) && (
+            <div className="absolute inset-0 grid place-items-center z-10">
+                {loading && <div className="text-slate-400 font-semibold">Loading Creative Studio...</div>}
+                {error && <div className="bg-red-900/50 text-red-300 border border-red-500 p-4 rounded-lg max-w-md text-center">{error}</div>}
+            </div>
         )}
-        {error && (
-          <div className="shotstack-error bg-red-200 text-red-900 border border-red-300 p-3 rounded-lg m-4 absolute z-10">
-            Error: {error}
-          </div>
-        )}
-        <div
-          ref={studioRef}
-          data-shotstack-studio
-          className={loading || error ? 'invisible' : ''}
-          style={{
-            height: 'min(62vh, 640px)',
-            minHeight: 420,
-            width: '100%',
-            overflow: 'hidden',
-          }}
-        />
-        <div
-          ref={timelineRef}
-          data-shotstack-timeline
-          className={loading || error ? 'invisible' : ''}
-          style={{
-            height: 260,
-            minHeight: 220,
-            width: '100%',
-          }}
-        />
+        <div ref={studioRef} data-shotstack-studio className={loading || error ? 'invisible' : ''} />
+        <div ref={timelineRef} data-shotstack-timeline className={loading || error ? 'invisible' : ''} />
       </div>
        {!loading && !error && (
         <div className="text-center py-4 flex-shrink-0">
