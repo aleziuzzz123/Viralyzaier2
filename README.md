@@ -4,14 +4,7 @@ This guide walks you through setting up the application, which is now powered by
 
 ---
 
-## 1. API Keys: Sandbox vs. Production (Important!)
-
-When developing your application, it is crucial to use your **Sandbox API Key** from the Shotstack Dashboard. The sandbox environment is free for rendering tests (videos will have a watermark) and will prevent accidental charges.
-
-- **Action:** Set your **sandbox key** in the `SHOTSTACK_API_KEY` secret for the `shotstack-render` and `shotstack-status` Supabase functions.
-- **Production Key:** Only use your **Production API Key** in your live, deployed application when you are ready to serve non-watermarked videos to your users.
-
-## 2. Supabase: Set Up Your Backend Secrets
+## 1. Supabase: Set Up Your Backend Secrets
 
 Your backend functions need secret keys to communicate with various services securely.
 
@@ -19,15 +12,10 @@ Your backend functions need secret keys to communicate with various services sec
 2.  Navigate to **Edge Functions**.
 3.  For each function, go to its **Secrets** tab and add the following keys. You will need to create accounts for these services to get your keys.
 
-    *   **For `shotstack-studio-token` (NEW):**
-        *   `SHOTSTACK_STUDIO_KEY`: Your **secret** Shotstack Studio API key (this is different from the Render key).
-        *   `SHOTSTACK_REGION`: The region for your Shotstack account (e.g., `us`, `eu`, `ap`). Defaults to `us`.
-        *   `SHOTSTACK_ORG_ID`: (Optional) Your organization ID if required by your plan.
-
-    *   **For `shotstack-render` & `shotstack-status`:**
-        *   `SHOTSTACK_API_KEY`: Your **secret** Shotstack Render API key (use your "stage" key for development).
-        *   `SHOTSTACK_API_BASE`: Set this to `https://api.shotstack.io/stage` for development.
+    *   **For ALL Shotstack Functions (`shotstack-studio-token`, `shotstack-render`, `shotstack-status`):**
+        *   `SHOTSTACK_API_KEY`: Your **production** Shotstack API key. This is the **only** Shotstack key you need. It is used for both Studio authentication and backend rendering.
         *   `SUPABASE_URL`: The URL of your Supabase project. This is crucial for constructing the webhook callback URL.
+        *   **IMPORTANT**: Make sure you have removed any old keys like `SHOTSTACK_STUDIO_KEY` or `SHOTSTACK_SANDBOX_KEY` from your secrets to avoid confusion.
 
     *   **For `shotstack-webhook`:**
         *   `SUPABASE_URL`: The URL of your Supabase project.
@@ -45,13 +33,13 @@ Your backend functions need secret keys to communicate with various services sec
 
 ---
 
-## 3. Frontend: No Keys Required
+## 2. Frontend: No Keys Required
 
 The frontend application does not require any public API keys. The Shotstack Studio editor is initialized by calling a secure Supabase function to get a session token, and all rendering calls are proxied securely through the `shotstack-render` Supabase function.
 
 ---
 
-## Architectural Note: Editing, Rendering & Webhooks
+## 3. Architectural Note: Editing, Rendering & Webhooks
 
 -   **Shotstack Studio SDK:** All interactive video editing now happens in the browser. The SDK is initialized with a short-lived token fetched from our secure `shotstack-studio-token` function.
 -   **API-Based Rendering:** When a user is ready, the frontend sends the editor's final JSON state to the secure Supabase function (`shotstack-render`).
@@ -59,13 +47,13 @@ The frontend application does not require any public API keys. The Shotstack Stu
 
 ---
 
-## Troubleshooting
+## 4. Troubleshooting
 
 -   **Editor Fails to Load on "Authenticating...":**
     -   This is an authentication token issue. Check the browser's Network tab for a call to `/functions/v1/shotstack-studio-token`.
     -   If it returns a 404, the function is not deployed correctly.
-    -   If it returns a 500 error, check the function's logs in the Supabase dashboard. The most common cause is missing secrets (`SHOTSTACK_STUDIO_KEY`, `SHOTSTACK_REGION`).
+    -   If it returns a 500 error, check the function's logs in the Supabase dashboard. The most common cause is a missing `SHOTSTACK_API_KEY` secret.
 -   **Rendering Fails with a 4xx/5xx Error:**
-    -   This is likely an issue with the `shotstack-render` function. Check its logs in the Supabase dashboard. Ensure the `SHOTSTACK_API_KEY`, `SHOTSTACK_API_BASE` and `SUPABASE_URL` secrets are set correctly and that you have redeployed the function after setting them.
+    -   This is likely an issue with the `shotstack-render` function. Check its logs in the Supabase dashboard. Ensure the `SHOTSTACK_API_KEY` and `SUPABASE_URL` secrets are set correctly and that you have redeployed the function after setting them.
 -   **Video Stays in "Rendering" State Forever:**
     -   This indicates the `shotstack-webhook` function may not have been called or has an error. Check its logs in the Supabase dashboard. Ensure the function has been deployed and its secrets are set.
