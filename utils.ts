@@ -305,6 +305,14 @@ export function sanitizeShotstackJson(project: any): any | null {
       }).filter(Boolean);
     return { ...track, clips };
   });
+  
+  if (isObj(copy.output) && isObj(copy.output.size)) {
+    copy.output.size.width = Number(copy.output.size.width) || 1080;
+    copy.output.size.height = Number(copy.output.size.height) || 1920;
+  } else {
+    copy.output = { ...(copy.output || {}), size: { width: 1080, height: 1920 } };
+  }
+  
   return copy;
 }
 
@@ -344,31 +352,4 @@ export function deproxyifyEdit(editJson: any): any {
         }
     }
     return newEditJson;
-}
-
-
-// --- Shotstack SDK Loader ---
-declare global {
-  interface Window {
-    SHOTSTACK_SDK_PROMISE?: Promise<typeof import("@shotstack/shotstack-studio")>;
-  }
-}
-
-// Singleton promise to ensure the module is imported only once.
-let _pixiSoundReady: Promise<void> | null = null;
-export function ensurePixiSound(): Promise<void> {
-  // The import() is for side-effects only: it registers the AudioLoadParser.
-  return (_pixiSoundReady ??= import('@pixi/sound').then(() => {}));
-}
-
-
-export function getShotstackSDK() {
-  if (!window.SHOTSTACK_SDK_PROMISE) {
-    window.SHOTSTACK_SDK_PROMISE = (async () => {
-        // Critical: Ensure the audio loader is registered before the SDK is imported
-        await ensurePixiSound();
-        return import("@shotstack/shotstack-studio");
-    })();
-  }
-  return window.SHOTSTACK_SDK_PROMISE;
 }

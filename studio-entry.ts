@@ -2,7 +2,7 @@
 // It MUST come before any other Shotstack Studio imports.
 import '@pixi/sound';
 
-import { Application, Edit } from '@shotstack/shotstack-studio';
+import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
 
 // --- Asset Proxying Logic ---
 // This is necessary to avoid CORS errors when loading assets from external domains.
@@ -45,9 +45,9 @@ function proxyifyEdit(editJson: any): any {
 (async () => {
   const loadingIndicator = document.getElementById('loading-indicator');
   const errorIndicator = document.getElementById('error-indicator');
-  const studioEl = document.querySelector('[data-shotstack-studio]');
-  const timelineEl = document.querySelector('[data-shotstack-timeline]');
-  const controlsEl = document.querySelector('[data-shotstack-controls]');
+  const studioEl = document.querySelector<HTMLElement>('[data-shotstack-studio]');
+  const timelineEl = document.querySelector<HTMLElement>('[data-shotstack-timeline]');
+  const controlsEl = document.querySelector<HTMLElement>('[data-shotstack-controls]');
   
   const showError = (message: string) => {
     if (errorIndicator) {
@@ -71,19 +71,29 @@ function proxyifyEdit(editJson: any): any {
     if (!res.ok) throw new Error(`Failed to fetch template: ${res.statusText}`);
     const rawTemplate = await res.json();
     
-    // **FIX**: Proxy all asset URLs within the template to avoid CORS issues
+    // 3. Proxy all asset URLs within the template to avoid CORS issues
     const template = proxyifyEdit(rawTemplate);
 
-    // 3. Create and load the core Edit instance
-    const app = new Application({
-      studio: studioEl as HTMLElement,
-      timeline: timelineEl as HTMLElement,
-      controls: controlsEl as HTMLElement,
-    });
-    const edit = new Edit(app, template);
+    // 4. Create and load the core Edit instance and other components
+    const edit = new Edit(template.output.size, template.timeline.background);
+    await edit.load();
+    
+    const canvas = new Canvas(template.output.size, edit);
+    await canvas.load();
+    studioEl.appendChild((canvas as any).view);
 
-    // 4. Load the assets for the timeline
-    await app.load(edit);
+    await edit.loadEdit(template);
+
+    const controls = new Controls(edit);
+    await controls.load();
+    controlsEl.appendChild((controls as any).view);
+
+    const timeline = new Timeline(edit, { 
+        width: timelineEl.clientWidth, 
+        height: timelineEl.clientHeight || 300 
+    });
+    await timeline.load();
+    timelineEl.appendChild((timeline as any).view);
     
     // Hide loading indicator on success
     if (loadingIndicator) {
