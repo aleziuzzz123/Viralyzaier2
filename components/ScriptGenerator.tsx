@@ -125,7 +125,7 @@ interface ScriptEditorProps {
     project: Project;
 }
 
-const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
+export const CreativeStudio: React.FC<ScriptEditorProps> = ({ project }) => {
     const { t, user, consumeCredits, lockAndExecute, addToast, handleUpdateProject } = useAppContext();
     const [script, setScript] = useState<Script | null>(project.script);
     const [activeCopilot, setActiveCopilot] = useState<number | null>(null);
@@ -623,5 +623,3 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         </div>
     );
 };
-
-export default ScriptEditor;
