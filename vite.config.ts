@@ -1,10 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// __dirname is not available in ES modules, so we define it manually.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -14,13 +9,17 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pre-bundle the main dependencies for faster dev server start.
-    include: ["@shotstack/shotstack-studio", "pixi.js"]
+    include: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/sound"]
   },
   build: {
     rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'index.html'),
-        studio: path.resolve(__dirname, 'studio.html'),
+      // NOTE: Input is omitted, Vite will default to index.html for a standard SPA build.
+      treeshake: {
+        // This is critical to prevent Vite from removing the side-effectful
+        // import of @pixi/sound, which registers the audio loader globally.
+        moduleSideEffects: (id) => {
+          return id.includes('/node_modules/@pixi/sound');
+        }
       }
     }
   }
