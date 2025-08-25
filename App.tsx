@@ -20,6 +20,7 @@ import UpgradeModal from './components/UpgradeModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
+import { CreativeStudio } from './components/CreativeStudio';
 
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
@@ -204,41 +205,41 @@ const MainApp = () => {
     if (!user) {
         return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
     }
+
+    if (isStudioActive) {
+        return <CreativeStudio />;
+    }
     
     return (
-        <div className="h-screen bg-gray-900 text-white flex flex-col">
-            {!isStudioActive && (
-                 <header className="bg-black/30 border-b border-gray-700/50 px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-20 flex-shrink-0">
-                    <div className="flex items-center space-x-6">
-                        <a href="#" onClick={(e) => { e.preventDefault(); handleSetView('dashboard'); }} className="flex items-center space-x-2 text-white">
-                            <SparklesIcon className="w-7 h-7 text-indigo-500" />
-                            <span className="font-bold text-lg hidden sm:inline">{t('app.name')}</span>
-                        </a>
-                        <nav className="hidden md:flex items-center space-x-2">
-                            <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><DashboardIcon className="w-5 h-5 inline mr-2"/>{t('nav.dashboard')}</button>
-                            <button onClick={() => handleSetView('autopilot')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'autopilot' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><RocketLaunchIcon className="w-5 h-5 inline mr-2"/>{t('nav.autopilot')}</button>
-                            <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'calendar' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><CalendarIcon className="w-5 h-5 inline mr-2"/>{t('nav.calendar')}</button>
-                            <button onClick={() => handleSetView('channel')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'channel' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ChartPieIcon className="w-5 h-5 inline mr-2"/>{t('nav.my_channel')}</button>
-                            <button onClick={() => handleSetView('assetLibrary')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'assetLibrary' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><PhotoIcon className="w-5 h-5 inline mr-2"/>{t('nav.asset_library')}</button>
-                        </nav>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <LanguageSwitcher variant="header" />
-                        <a href="https://github.com/google/genai-js" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white" title={t('nav.powered_by')}><GithubIcon className="w-6 h-6" /></a>
-                        <div className="relative">
-                            <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
-                                <NotificationsPanel onPanelToggle={setIsNotificationsOpen} />
-                            </button>
-                        </div>
-                        <UserMenu onNavigate={handleSetView} />
-                    </div>
-                </header>
-            )}
-          
-            <main className={`flex-1 ${isStudioActive ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-                 <div className={`${isStudioActive ? 'w-full h-full' : 'w-full max-w-7xl mx-auto h-full p-4 sm:p-6 lg:p-8'}`}>
-                    {renderCurrentView()}
+        <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+            <header className="bg-black/30 border-b border-gray-700/50 px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-20">
+                <div className="flex items-center space-x-6">
+                    <a href="#" onClick={(e) => { e.preventDefault(); handleSetView('dashboard'); }} className="flex items-center space-x-2 text-white">
+                        <SparklesIcon className="w-7 h-7 text-indigo-500" />
+                        <span className="font-bold text-lg hidden sm:inline">{t('app.name')}</span>
+                    </a>
+                    <nav className="hidden md:flex items-center space-x-2">
+                        <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><DashboardIcon className="w-5 h-5 inline mr-2"/>{t('nav.dashboard')}</button>
+                        <button onClick={() => handleSetView('autopilot')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'autopilot' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><RocketLaunchIcon className="w-5 h-5 inline mr-2"/>{t('nav.autopilot')}</button>
+                        <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'calendar' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><CalendarIcon className="w-5 h-5 inline mr-2"/>{t('nav.calendar')}</button>
+                        <button onClick={() => handleSetView('channel')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'channel' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ChartPieIcon className="w-5 h-5 inline mr-2"/>{t('nav.my_channel')}</button>
+                        <button onClick={() => handleSetView('assetLibrary')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'assetLibrary' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><PhotoIcon className="w-5 h-5 inline mr-2"/>{t('nav.asset_library')}</button>
+                    </nav>
                 </div>
+                <div className="flex items-center space-x-4">
+                    <LanguageSwitcher variant="header" />
+                    <a href="https://github.com/google/genai-js" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white" title={t('nav.powered_by')}><GithubIcon className="w-6 h-6" /></a>
+                    <div className="relative">
+                        <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-400 hover:text-white relative" title={t('nav.notifications')}>
+                            <NotificationsPanel onPanelToggle={setIsNotificationsOpen} />
+                        </button>
+                    </div>
+                    <UserMenu onNavigate={handleSetView} />
+                </div>
+            </header>
+          
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                <div className="w-full max-w-7xl mx-auto h-full">{renderCurrentView()}</div>
             </main>
             
             <ScheduleModal />

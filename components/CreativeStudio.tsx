@@ -1,160 +1,182 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type { Edit } from '@shotstack/shotstack-studio';
 import { useAppContext } from '../contexts/AppContext';
-import { deproxyifyEdit } from '../utils';
-import { SparklesIcon } from './Icons';
-
-// Correct, modular imports
-import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
-// Import the required CSS
-import '@shotstack/shotstack-studio/dist/style.css';
-
+import { getShotstackSDK, deproxyifyEdit } from '../utils';
+import { SparklesIcon, ArrowLeftIcon } from './Icons';
 
 export const CreativeStudio: React.FC = () => {
-  const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
-  
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Use a ref to hold instances for cleanup and event handlers
-  const instancesRef = useRef<{ edit: Edit, canvas: Canvas, controls: Controls, timeline: Timeline } | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+    const { activeProjectDetails, handleUpdateProject, handleRenderProject, setActiveProjectId } = useAppContext();
+    const hostRef = useRef<HTMLDivElement | null>(null);
+    const studioRef = useRef<HTMLDivElement | null>(null);
+    const timelineRef = useRef<HTMLDivElement | null>(null);
+    const loadedRef = useRef(false);
+    const handles = useRef<{ app: any; edit: Edit } | null>(null);
+    const [err, setErr] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isRendering, setIsRendering] = useState(false);
+    const timeoutRef = useRef<number | null>(null);
+    const changeListenerRef = useRef<(() => void) | null>(null);
 
-  const normalizeTemplate = useCallback((rawTemplate: any) => {
-    const template = JSON.parse(JSON.stringify(rawTemplate || {}));
-    template.output = template.output || {};
-    if (!template.output.format) template.output.format = 'mp4';
-    const w = Number(template.output?.size?.width);
-    const h = Number(template.output?.size?.height);
-    template.output.size = {
-      width: Number.isFinite(w) && w > 0 ? w : 1920,
-      height: Number.isFinite(h) && h > 0 ? h : 1080,
-    };
-    template.timeline = template.timeline || {};
-    template.timeline.background = template.timeline.background || "#000000";
-    if (!Array.isArray(template.timeline.tracks)) template.timeline.tracks = [];
-    return deproxyifyEdit(template);
-  }, []);
-  
-  const debouncedUpdateProject = useCallback((editInstance: Edit) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = window.setTimeout(() => {
-        if (activeProjectDetails) {
-            const editJson = editInstance.getEdit();
-            const deproxiedEdit = deproxyifyEdit(editJson);
-            handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
-        }
-    }, 1000);
-  }, [activeProjectDetails, handleUpdateProject]);
-
-  useEffect(() => {
-    if (!activeProjectDetails) return;
+    // Make view truly full screen
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
     
-    let isMounted = true;
-    let changeHandler: () => void;
+    const debouncedUpdateProject = useCallback((edit: Edit) => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        
+        setIsSaving(true);
+        timeoutRef.current = window.setTimeout(() => {
+            if (activeProjectDetails) {
+                const editJson = edit.getEdit();
+                const deproxiedEdit = deproxyifyEdit(editJson);
+                handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit }).finally(() => {
+                    setIsSaving(false);
+                });
+            } else {
+                setIsSaving(false);
+            }
+        }, 1500); // 1.5 second debounce
+    }, [activeProjectDetails, handleUpdateProject]);
 
-    const boot = async () => {
-      try {
-        await new Promise(r => requestAnimationFrame(() => r(null)));
-        if (!isMounted) return;
 
-        setLoading(true);
+    const handleRender = () => {
+        if (handles.current?.edit && activeProjectDetails) {
+            setIsRendering(true);
+            const editJson = handles.current.edit.getEdit();
+            const deproxied = deproxyifyEdit(editJson);
+            handleRenderProject(activeProjectDetails.id, deproxied).finally(() => {
+                setIsRendering(false);
+            });
+        }
+    };
+    
+    // Initialize after container is visible
+    useEffect(() => {
+        if (loadedRef.current || !activeProjectDetails) return;
+        if (!hostRef.current || !studioRef.current || !timelineRef.current) return;
 
-        const template = normalizeTemplate(activeProjectDetails.shotstackEditJson);
-        const size = template.output.size;
-        const bg = template.timeline.background;
+        loadedRef.current = true;
+        let cleanupFunc: (() => void) | null = null;
 
-        // 1. Create Edit
-        const edit = new Edit(size, bg);
-        await edit.load();
+        (async () => {
+            setErr(null);
+            
+            try {
+                const sdk = await getShotstackSDK();
+                const { Application, Edit } = sdk;
 
-        // 2. Mount Canvas (renders into [data-shotstack-studio])
-        const canvas = new Canvas(size, edit);
-        await canvas.load();
+                // 1) Get template and harden it
+                const rawTemplate = activeProjectDetails.shotstackEditJson;
+                const tpl = JSON.parse(JSON.stringify(rawTemplate || {}));
 
-        // 3. Load the template data into the editor
-        await edit.loadEdit(template);
+                const w = Number(tpl?.output?.size?.width);
+                const h = Number(tpl?.output?.size?.height);
+                if (!w || !h) {
+                    tpl.output = { ...(tpl.output || {}), size: { width: 1080, height: 1920 } };
+                }
+                
+                tpl.timeline = tpl.timeline || {};
+                tpl.timeline.background = tpl.timeline.background || "#000000";
 
-        // 4. Controls (keyboard, transport)
-        const controls = new Controls(edit);
-        await controls.load();
+                const finalTemplate = deproxyifyEdit(tpl); // Ensure all URLs are direct for the SDK
 
-        // 5. Timeline (renders into [data-shotstack-timeline])
-        const timelineContainer = document.querySelector<HTMLElement>('[data-shotstack-timeline]');
-        const timeline = new Timeline(edit, {
-            width: timelineContainer?.clientWidth || size.width,
-            height: 300,
-        });
-        await timeline.load();
+                // 2) Create Application and Edit instances
+                const controlsEl = document.createElement('div'); // Dummy element for controls
+                const app = new Application({
+                    studio: studioRef.current!,
+                    timeline: timelineRef.current!,
+                    controls: controlsEl,
+                });
+                const edit = new Edit(app, finalTemplate);
+                
+                await app.load(edit);
+                
+                handles.current = { app, edit };
+                
+                changeListenerRef.current = () => debouncedUpdateProject(edit);
+                edit.events.on("change", changeListenerRef.current);
 
-        if (isMounted) {
-            instancesRef.current = { edit, canvas, controls, timeline };
-            changeHandler = () => debouncedUpdateProject(edit);
-            edit.events.on("change", changeHandler);
-            setLoading(false);
+                // 3) Keep layout responsive
+                const ro = new ResizeObserver(() => {
+                    if (handles.current?.app) {
+                        handles.current.app.resize();
+                    }
+                });
+                ro.observe(hostRef.current!);
+
+                cleanupFunc = () => {
+                    ro.disconnect();
+                    if (handles.current && changeListenerRef.current) {
+                      handles.current.edit.events.off('change', changeListenerRef.current);
+                      handles.current.app?.destroy();
+                    }
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                };
+            } catch (e: any) {
+                console.error('Studio init failed:', e);
+                setErr(e?.message || 'Studio failed to initialize');
+                loadedRef.current = false;
+            }
+        })();
+
+        return () => {
+            if (cleanupFunc) cleanupFunc();
         }
 
-      } catch (e: any) {
-        console.error("Studio init failed:", e);
-        if (isMounted) setError(e?.message ?? String(e));
-      }
+    }, [activeProjectDetails, debouncedUpdateProject]);
+
+    const handleBack = () => {
+        if (activeProjectDetails) {
+            handleUpdateProject(activeProjectDetails.id, { workflowStep: 2 });
+        } else {
+            setActiveProjectId(null);
+        }
     };
 
-    boot();
-
-    return () => {
-      isMounted = false;
-      const instances = instancesRef.current;
-      if (instances) {
-        try { instances.edit.events.off("change", changeHandler); } catch {}
-        try { instances.timeline?.destroy?.(); } catch {}
-        try { instances.canvas?.destroy?.(); } catch {}
-        // Controls/Edit don’t usually need manual dispose, but safe to drop refs
-      }
-      instancesRef.current = null;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [activeProjectDetails, debouncedUpdateProject, normalizeTemplate]);
-      
-  const handleRender = () => {
-      if (instancesRef.current?.edit && activeProjectDetails) {
-        const editJson = instancesRef.current.edit.getEdit();
-        const deproxied = deproxyifyEdit(editJson);
-        handleRenderProject(activeProjectDetails.id, deproxied);
-      }
-  };
-
-  if (error) {
     return (
-        <div className="flex flex-col items-center justify-center h-full bg-red-900/20 text-red-300 p-4 rounded-lg">
-            <h3 className="font-bold text-lg mb-2">Error Loading Creative Studio</h3>
-            <p className="mb-4">Shotstack SDK loaded incorrectly. Core classes are missing.</p>
-            <pre className="text-xs text-left font-mono whitespace-pre-wrap bg-gray-900/50 p-2 rounded">{error}</pre>
+        <div
+            ref={hostRef}
+            className="fixed inset-0 flex flex-col bg-gray-900 z-10"
+        >
+            <div className="flex-shrink-0 h-16 flex items-center justify-between px-4 sm:px-6 border-b border-gray-700/50 bg-black/30">
+                <button onClick={handleBack} className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-800">
+                    <ArrowLeftIcon className="w-5 h-5"/> Back to Blueprint
+                </button>
+                <div className="text-white font-bold truncate px-4">{activeProjectDetails?.name}</div>
+                <div className="flex items-center gap-4">
+                     <span className={`text-sm transition-opacity ${isSaving ? 'opacity-100' : 'opacity-0'} text-gray-400`}>Saving...</span>
+                    <button
+                        onClick={handleRender}
+                        disabled={isRendering}
+                        className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors text-sm shadow-lg disabled:bg-gray-600"
+                    >
+                        <SparklesIcon className={`w-5 h-5 mr-2 ${isRendering ? 'animate-pulse' : ''}`} />
+                        {isRendering ? 'Submitting Render...' : 'Render & Proceed'}
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 flex">
+                <div
+                    ref={studioRef}
+                    data-shotstack-studio
+                    className="flex-1 min-h-0"
+                />
+            </div>
+            
+            <div
+                ref={timelineRef}
+                data-shotstack-timeline
+                className="h-[300px] border-t-2 border-gray-700"
+            />
+
+            {err && (
+                <div className="absolute left-4 bottom-4 bg-red-900/50 border border-red-500 text-red-300 p-4 rounded-lg shadow-lg">
+                    <strong>Error Loading Creative Studio:</strong> {err}
+                </div>
+            )}
         </div>
     );
-  }
-
-  return (
-    <div className="h-full w-full flex flex-col bg-[#0b1220] relative">
-      {loading && (
-        <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-20">
-          <div className="text-center">
-            <SparklesIcon className="w-12 h-12 text-indigo-400 animate-pulse mx-auto" />
-            <p className="mt-2 text-white font-semibold">Loading Creative Studio...</p>
-          </div>
-        </div>
-      )}
-      {/* The SDK will automatically find and mount to these data attributes */}
-      <div data-shotstack-studio className="flex-1 min-h-0" />
-      <div data-shotstack-timeline className="h-[300px] border-t-2 border-gray-700" />
-      
-      {!loading && (
-        <button
-            onClick={handleRender}
-            className="absolute bottom-[316px] right-4 z-10 inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all text-sm shadow-lg transform hover:scale-105"
-        >
-            <SparklesIcon className="w-5 h-5 mr-2" /> Render & Proceed
-        </button>
-      )}
-    </div>
-  );
 };
