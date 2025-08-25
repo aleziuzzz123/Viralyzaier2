@@ -14,7 +14,14 @@ export type Json = any;
 
 // --- UI & System Types ---
 export interface Toast { id: number; message: string; type: 'success' | 'error' | 'info'; }
-export interface Plan { id: PlanId; name: string; price: number; creditLimit: number; features: string[]; isMostPopular?: boolean; }
+export interface Plan {
+    id: PlanId;
+    name: string;
+    price: number;
+    creditLimit: number;
+    features: string[];
+    isMostPopular?: boolean;
+}
 export interface Subscription { planId: PlanId; status: 'active' | 'canceled'; endDate: string | null; }
 
 export interface ShotstackOutput {
