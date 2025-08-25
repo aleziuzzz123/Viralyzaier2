@@ -1,11 +1,12 @@
 import React from 'react';
 import { Project, WorkflowStep } from '../types';
 import { useAppContext } from '../contexts/AppContext';
-import { CreativeStudio } from './ScriptGenerator';
+import { ScriptGenerator } from './ScriptGenerator';
 import Launchpad from './Launchpad';
 import TutorialCallout from './TutorialCallout';
 import { TranslationKey } from '../translations';
 import AnalysisStep from './AnalysisStep';
+import { CreativeStudio } from './CreativeStudio';
 
 interface ProjectViewProps {
     project: Project;
@@ -38,18 +39,18 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const renderContent = () => {
         switch (project.workflowStep) {
             case 2:
-                return <CreativeStudio project={project} />;
+                return <ScriptGenerator project={project} />;
             case 3:
-                // By keying the component on lastUpdated, we force a full remount when the project data changes,
-                // ensuring a clean state for the editor and preventing hangs from stale props.
-                return <CreativeStudio project={project} key={project.lastUpdated} />;
+                // The CreativeStudio component gets project details from context.
+                // Keying it ensures it remounts if the user switches projects.
+                return <CreativeStudio key={project.id} />;
             case 4:
                 return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 5:
                 return <Launchpad project={project} />;
             default:
                  // Default to the blueprint step if the project is in an early stage (e.g., step 1)
-                return <CreativeStudio project={project} />;
+                return <ScriptGenerator project={project} />;
         }
     };
     
