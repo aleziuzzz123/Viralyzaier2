@@ -63,36 +63,38 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     ];
 
     return (
-        <div className={`h-full flex flex-col ${isStudioActive ? 'gap-2' : 'gap-8'}`}>
-            <nav className="p-4 bg-gray-800/50 rounded-xl flex-shrink-0">
-                <ol className="flex items-center justify-center space-x-2 sm:space-x-4">
-                    {steps.map((step, index) => {
-                        const isCompleted = project.workflowStep > step.step;
-                        const isCurrent = project.workflowStep === step.step;
-                        const isClickable = project.workflowStep >= step.step;
+        <div className={`h-full flex flex-col ${isStudioActive ? '' : 'gap-8'}`}>
+            {!isStudioActive && (
+                <nav className="p-4 bg-gray-800/50 rounded-xl flex-shrink-0">
+                    <ol className="flex items-center justify-center space-x-2 sm:space-x-4">
+                        {steps.map((step, index) => {
+                            const isCompleted = project.workflowStep > step.step;
+                            const isCurrent = project.workflowStep === step.step;
+                            const isClickable = project.workflowStep >= step.step;
 
-                        return (
-                            <li key={step.step} className="flex items-center">
-                                <button
-                                    onClick={() => handleStepClick(step.step)}
-                                    disabled={!isClickable}
-                                    className={`flex items-center ${isClickable ? 'cursor-pointer group' : 'cursor-default'}`}
-                                >
-                                    <span className={`flex items-center justify-center w-8 h-8 rounded-full font-bold transition-colors ${isCompleted || isCurrent ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'} ${isClickable ? 'group-hover:bg-indigo-500' : ''}`}>
-                                        {isCompleted ? '✓' : step.step}
-                                    </span>
-                                    <span className={`hidden sm:inline ml-3 font-medium transition-colors ${isCompleted || isCurrent ? 'text-white' : 'text-gray-500'} ${isClickable ? 'group-hover:text-indigo-300' : ''}`}>
-                                        {t(step.nameKey)}
-                                    </span>
-                                </button>
-                                {index < steps.length - 1 && (
-                                    <div className={`hidden sm:block w-8 sm:w-16 h-0.5 transition-colors ${project.workflowStep > step.step ? 'bg-indigo-600' : 'bg-gray-700'} mx-2 sm:mx-4`}></div>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ol>
-            </nav>
+                            return (
+                                <li key={step.step} className="flex items-center">
+                                    <button
+                                        onClick={() => handleStepClick(step.step)}
+                                        disabled={!isClickable}
+                                        className={`flex items-center ${isClickable ? 'cursor-pointer group' : 'cursor-default'}`}
+                                    >
+                                        <span className={`flex items-center justify-center w-8 h-8 rounded-full font-bold transition-colors ${isCompleted || isCurrent ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'} ${isClickable ? 'group-hover:bg-indigo-500' : ''}`}>
+                                            {isCompleted ? '✓' : step.step}
+                                        </span>
+                                        <span className={`hidden sm:inline ml-3 font-medium transition-colors ${isCompleted || isCurrent ? 'text-white' : 'text-gray-500'} ${isClickable ? 'group-hover:text-indigo-300' : ''}`}>
+                                            {t(step.nameKey)}
+                                        </span>
+                                    </button>
+                                    {index < steps.length - 1 && (
+                                        <div className={`hidden sm:block w-8 sm:w-16 h-0.5 transition-colors ${project.workflowStep > step.step ? 'bg-indigo-600' : 'bg-gray-700'} mx-2 sm:mx-4`}></div>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ol>
+                </nav>
+            )}
             
             {project.workflowStep === 2 && !dismissedTutorials.includes('project_view_new') && (
                  <TutorialCallout id="project_view_new">
