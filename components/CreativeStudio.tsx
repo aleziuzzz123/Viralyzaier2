@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit, ensurePixiSound } from '../utils';
 import { SparklesIcon } from './Icons';
+import { supabaseUrl } from '../services/supabaseClient';
 
 // Helper to wait until a DOM element is rendered and has a minimum size.
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
@@ -49,10 +50,10 @@ const CreativeStudio: React.FC = () => {
         setError(null);
 
         // Fetch the short-lived authentication token required by the Studio SDK
-        const tokenResponse = await fetch('/functions/v1/shotstack-studio-token', { method: 'POST' });
+        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, { method: 'POST' });
         if (!tokenResponse.ok) {
-            const err = await tokenResponse.json();
-            throw new Error(`Failed to obtain Studio token: ${err.detail || tokenResponse.statusText}`);
+            const text = await tokenResponse.text();
+            throw new Error(`Failed to obtain Studio token: ${tokenResponse.status} ${text.slice(0,120)}`);
         }
         const { token: studioToken } = await tokenResponse.json();
 
@@ -76,7 +77,13 @@ const CreativeStudio: React.FC = () => {
         };
         
         // 4. Initialize and load the core Edit instance with the token.
-        edit = new Edit({ size: template.output.size, background: template.timeline.background, token: studioToken });
+        const size = template.output.size || { width: 1280, height: 720 };
+        edit = new Edit({
+            width: size.width,
+            height: size.height,
+            background: template.timeline.background || '#000000',
+            token: studioToken
+        });
         editRef.current = edit;
         await edit.load();
         await edit.loadEdit(template);
@@ -85,9 +92,9 @@ const CreativeStudio: React.FC = () => {
         // 5. Only after Edit is ready, create and mount the UI components.
         if (!studioRef.current || !timelineRef.current) throw new Error('DOM mount points are missing.');
 
-        const canvas = new Canvas(studioRef.current, edit);
+        const canvas = new Canvas(edit, studioRef.current);
         const controls = new Controls(edit);
-        const timeline = new Timeline(timelineRef.current, edit);
+        const timeline = new Timeline(edit, timelineRef.current);
         
         await Promise.all([
           canvas.load(),
