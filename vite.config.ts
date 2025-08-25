@@ -22,10 +22,13 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html'),
       },
-      // CRITICAL: tell Rollup not to tree-shake the module's side-effects
       treeshake: {
-        moduleSideEffects: (id) => id.includes('/node_modules/@pixi/sound'),
-      },
+        // This is critical to prevent Vite from removing the side-effectful
+        // import of @pixi/sound, which registers the audio loader globally.
+        moduleSideEffects: (id) => {
+          return id.includes('@pixi/sound');
+        }
+      }
     }
   }
 });
