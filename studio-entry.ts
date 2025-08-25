@@ -2,8 +2,6 @@
 // It MUST come before any other Shotstack Studio imports.
 import '@pixi/sound';
 
-import Application, { Edit } from '@shotstack/shotstack-studio';
-
 // --- Asset Proxying Logic ---
 // This is necessary to avoid CORS errors when loading assets from external domains.
 const supabaseUrl = (window as any).ENV?.VITE_SUPABASE_URL;
@@ -65,6 +63,9 @@ function proxyifyEdit(editJson: any): any {
     if (!studioEl || !timelineEl || !controlsEl) {
         throw new Error("DOM mount points '[data-shotstack-studio]', '[data-shotstack-timeline]', or '[data-shotstack-controls]' not found.");
     }
+
+    // Dynamically import the SDK to resolve module issues
+    const { default: Application, Edit } = await import('@shotstack/shotstack-studio');
     
     // 2. Fetch a simple template to load
     const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
