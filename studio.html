@@ -2,33 +2,52 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Creative Studio (Standalone Test)</title>
+    <title>Studio Standalone Test</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
-      body{margin:0;background:#0b1220;color:#fff;font-family:system-ui}
-      #app{padding:12px}
-      [data-shotstack-studio]{background:#000;border-radius:8px}
-      [data-shotstack-timeline]{background:#111827;border-radius:8px;margin-top:16px}
-      #loading-indicator, #error-indicator { padding: 40px; text-align: center; font-size: 1.2em; }
-      #error-indicator { background: #fce8e6; color: #b3261e; border-radius: 8px; }
+      body{margin:0;background:#0b1220;color:#fff;font-family:system-ui; padding: 12px;}
+      h1 {font-size: 1.5em; margin-bottom: 1rem;}
+       [data-shotstack-studio]{background:#000;border-radius:8px;}
+      [data-shotstack-timeline]{background:#111827;border-radius:8px;margin-top:16px;}
+      [data-shotstack-controls]{margin-bottom:16px;}
     </style>
   </head>
   <body>
-    <div id="app">
-      <h1 style="font-size: 1.5em; margin-bottom: 1rem;">Studio Standalone Test</h1>
-      <div id="loading-indicator">Loading Studio...</div>
-      <div id="error-indicator" style="display: none;"></div>
-      <div data-shotstack-studio></div>
-      <div data-shotstack-timeline></div>
-    </div>
-    <script type="importmap">
-    {
-      "imports": {
-        "@pixi/sound": "https://esm.sh/@pixi/sound@6.0.1",
-        "@shotstack/shotstack-studio": "https://esm.sh/@shotstack/shotstack-studio@1.5.0"
-      }
-    }
+    <h1>Studio Standalone Test</h1>
+
+    <div data-shotstack-studio style="height:480px;"></div>
+    <div data-shotstack-controls></div>
+    <div data-shotstack-timeline style="height:300px;"></div>
+
+    <script type="module">
+      import '@pixi/sound'; // ensure audio loader is registered
+      import { Edit, Canvas, Controls, Timeline } from 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio/+esm';
+
+      (async () => {
+        // load a simple template
+        const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
+        const template = await res.json();
+
+        const edit = new Edit(template.output.size, template.timeline.background);
+        await edit.load();
+
+        const canvas = new Canvas(template.output.size, edit);
+        await canvas.load();
+
+        await edit.loadEdit(template);
+
+        const controls = new Controls(edit);
+        await controls.load();
+
+        const timeline = new Timeline(edit, { width: template.output.size.width, height: 300 });
+        await timeline.load();
+      })().catch(e => {
+        document.body.insertAdjacentHTML('beforeend',
+          `<div style="background:#fce4e4;color:#900;padding:12px;border-radius:6px;margin-top:12px">
+             Failed to load studio: ${e?.message || e}
+           </div>`);
+        console.error(e);
+      });
     </script>
-    <script type="module" src="./studio-entry.ts"></script>
   </body>
 </html>

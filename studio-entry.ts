@@ -2,7 +2,7 @@
 // It MUST come before any other Shotstack Studio imports.
 import '@pixi/sound';
 
-import { Edit } from '@shotstack/shotstack-studio';
+import Application, { Edit } from '@shotstack/shotstack-studio';
 
 // --- Asset Proxying Logic ---
 // This is necessary to avoid CORS errors when loading assets from external domains.
@@ -75,15 +75,15 @@ function proxyifyEdit(editJson: any): any {
     const template = proxyifyEdit(rawTemplate);
 
     // 3. Create and load the core Edit instance
-    const edit = new Edit({
-      template,
+    const app = new Application({
       studio: studioEl as HTMLElement,
       timeline: timelineEl as HTMLElement,
       controls: controlsEl as HTMLElement,
     });
+    const edit = new Edit(app, template);
 
     // 4. Load the assets for the timeline
-    await edit.load();
+    await app.load(edit);
     
     // Hide loading indicator on success
     if (loadingIndicator) {
