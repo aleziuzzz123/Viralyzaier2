@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, proxyifyEdit, deproxyifyEdit } from '../utils';
+import { getShotstackSDK, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
 import type { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
 
@@ -13,19 +13,27 @@ export const CreativeStudio: React.FC = () => {
   const instancesRef = useRef<{ edit: Edit, canvas: Canvas, controls: Controls, timeline: Timeline } | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
-  // Helper from guide: coerce a safe numeric size to prevent crashes
-  const safeSize = (raw: any) => {
-    const w = Number(raw?.width);
-    const h = Number(raw?.height);
-    if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
-      return { width: w, height: h };
-    }
-    // Fallback if template has no size or is malformed, using project context
-    const videoSize = activeProjectDetails?.videoSize;
-    if (videoSize === '9:16') return { width: 1080, height: 1920 };
-    if (videoSize === '1:1') return { width: 1080, height: 1080 };
-    return { width: 1920, height: 1080 }; // Default to 16:9 HD
-  };
+  // Helper: ensure template structure is valid and URLs are direct, public links.
+  const normalizeTemplate = useCallback((rawTemplate: any) => {
+      const template = JSON.parse(JSON.stringify(rawTemplate || {}));
+
+      // Ensure output.size is present and contains valid numbers to prevent crashes.
+      template.output = template.output || {};
+      const w = Number(template.output?.size?.width);
+      const h = Number(template.output?.size?.height);
+      template.output.size = {
+        width: Number.isFinite(w) && w > 0 ? w : 1920,
+        height: Number.isFinite(h) && h > 0 ? h : 1080,
+      };
+      
+      // Provide a fallback background color.
+      template.timeline = template.timeline || {};
+      template.timeline.background = template.timeline.background || "#000000";
+
+      // CRITICAL FIX: Convert all proxied asset URLs (e.g., /functions/v1/asset-proxy?url=...)
+      // back to their direct public URLs so the browser-side SDK can load them.
+      return deproxyifyEdit(template);
+  }, []);
   
   const debouncedUpdateProject = useCallback((edit: Edit) => {
     if (timeoutRef.current) {
@@ -34,6 +42,7 @@ export const CreativeStudio: React.FC = () => {
     timeoutRef.current = window.setTimeout(() => {
         if (activeProjectDetails) {
             const editJson = edit.getEdit();
+            // Deproxy again on save to ensure any newly added assets are also saved with direct URLs.
             const deproxiedEdit = deproxyifyEdit(editJson);
             handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
         }
@@ -51,23 +60,18 @@ export const CreativeStudio: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Use the utility function which correctly imports the npm package.
         const sdk = await getShotstackSDK();
         const { Edit, Canvas, Controls, Timeline } = sdk;
         if (!Edit || !Canvas || !Controls || !Timeline) {
              throw new Error("Shotstack SDK loaded incorrectly. Core classes are missing.");
         }
 
-        // 1) Get template from context and proxy asset URLs to prevent CORS issues.
-        const template = activeProjectDetails.shotstackEditJson || {
-            timeline: { background: "#000000", tracks: [] },
-            output: { size: { width: 1920, height: 1080 }, format: 'mp4' }
-        };
-        const proxiedTemplate = proxyifyEdit(template);
-
-        // 2) Normalize dimensions & background color with fallbacks.
-        const size = safeSize(proxiedTemplate?.output?.size);
-        const bg = proxiedTemplate?.timeline?.background ?? "#000000";
+        // 1) Get template from context and NORMALIZE it to fix URLs and dimensions.
+        const template = normalizeTemplate(activeProjectDetails.shotstackEditJson);
+        
+        // 2) Use the now-safe size and background from the normalized template.
+        const size = template.output.size;
+        const bg = template.timeline.background;
 
         // 3) Create Edit instance.
         const edit = new Edit(size, bg);
@@ -77,8 +81,8 @@ export const CreativeStudio: React.FC = () => {
         const canvas = new Canvas(size, edit);
         await canvas.load();
 
-        // 5) Load the template data into the editor.
-        await edit.loadEdit(proxiedTemplate);
+        // 5) Load the normalized (and now fixed) template data into the editor.
+        await edit.loadEdit(template);
 
         // 6) Load Controls for keyboard shortcuts and transport.
         const controls = new Controls(edit);
@@ -122,7 +126,7 @@ export const CreativeStudio: React.FC = () => {
       instancesRef.current = null;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [activeProjectDetails, debouncedUpdateProject]);
+  }, [activeProjectDetails, debouncedUpdateProject, normalizeTemplate]);
       
   const handleRender = () => {
       if (instancesRef.current?.edit && activeProjectDetails) {
@@ -142,6 +146,7 @@ export const CreativeStudio: React.FC = () => {
                 <ul className="list-disc list-inside mt-2">
                     <li>Remove CDN scripts/styles for Shotstack from `index.html`.</li>
                     <li>Ensure `shotstackEditJson` in the project data includes a valid `output.size` with numeric width/height.</li>
+                    <li>Ensure all asset URLs are direct public links, not proxied through functions.</li>
                 </ul>
             </div>
         </div>
