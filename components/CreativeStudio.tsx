@@ -73,10 +73,8 @@ export const CreativeStudio: React.FC = () => {
                 if (!studioElement) throw new Error("Could not find studio container");
 
                 const canvas = new Canvas(template.output.size, edit);
-                await canvas.load();
+                await canvas.load(); // This renders into [data-shotstack-studio]
                 if (cancelled) return;
-                studioElement.appendChild((canvas as any).view);
-
 
                 await edit.loadEdit(template);
                 if (cancelled) return;
@@ -92,9 +90,8 @@ export const CreativeStudio: React.FC = () => {
                     width: timelineElement.clientWidth, 
                     height: 300 
                 });
-                await timeline.load();
+                await timeline.load(); // This renders into [data-shotstack-timeline]
                 if (cancelled) return;
-                timelineElement.appendChild((timeline as any).view);
 
 
                 handlesRef.current = { edit, canvas, timeline, controls };
