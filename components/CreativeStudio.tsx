@@ -76,7 +76,7 @@ const CreativeStudio: React.FC = () => {
         };
         
         // 4. Initialize and load the core Edit instance with the token.
-        edit = new Edit(template.output.size, { background: template.timeline.background, token: studioToken });
+        edit = new Edit({ size: template.output.size, background: template.timeline.background, token: studioToken });
         editRef.current = edit;
         await edit.load();
         await edit.loadEdit(template);
@@ -85,9 +85,9 @@ const CreativeStudio: React.FC = () => {
         // 5. Only after Edit is ready, create and mount the UI components.
         if (!studioRef.current || !timelineRef.current) throw new Error('DOM mount points are missing.');
 
-        const canvas = new Canvas(edit, studioRef.current);
-        const controls = new Controls(edit, studioRef.current);
-        const timeline = new Timeline(edit, timelineRef.current);
+        const canvas = new Canvas(studioRef.current, edit);
+        const controls = new Controls(edit);
+        const timeline = new Timeline(timelineRef.current, edit);
         
         await Promise.all([
           canvas.load(),
