@@ -79,57 +79,53 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
 // --- URL Hygiene ---
 /**
  * Creates a proxied URL for an external asset to bypass CORS issues.
- * This version uses a path-based structure for better compatibility with asset loaders.
+ * This version uses a query parameter-based structure for cleaner parsing on the server.
  * @param url The direct URL to the asset.
  * @returns An absolute URL that routes through the `asset-proxy` edge function.
  */
-export const createAssetProxyUrl = (url: string | null | undefined): string => {
-    if (!url || !url.startsWith('http')) {
-        return url || ''; // Don't proxy local/invalid URLs, return empty string for null/undefined
-    }
-     // Prevent double-proxying
-    if (url.includes('/functions/v1/asset-proxy')) {
-        return url;
-    }
-    
-    const assetProxyBase = `${supabaseUrl}/functions/v1/asset-proxy`;
-    const encoded = encodeURIComponent(url);
-    const filename = url.split('/').pop()?.split('?')[0] || 'file';
-
-    // The SDK appears to have a bug where it appends the filename again, causing a duplicate.
-    // By providing the filename in the path, we allow the proxy to correctly set MIME types,
-    // which is crucial for loaders.
-    return `${assetProxyBase}/${encoded}/${encodeURIComponent(filename)}`;
+export const createAssetProxyUrl = (url?: string | null): string => {
+  if (!url || !/^https?:\/\//i.test(url)) return url || '';
+  if (url.includes('/functions/v1/asset-proxy')) return url; // Idempotent
+  const base = `${supabaseUrl}/functions/v1/asset-proxy`;
+  let file = 'file';
+  try {
+    file = decodeURIComponent(new URL(url).pathname.split('/').pop() || 'file');
+  } catch {}
+  // Use QUERY shape to avoid double filename bugs and simplify server parsing
+  return `${base}?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(file)}`;
 };
 
+
 /**
- * Normalizes a URL by trimming whitespace and decoding any accidental proxy wrapping.
- * Ensures that only clean, direct URLs are used in the application.
- * This version handles both new path-based and old query-based proxy URLs.
+ * Normalizes a URL by trimming whitespace and decoding any proxy wrapping.
+ * This is the reverse of `createAssetProxyUrl`.
  */
 export const normalizeUrl = (u: string | null | undefined): string => {
     if (!u) return '';
     const trimmed = u.trim();
-    
-    // Check for the new path-based proxy format: /asset-proxy/<encoded_url>/<filename>
-    const pathMatch = trimmed.match(/\/asset-proxy\/(.+?)\//);
-    if (pathMatch && pathMatch[1]) {
+
+    // New query-based proxy format
+    if (trimmed.includes('/functions/v1/asset-proxy?')) {
         try {
-            return decodeURIComponent(pathMatch[1]);
+            const urlObj = new URL(trimmed);
+            const targetUrl = urlObj.searchParams.get('url');
+            if (targetUrl) return decodeURIComponent(targetUrl);
         } catch (e) {
-            console.error('Failed to decode path-based proxied URL:', trimmed, e);
+            console.error('Failed to parse proxied URL query:', trimmed, e);
             return '';
         }
     }
     
-    // Check for the old query-param based proxy format: /asset-proxy?url=...
-    if (trimmed.includes('/asset-proxy?url=')) {
+    // Legacy path-based proxy format for backward compatibility
+    const proxyPrefix = '/asset-proxy/';
+    const proxyIndex = trimmed.indexOf(proxyPrefix);
+    if (proxyIndex > -1) {
         try {
-            const urlObj = new URL(trimmed);
-            const originalUrl = urlObj.searchParams.get('url');
-            return originalUrl || '';
+            const encodedPart = trimmed.substring(proxyIndex + proxyPrefix.length);
+            const encodedUrl = encodedPart.split('/')[0];
+            return decodeURIComponent(encodedUrl);
         } catch (e) {
-            console.error('Failed to decode query-based proxied URL:', trimmed, e);
+            console.error('Failed to decode legacy proxied URL path:', trimmed, e);
             return '';
         }
     }
@@ -201,26 +197,14 @@ export const loadTimelineFromCache = async (projectId: string): Promise<any | nu
 };
 
 // --- Shotstack Studio JSON Sanitizer ---
-// Helper functions to sanitize Shotstack edit JSON before loading into the studio,
-// preventing crashes due to schema mismatches (ZodErrors).
-
 const isObj = (v: any): v is Record<string, any> => v && typeof v === 'object' && !Array.isArray(v);
 
-/**
- * Normalizes a clip's asset object to conform to the strict Shotstack SDK schema.
- * It rebuilds the asset from scratch, only including valid properties for its type.
- * This is the core fix for the ZodError crashes.
- * @param asset The potentially malformed asset object.
- * @returns A clean, valid asset object or undefined if the asset is unsalvageable.
- */
 function normalizeAsset(asset: any): Record<string, any> | undefined {
   if (!isObj(asset)) return undefined;
 
   const out: Record<string, any> = { ...asset };
-
-  // 1. Determine and validate the asset type
   let type = asset.type;
-  if (type === 'title') type = 'text'; // Correct legacy type
+  if (type === 'title') type = 'text';
 
   if (typeof type !== 'string') {
     if (typeof asset.text === 'string') type = 'text';
@@ -229,18 +213,16 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
     else if (typeof asset.src === 'string' && (asset.src.includes('.mp4') || asset.src.includes('/video'))) type = 'video';
     else if (typeof asset.src === 'string') type = 'image';
     else if (asset.shape) type = 'shape';
-    else return undefined; // Cannot determine type, discard asset
+    else return undefined;
   }
   out.type = type;
 
-  // 2. Build the new, clean asset object based on the determined type
   switch (type) {
     case 'text':
       out.text = String(asset.text ?? '');
       if (asset.color && typeof asset.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.color)) {
         out.color = asset.color;
       }
-      // **CRITICAL FIX**: background must be an object with a valid color and opacity.
       if (asset.background) {
         let bgColor: string | undefined;
         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
@@ -248,51 +230,34 @@ function normalizeAsset(asset: any): Record<string, any> | undefined {
         } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-gA-F]{3}){1,2}$/i.test(asset.background.color)) {
           bgColor = asset.background.color;
         }
-        
         if (bgColor) {
-            out.background = {
-                color: bgColor,
-                opacity: typeof asset.background.opacity === 'number' ? asset.background.opacity : 1,
-            };
+            out.background = { color: bgColor, opacity: typeof asset.background.opacity === 'number' ? asset.background.opacity : 1, };
         }
       }
       break;
-
-    case 'image':
-    case 'video':
-    case 'audio':
-    case 'luma':
+    case 'image': case 'video': case 'audio': case 'luma':
       if (typeof asset.src !== 'string' || !asset.src.trim()) return undefined;
       out.src = asset.src;
       if (typeof asset.volume === 'number' && (type === 'audio' || type === 'video')) {
         out.volume = asset.volume;
       }
       break;
-
     case 'shape':
       if (!['rectangle', 'circle', 'line'].includes(asset.shape)) return undefined;
       out.shape = asset.shape;
-      // Shapes require a background color to be visible
-      let shapeBgColor = '#FFFFFF'; // Default color
+      let shapeBgColor = '#FFFFFF';
       if (asset.background) {
-         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) {
-          shapeBgColor = asset.background;
-        } else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) {
-          shapeBgColor = asset.background.color;
-        }
+         if (typeof asset.background === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background)) { shapeBgColor = asset.background; }
+         else if (isObj(asset.background) && typeof asset.background.color === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(asset.background.color)) { shapeBgColor = asset.background.color; }
       }
       out.background = { color: shapeBgColor, opacity: 1 };
       break;
-
     case 'html':
       out.html = String(asset.html ?? '<div></div>');
       out.css = String(asset.css ?? '');
       break;
-
-    default:
-      return undefined; // Unknown type, discard the asset
+    default: return undefined;
   }
-
   return out;
 }
 
@@ -300,66 +265,41 @@ function normalizeEffect(effect: any): string | undefined {
     if (effect == null) return undefined;
     if (typeof effect === "string" && effect.trim()) return effect;
     if (isObj(effect) && typeof effect.value === "string") return effect.value;
-    return undefined; // Discard other complex object formats
+    return undefined;
 }
 
 export function sanitizeShotstackJson(project: any): any | null {
   if (!project || typeof project !== 'object') return null;
-
   const copy = JSON.parse(JSON.stringify(project));
-
-  if (!isObj(copy.timeline) || !Array.isArray(copy.timeline.tracks)) {
-    return copy;
-  }
+  if (!isObj(copy.timeline) || !Array.isArray(copy.timeline.tracks)) return copy;
 
   copy.timeline.tracks = copy.timeline.tracks.map((track: any) => {
-    if (!isObj(track) || !Array.isArray(track.clips)) {
-      return { ...track, clips: [] };
-    }
-    const clips = track.clips
-      .map((clip: any) => {
+    if (!isObj(track) || !Array.isArray(track.clips)) return { ...track, clips: [] };
+    const clips = track.clips.map((clip: any) => {
         if (!isObj(clip)) return null;
-        
         const c: Record<string, any> = { ...clip };
-        
         const normalizedEffect = normalizeEffect(c.effect);
-        if (normalizedEffect) {
-            c.effect = normalizedEffect;
-        } else {
-            delete c.effect;
-        }
-
+        if (normalizedEffect) c.effect = normalizedEffect; else delete c.effect;
         c.asset = normalizeAsset(c.asset);
-        
-        if (!c.asset) return null; // Drop clip if asset becomes invalid
-        
+        if (!c.asset) return null;
         c.start = typeof c.start === 'number' ? c.start : 0;
         c.length = typeof c.length === 'number' && c.length > 0 ? c.length : 5;
-
         return c;
-      })
-      .filter(Boolean);
-
+      }).filter(Boolean);
     return { ...track, clips };
   });
-
   return copy;
 }
 
 export function proxyifyEdit(editJson: any): any {
     if (!editJson || typeof editJson !== 'object') return editJson;
-    
-    // Deep copy to avoid mutating the original object from context
     const newEditJson = JSON.parse(JSON.stringify(editJson));
-  
     const tracks = newEditJson?.timeline?.tracks || [];
     for (const track of tracks) {
         if (!track.clips || !Array.isArray(track.clips)) continue;
         for (const clip of track.clips) {
             const asset = clip?.asset;
-            if (!asset || typeof asset !== 'object') continue;
-    
-            if (asset.src && typeof asset.src === 'string') {
+            if (asset?.src && typeof asset.src === 'string') {
                 asset.src = createAssetProxyUrl(asset.src);
             }
         }
@@ -369,32 +309,20 @@ export function proxyifyEdit(editJson: any): any {
 
 /**
  * Reverts proxied URLs in an edit JSON back to their original, direct URLs.
- * This is crucial before sending the JSON to the Shotstack Render API,
- * as the cloud renderer cannot access the Supabase function proxy.
- * @param editJson The edit JSON object with proxied asset URLs.
- * @returns A new edit JSON object with direct, public asset URLs.
+ * This is crucial before sending the JSON to the Shotstack Render API.
  */
 export function deproxyifyEdit(editJson: any): any {
     if (!editJson || typeof editJson !== 'object') return editJson;
     
     const newEditJson = JSON.parse(JSON.stringify(editJson));
-  
     const tracks = newEditJson?.timeline?.tracks || [];
+
     for (const track of tracks) {
         if (!track.clips || !Array.isArray(track.clips)) continue;
         for (const clip of track.clips) {
-            const asset = clip?.asset;
-            if (!asset || typeof asset !== 'object' || !asset.src || typeof asset.src !== 'string') continue;
-            
-            // Match the proxy format: .../asset-proxy/<encoded_url>/...
-            const proxyMatch = asset.src.match(/\/asset-proxy\/(.+?)\//);
-            if (proxyMatch && proxyMatch[1]) {
-                try {
-                    asset.src = decodeURIComponent(proxyMatch[1]);
-                } catch (e) {
-                    console.error("Failed to de-proxy URL:", asset.src, e);
-                    // Leave it as is if decoding fails, though rendering will likely fail.
-                }
+            if (clip?.asset?.src) {
+                // Use the universal normalizeUrl function which handles all proxy formats
+                clip.asset.src = normalizeUrl(clip.asset.src);
             }
         }
     }
@@ -403,18 +331,27 @@ export function deproxyifyEdit(editJson: any): any {
 
 
 // --- Shotstack SDK Loader ---
-// Single-instance loader that uses dynamic import.
 declare global {
   interface Window {
     SHOTSTACK_SDK_PROMISE?: Promise<typeof import("@shotstack/shotstack-studio")>;
   }
 }
 
+// Singleton promise to ensure the module is imported only once.
+let _pixiSoundReady: Promise<void> | null = null;
+export function ensurePixiSound(): Promise<void> {
+  // The import() is for side-effects only: it registers the AudioLoadParser.
+  return (_pixiSoundReady ??= import('@pixi/sound').then(() => {}));
+}
+
+
 export function getShotstackSDK() {
   if (!window.SHOTSTACK_SDK_PROMISE) {
-    // Dynamically import the npm package and cache the promise
-    // to ensure it's only fetched and evaluated once.
-    window.SHOTSTACK_SDK_PROMISE = import("@shotstack/shotstack-studio");
+    window.SHOTSTACK_SDK_PROMISE = (async () => {
+        // Critical: Ensure the audio loader is registered before the SDK is imported
+        await ensurePixiSound();
+        return import("@shotstack/shotstack-studio");
+    })();
   }
   return window.SHOTSTACK_SDK_PROMISE;
 }
