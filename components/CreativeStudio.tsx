@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit, ensurePixiSound } from '../utils';
+import { getShotstackSDK, sanitizeShotstackJson, proxyifyEdit, deproxyifyEdit } from '../utils';
 import { SparklesIcon } from './Icons';
-import { supabaseUrl, supabaseAnonKey } from '../services/supabaseClient';
+import { supabaseUrl } from '../services/supabaseClient';
 
 // Helper to wait until a DOM element is rendered and has a minimum size.
 const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
@@ -18,10 +18,11 @@ const waitUntilVisible = (el: HTMLElement | null, minW = 400, minH = 300) =>
   });
 
 const CreativeStudio: React.FC = () => {
-  const { activeProjectDetails, handleUpdateProject, handleRenderProject } = useAppContext();
+  const { activeProjectDetails, handleUpdateProject, handleRenderProject, session } = useAppContext();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const studioRef = useRef<HTMLDivElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
+  const controlsRef = useRef<HTMLDivElement | null>(null);
   const editRef = useRef<any>(null);
   const startedRef = useRef(false); // Guard against React StrictMode's double mount in dev
 
@@ -34,7 +35,6 @@ const CreativeStudio: React.FC = () => {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    let edit: any;
     let cancelled = false;
 
     // Cleanup function to destroy all SDK instances and remove listeners
@@ -51,12 +51,16 @@ const CreativeStudio: React.FC = () => {
 
         // Fetch the short-lived authentication token required by the Studio SDK.
         // This call must now be authenticated since JWT verification is ON for the function.
+        if (!session?.access_token) {
+            throw new Error('User is not authenticated. Cannot fetch Studio token.');
+        }
+
         const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                // CRITICAL: Supabase requires this header for functions with JWT verification enabled.
-                'Authorization': `Bearer ${supabaseAnonKey}`,
+                // CRITICAL: Supabase requires the user's JWT for functions with JWT verification enabled.
+                'Authorization': `Bearer ${session.access_token}`,
             },
         });
         
@@ -81,50 +85,27 @@ const CreativeStudio: React.FC = () => {
         await waitUntilVisible(hostRef.current);
         if (cancelled) return;
 
-        // 1. Ensure Pixi Sound is registered before the Studio SDK is even imported.
-        await ensurePixiSound();
-        if (cancelled) return;
-
-        // 2. Load the Shotstack SDK. This utility now waits for the sound module.
-        const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
+        const { Edit } = await getShotstackSDK();
         if (cancelled) return;
         
-        // 3. Prepare the timeline JSON
-        const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
-        const proxiedJson = proxyifyEdit(sanitizedJson);
-        const template = proxiedJson || {
+        const template = proxyifyEdit(sanitizeShotstackJson(activeProjectDetails.shotstackEditJson)) || {
             timeline: { background: "#000000", tracks: [] },
             output: { format: 'mp4', size: activeProjectDetails.videoSize === '9:16' ? { width: 720, height: 1280 } : { width: 1280, height: 720 }}
         };
         
-        // 4. Initialize and load the core Edit instance with the token.
-        const size = template.output.size || { width: 1280, height: 720 };
+        if (!studioRef.current || !timelineRef.current || !controlsRef.current) throw new Error('DOM mount points are missing.');
+
         const edit = new Edit({
-            width: size.width,
-            height: size.height,
-            background: template.timeline.background || '#000000',
-            token: studioToken
+          token: studioToken,
+          template,
+          studio: studioRef.current,
+          timeline: timelineRef.current,
+          controls: controlsRef.current,
         });
         editRef.current = edit;
         await edit.load();
-        await edit.loadEdit(template);
-        if (cancelled) return;
-
-        // 5. Only after Edit is ready, create and mount the UI components.
-        if (!studioRef.current || !timelineRef.current) throw new Error('DOM mount points are missing.');
-
-        const canvas = new Canvas(edit, studioRef.current);
-        const controls = new Controls(edit);
-        const timeline = new Timeline(edit, timelineRef.current);
-        
-        await Promise.all([
-          canvas.load(),
-          controls.load(),
-          timeline.load(),
-        ]);
         if (cancelled) return;
         
-        // 6. Set up event listener for autosaving changes
         const onEditUpdated = (newEdit: any) => {
             if(!cancelled) {
                 const deproxiedEdit = deproxyifyEdit(newEdit);
@@ -145,7 +126,7 @@ const CreativeStudio: React.FC = () => {
     
     return cleanup;
 
-  }, [activeProjectDetails, handleUpdateProject]);
+  }, [activeProjectDetails, handleUpdateProject, session]);
 
   const onRender = () => {
       if (editRef.current && activeProjectDetails) {
@@ -164,6 +145,7 @@ const CreativeStudio: React.FC = () => {
                 {error && <div className="bg-red-900/50 text-red-300 border border-red-500 p-4 rounded-lg max-w-md text-center">{error}</div>}
             </div>
         )}
+        <div ref={controlsRef} data-shotstack-controls className={loading || error ? 'invisible' : ''} />
         <div ref={studioRef} data-shotstack-studio className={loading || error ? 'invisible' : ''} />
         <div ref={timelineRef} data-shotstack-timeline className={loading || error ? 'invisible' : ''} />
       </div>
