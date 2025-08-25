@@ -50,11 +50,8 @@ const CreativeStudio: React.FC = () => {
         setError(null);
 
         // Fetch the short-lived authentication token required by the Studio SDK.
-        // This is now a direct, unauthenticated call to our public proxy function.
-        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        // This is now a direct, unauthenticated GET call to our public proxy function.
+        const tokenResponse = await fetch(`${supabaseUrl}/functions/v1/shotstack-studio-token`);
         
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
@@ -95,7 +92,7 @@ const CreativeStudio: React.FC = () => {
         
         // 4. Initialize and load the core Edit instance with the token.
         const size = template.output.size || { width: 1280, height: 720 };
-        edit = new Edit({
+        const edit = new Edit({
             width: size.width,
             height: size.height,
             background: template.timeline.background || '#000000',
