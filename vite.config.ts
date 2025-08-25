@@ -14,26 +14,14 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pre-bundle the main dependencies for faster dev server start.
-    include: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/sound"]
+    include: ["@shotstack/shotstack-studio", "pixi.js"]
   },
   build: {
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html'),
-      },
-      // CRITICAL: tell Rollup not to tree-shake the module's side-effects
-      treeshake: {
-        moduleSideEffects: (id) => id.includes('/node_modules/@pixi/sound'),
-      },
-      output: {
-        // Optional: put pixi-sound in its own chunk (easier to see it load)
-        manualChunks(id) {
-          if (id.includes('/node_modules/@pixi/sound')) {
-            return 'pixi-sound';
-          }
-        },
-      },
+      }
     }
   }
 });
