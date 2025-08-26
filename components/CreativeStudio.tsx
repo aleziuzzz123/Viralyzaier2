@@ -38,13 +38,16 @@ export const CreativeStudio: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
   const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
-  const saveTimeoutRef = useRef<number | null>(null);
+  // Fix: Use a robust type for the timeout handle that works in both Node and browser environments.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced save (runs 1.5s after last change)
   const debouncedUpdateProject = useCallback((edit: any) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setIsSaving(true);
-    saveTimeoutRef.current = window.setTimeout(() => {
+    // Fix: The error "Expected 2 arguments, but got 1" can be caused by incorrect TypeScript typings for `setTimeout`.
+    // Using the global `setTimeout` and ensuring the ref type is inferred correctly resolves this.
+    saveTimeoutRef.current = setTimeout(() => {
       if (activeProjectDetails) {
         const editJson = edit.getEdit();
         const deproxied = deproxyifyEdit(editJson);
@@ -98,15 +101,14 @@ export const CreativeStudio: React.FC = () => {
         if (cancelled) return;
 
         // Initialize individual UI components and mount them
-        // FIX: The Canvas constructor expects the size of the canvas as the first argument.
-        const canvas = new Canvas(sanitizedJson.output.size, edit);
+        const canvas = new Canvas(edit);
         await canvas.load();
-        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        // The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
         canvasHost.appendChild((canvas as any).view);
 
         const controls = new Controls(edit);
         await controls.load();
-        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        // The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
         controlsHost.appendChild((controls as any).view);
 
         const timeline = new Timeline(edit, {
@@ -114,7 +116,7 @@ export const CreativeStudio: React.FC = () => {
             height: timelineHost.clientHeight || 250,
         });
         await timeline.load();
-        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        // The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
         timelineHost.appendChild((timeline as any).view);
 
         if (cancelled) return;
