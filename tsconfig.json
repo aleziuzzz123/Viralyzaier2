@@ -12,6 +12,6 @@
     "baseUrl": ".",
     "types": ["vite/client"]
   },
-  "include": ["**/*"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist", "supabase", "api"]
 }

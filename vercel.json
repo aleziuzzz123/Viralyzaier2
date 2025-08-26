@@ -1,9 +1,16 @@
 {
   "buildCommand": "vite build",
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/(.*)\\.mjs",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    }
+  ],
   "rewrites": [
-    { "source": "/studio", "destination": "/studio.html" },
-    { "source": "/studio/", "destination": "/studio.html" },
-    { "source": "/((?!api/|assets/|studio\\.html|favicon|robots|manifest).*)", "destination": "/index.html" }
+    { "source": "/functions/v1/:path*", "destination": "https://wpgrfukcnpcoyruymxdd.supabase.co/functions/v1/:path*" },
+    { "source": "/((?!api/|assets/|favicon|robots|manifest).*)", "destination": "/index.html" }
   ]
 }
