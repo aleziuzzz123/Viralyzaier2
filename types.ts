@@ -110,7 +110,6 @@ export interface Project {
   workflowStep: WorkflowStep;
   voiceoverVoiceId: string | null;
   lastPerformanceCheck: string | null;
-  dueDate?: string | null;
   finalVideoUrl?: string | null;
   shotstackEditJson?: ShotstackEditJson | null;
   shotstackRenderId?: string | null;
@@ -399,7 +398,6 @@ export type Database = {
           analysis: Json | null
           assets: Json | null
           competitor_analysis: Json | null
-          due_date: string | null
           final_video_url: string | null
           id: string
           last_performance_check: string | null
@@ -429,7 +427,6 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
-          due_date?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null
@@ -459,7 +456,6 @@ export type Database = {
           analysis?: Json | null
           assets?: Json | null
           competitor_analysis?: Json | null
-          due_date?: string | null
           final_video_url?: string | null
           id?: string
           last_performance_check?: string | null

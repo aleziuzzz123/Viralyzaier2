@@ -36,8 +36,7 @@ export const CreativeStudio: React.FC = () => {
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
   const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  // FIX: Explicitly type the ref to `number` for browser compatibility with `window.setTimeout`.
-  const saveTimeoutRef = useRef<number | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   const debouncedUpdateProject = useCallback((edit: any) => {
     if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);

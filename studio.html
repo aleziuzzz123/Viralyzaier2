@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Studio Standalone Test</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body{margin:0;background:#0b1220;color:#fff;font-family:system-ui; padding: 12px;}
+      h1 {font-size: 1.5em; margin-bottom: 1rem;}
+       [data-shotstack-studio]{background:#000;border-radius:8px;}
+      [data-shotstack-timeline]{background:#111827;border-radius:8px;margin-top:16px;}
+      [data-shotstack-controls]{margin-bottom:16px;}
+    </style>
+  </head>
+  <body>
+    <h1>Studio Standalone Test</h1>
+
+    <div data-shotstack-studio style="height:480px;"></div>
+    <div data-shotstack-controls></div>
+    <div data-shotstack-timeline style="height:300px;"></div>
+
+    <script type="module">
+      // This side-effectful import is critical for audio support
+      import '@pixi/sound';
+      // The default export from the SDK is the Application class
+      import Application, { Edit } from 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio/+esm';
+
+      (async () => {
+        // Find the DOM elements where the editor components will be mounted
+        const studioEl = document.querySelector('[data-shotstack-studio]');
+        const timelineEl = document.querySelector('[data-shotstack-timeline]');
+        const controlsEl = document.querySelector('[data-shotstack-controls]');
+
+        if (!studioEl || !timelineEl || !controlsEl) {
+          throw new Error("Could not find all the required DOM elements for the studio.");
+        }
+
+        // 1. Retrieve a template to display
+        const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
+        const response = await fetch(templateUrl);
+        if (!response.ok) throw new Error(`Failed to fetch template: ${response.statusText}`);
+        const template = await response.json();
+
+        // 2. Initialize the Application with the DOM elements
+        const app = new Application({
+          studio: studioEl,
+          timeline: timelineEl,
+          controls: controlsEl,
+        });
+        
+        // 3. Create the Edit instance, passing the app and the template data
+        const edit = new Edit(app, template);
+
+        // 4. Load the application. This will automatically load the edit,
+        // its assets, and render all components into the specified DOM elements.
+        await app.load(edit);
+
+      })().catch(e => {
+        // Display a user-friendly error message if initialization fails
+        document.body.insertAdjacentHTML('beforeend',
+          `<div style="background:#fce4e4;color:#900;padding:12px;border-radius:6px;margin-top:12px">
+             Failed to load studio: ${e?.message || e}
+           </div>`);
+        console.error(e);
+      });
+    </script>
+  </body>
+</html>

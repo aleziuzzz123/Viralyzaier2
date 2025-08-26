@@ -104,7 +104,6 @@ export const projectRowToProject = (row: any): Project => ({
     workflowStep: row.workflow_step as WorkflowStep,
     voiceoverVoiceId: row.voiceover_voice_id || null,
     lastPerformanceCheck: row.last_performance_check || null,
-    dueDate: row.due_date || null,
     finalVideoUrl: row.final_video_url || null,
     shotstackEditJson: row.shotstack_edit_json || null,
     shotstackRenderId: row.shotstack_render_id || null,
@@ -137,7 +136,7 @@ export const invokeEdgeFunction = async <T>(
     }
 
     try {
-        const response = await fetch(`/functions/v1/${functionName}`, {
+        const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
             method: 'POST',
             headers: headers,
             body: isFormData ? body : JSON.stringify(body),
@@ -258,7 +257,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 };
 
 // --- Projects ---
-const DASHBOARD_PROJECT_COLUMNS = 'id, name, topic, platform, status, last_updated, published_url, scheduled_date, workflow_step, due_date';
+const DASHBOARD_PROJECT_COLUMNS = 'id, name, topic, platform, status, last_updated, published_url, scheduled_date, workflow_step';
 
 export const getProjectsForUser = async (userId: string): Promise<Project[]> => {
     const { data, error } = await supabase
@@ -316,7 +315,6 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'lastUpdat
         published_url: projectData.publishedUrl,
         last_performance_check: projectData.lastPerformanceCheck,
         voiceover_voice_id: projectData.voiceoverVoiceId,
-        due_date: projectData.dueDate || null,
         final_video_url: projectData.finalVideoUrl,
     };
     
@@ -352,7 +350,6 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
     if (updates.workflowStep !== undefined) dbUpdates.workflow_step = updates.workflowStep;
     if (updates.voiceoverVoiceId !== undefined) dbUpdates.voiceover_voice_id = updates.voiceoverVoiceId;
     if (updates.lastPerformanceCheck !== undefined) dbUpdates.last_performance_check = updates.lastPerformanceCheck;
-    if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
     if (updates.finalVideoUrl !== undefined) dbUpdates.final_video_url = updates.finalVideoUrl;
     if (updates.shotstackEditJson !== undefined) dbUpdates.shotstack_edit_json = sanitizeJson(updates.shotstackEditJson);
     if (updates.shotstackRenderId !== undefined) dbUpdates.shotstack_render_id = updates.shotstackRenderId;

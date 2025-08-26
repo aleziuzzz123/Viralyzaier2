@@ -141,7 +141,6 @@ const enTranslations = {
   "kanban.edit_url": "Edit URL",
   "kanban.url_placeholder": "Paste YouTube/TikTok URL",
   "kanban.url_updated": "Published URL updated",
-  "kanban.due_date_updated": "Due date updated!",
   "kanban.project_moved": "Project moved to \"{status}\"",
   "project_view.stepper_spark": "Stage 1: The Spark",
   "project_view.stepper_blueprint": "Stage 2: The Blueprint",
