@@ -38,17 +38,12 @@ export const CreativeStudio: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
   const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
-  // Fix: Use a robust type for the timeout handle that works in both Node and browser environments.
-  // FIX: Explicitly use window.setTimeout to ensure the correct return type (number) for the browser environment.
   const saveTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   // Debounced save (runs 1.5s after last change)
   const debouncedUpdateProject = useCallback((edit: any) => {
-    // FIX: Explicitly use window.clearTimeout to avoid type conflicts with Node.js.
     if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
     setIsSaving(true);
-    // Fix: The error "Expected 2 arguments, but got 1" can be caused by incorrect TypeScript typings for `setTimeout`.
-    // Using the global `setTimeout` and ensuring the ref type is inferred correctly resolves this.
     saveTimeoutRef.current = window.setTimeout(() => {
       if (activeProjectDetails) {
         const editJson = edit.getEdit();
@@ -103,7 +98,7 @@ export const CreativeStudio: React.FC = () => {
         if (cancelled) return;
 
         // Initialize individual UI components and mount them
-        // FIX: The Canvas constructor expects the size as the first argument, followed by the edit instance.
+        // FIX: The Canvas constructor requires both the edit instance and the output size.
         const canvas = new Canvas(template.output.size, edit);
         await canvas.load();
         // The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
@@ -159,7 +154,6 @@ export const CreativeStudio: React.FC = () => {
       }
       sdkRef.current = null;
       // Clear any pending save timeout
-      // FIX: Explicitly use window.clearTimeout to avoid type conflicts with Node.js.
       if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
       // Clear the DOM containers
       if (canvasHost) canvasHost.innerHTML = '';
