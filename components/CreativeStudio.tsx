@@ -7,9 +7,8 @@ import EditorToolbar from './EditorToolbar';
 import AssetBrowserModal from './AssetBrowserModal';
 import TopInspectorPanel from './TopInspectorPanel';
 import { ShotstackClipSelection } from '../types';
-import { getErrorMessage } from '../utils';
 
-type SdkHandles = { edit: Edit; canvas: Canvas; timeline: Timeline; };
+type SdkHandles = { edit: Edit; canvas: any; timeline: any; };
 
 export const CreativeStudio: React.FC = () => {
     const { 
@@ -25,6 +24,7 @@ export const CreativeStudio: React.FC = () => {
     const canvasHostRef = useRef<HTMLDivElement>(null);
     const timelineHostRef = useRef<HTMLDivElement>(null);
     const sdk = useRef<SdkHandles | null>(null);
+    const appRef = useRef<any>(null);
 
     const [error, setError] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
@@ -73,34 +73,38 @@ export const CreativeStudio: React.FC = () => {
         
         (async () => {
             try {
-                const { Edit, Canvas, Timeline } = await import('@shotstack/shotstack-studio');
+                // Import Application and Edit from the SDK
+                const { Application, Edit } = await import('@shotstack/shotstack-studio');
+
+                if (!Application || !Edit) {
+                    throw new Error("Failed to import Shotstack Studio Application or Edit class.");
+                }
 
                 const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
                 if (!sanitizedJson) throw new Error("Project has invalid or missing timeline data.");
                 
                 const template = proxyifyEdit(sanitizedJson);
 
-                const edit = new Edit(template.output.size, template.timeline.background);
-                await edit.load();
+                // Use the high-level Application class for robust mounting
+                const app = new Application({
+                    studio: hostCanvas,
+                    timeline: hostTimeline,
+                });
+                appRef.current = app; // Store for cleanup
+
+                // The Edit constructor for the Application class takes the app instance
+                const edit = new Edit(app, template);
+                
+                // app.load handles all the complex setup and mounting
+                await app.load(edit);
                 if (cancelled) return;
 
-                const canvas = new Canvas(template.output.size, edit);
-                await canvas.load();
-                if (cancelled) return;
-                hostCanvas.appendChild((canvas as any).canvas);
+                // After loading, the canvas and timeline instances are available on the app
+                sdk.current = { edit, canvas: app.canvas, timeline: app.timeline };
 
-                await edit.loadEdit(template);
-                if (cancelled) return;
-
-                const timeline = new Timeline(edit, { width: hostTimeline.clientWidth, height: hostTimeline.clientHeight });
-                await timeline.load();
-                if (cancelled) return;
-                hostTimeline.appendChild((timeline as any).canvas);
-
-                sdk.current = { edit, canvas, timeline };
-
+                // Attach event listeners to the edit instance
                 changeListener = () => debouncedUpdateProject(edit);
-                selectListener = (sel) => setSelection(sel);
+                selectListener = (sel: any) => setSelection(sel);
                 deselectListener = () => setSelection(null);
                 playListener = () => setIsPlaying(true);
                 pauseListener = () => setIsPlaying(false);
@@ -113,7 +117,8 @@ export const CreativeStudio: React.FC = () => {
                 edit.events.on("stop", pauseListener);
 
                 setIsReady(true);
-                canvas.zoomToFit();
+                app.canvas.zoomToFit();
+
             } catch (e: any) {
                 if (!cancelled) setError(e?.message ?? String(e));
             }
@@ -121,19 +126,25 @@ export const CreativeStudio: React.FC = () => {
 
         return () => {
             cancelled = true;
-            if (sdk.current && changeListener) sdk.current.edit.events.off("change", changeListener);
-            if (sdk.current && selectListener) sdk.current.edit.events.off("select", selectListener);
-            if (sdk.current && deselectListener) sdk.current.edit.events.off("deselect", deselectListener);
-            if (sdk.current && playListener) sdk.current.edit.events.off("play", playListener);
-            if (sdk.current && pauseListener) sdk.current.edit.events.off("pause", pauseListener);
+            if (sdk.current?.edit) {
+                const edit = sdk.current.edit;
+                if (changeListener) edit.events.off("change", changeListener);
+                if (selectListener) edit.events.off("select", selectListener);
+                if (deselectListener) edit.events.off("deselect", deselectListener);
+                if (playListener) edit.events.off("play", playListener);
+                if (pauseListener) edit.events.off("pause", pauseListener);
+            }
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             
-            hostCanvas.innerHTML = '';
-            hostTimeline.innerHTML = '';
+            // Use the app's destroy method for proper cleanup
+            appRef.current?.destroy();
             sdk.current = null;
+            appRef.current = null;
+            
             setIsReady(false);
         };
     }, [activeProjectDetails, debouncedUpdateProject]);
+
 
     const handleRender = () => {
         if (sdk.current?.edit && activeProjectDetails) {
@@ -163,10 +174,10 @@ export const CreativeStudio: React.FC = () => {
         // Visuals go to A-Roll (0), Audio goes to Music (4) by default.
         const targetTrackIndex = (shotstackType === 'audio') ? 4 : 0;
 
-        sdk.current.edit.addClip({
+        sdk.current.edit.addClip(targetTrackIndex, {
             asset: { type: shotstackType, src: proxiedUrl },
             length: shotstackType === 'audio' ? 20 : 5, // Default lengths
-        }, targetTrackIndex);
+        });
     };
 
     const handleDeleteClip = () => {
