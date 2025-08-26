@@ -192,10 +192,10 @@ export const CreativeStudio: React.FC = () => {
             
              <div className="flex-1 grid grid-cols-[1fr_350px] gap-4 p-4 overflow-hidden">
                 <main className="flex flex-col gap-4 overflow-hidden">
-                    <div ref={canvasHostRef} className="flex-1 bg-black rounded-lg relative flex items-center justify-center">
+                    <div ref={canvasHostRef} data-shotstack-studio className="flex-1 bg-black rounded-lg relative flex items-center justify-center">
                         {!isReady && <p className="text-gray-400">Loading Editor...</p>}
                     </div>
-                    <div ref={timelineHostRef} className="h-[250px] bg-gray-800 rounded-lg" />
+                    <div ref={timelineHostRef} data-shotstack-timeline className="h-[250px] bg-gray-800 rounded-lg" />
                     <EditorToolbar
                         isPlaying={isPlaying}
                         onPlayPause={() => isPlaying ? sdk.current?.edit.pause() : sdk.current?.edit.play()}
