@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Project, ProjectStatus, Platform } from '../types';
-import { YouTubeIcon, TikTokIcon, InstagramIcon, PlusIcon, PencilIcon, RocketLaunchIcon, SparklesIcon } from './Icons';
+import { YouTubeIcon, TikTokIcon, InstagramIcon, PlusIcon, PencilIcon, RocketLaunchIcon, SparklesIcon, CalendarIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 
 const platformIcons: { [key in Platform]: React.FC<{className?: string}> } = {
@@ -30,7 +30,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onViewProject }) => 
     const { handleUpdateProject, addToast, t } = useAppContext();
     const [isEditingUrl, setIsEditingUrl] = useState(false);
     const [url, setUrl] = useState(project.publishedUrl || '');
+    const [isEditingDate, setIsEditingDate] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const dateInputRef = useRef<HTMLInputElement>(null);
 
     const handleUrlSave = () => {
         const trimmedUrl = url.trim();
@@ -46,17 +48,32 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onViewProject }) => 
         setIsEditingUrl(false);
     };
 
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDueDate = e.target.value ? new Date(e.target.value).toISOString() : null;
+        handleUpdateProject(project.id, { dueDate: newDueDate });
+        addToast(t('kanban.due_date_updated'), 'success');
+        setIsEditingDate(false);
+    };
+
     useEffect(() => {
         if (isEditingUrl) {
             inputRef.current?.focus();
         }
     }, [isEditingUrl]);
 
+    useEffect(() => {
+        if (isEditingDate) {
+            dateInputRef.current?.showPicker();
+            dateInputRef.current?.focus();
+        }
+    }, [isEditingDate]);
+
     const handleStartEditing = (e: React.MouseEvent) => {
         e.stopPropagation();
         setIsEditingUrl(true);
     };
 
+    const isOverdue = project.dueDate && new Date(project.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && project.status !== 'Published';
     const PlatformIcon = platformIcons[project.platform];
 
     return (
@@ -76,6 +93,34 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onViewProject }) => 
                         </div>
                     </div>
                     <p className="text-sm text-gray-400 truncate mt-1">{project.topic || t('kanban.no_topic')}</p>
+                    
+                     <div className="mt-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                        {isEditingDate ? (
+                            <input
+                                ref={dateInputRef}
+                                type="date"
+                                defaultValue={project.dueDate ? project.dueDate.split('T')[0] : ''}
+                                onChange={handleDateChange}
+                                onBlur={() => setIsEditingDate(false)}
+                                className="w-full bg-gray-900 border border-gray-600 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                        ) : (
+                            <button
+                                onClick={() => setIsEditingDate(true)}
+                                className={`flex items-center gap-1.5 rounded p-1 -ml-1 ${isOverdue ? 'text-red-400' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+                            >
+                                <CalendarIcon className="w-4 h-4" />
+                                {project.dueDate ? (
+                                    <span className={isOverdue ? 'font-semibold' : ''}>
+                                        Due: {new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    </span>
+                                ) : (
+                                    <span>Set Due Date</span>
+                                )}
+                            </button>
+                        )}
+                    </div>
+
                      {project.status === 'Autopilot' && (
                         <div className="mt-2 text-xs font-bold text-purple-400 flex items-center gap-1.5">
                             <RocketLaunchIcon className="w-4 h-4" />
