@@ -87,7 +87,7 @@ export const CreativeStudio: React.FC = () => {
                 const canvas = new Canvas(template.output.size, edit);
                 await canvas.load();
                 if (cancelled) return;
-                hostCanvas.appendChild((canvas as any).view);
+                hostCanvas.appendChild((canvas as any).canvas);
 
                 await edit.loadEdit(template);
                 if (cancelled) return;
@@ -95,7 +95,7 @@ export const CreativeStudio: React.FC = () => {
                 const timeline = new Timeline(edit, { width: hostTimeline.clientWidth, height: hostTimeline.clientHeight });
                 await timeline.load();
                 if (cancelled) return;
-                hostTimeline.appendChild((timeline as any).view);
+                hostTimeline.appendChild((timeline as any).canvas);
 
                 sdk.current = { edit, canvas, timeline };
 
@@ -159,11 +159,14 @@ export const CreativeStudio: React.FC = () => {
 
         const proxiedUrl = proxyifyEdit({ timeline: { tracks: [{ clips: [{ asset: { src: url } }] }] } })
             .timeline.tracks[0].clips[0].asset.src;
+        
+        // Visuals go to A-Roll (0), Audio goes to Music (4) by default.
+        const targetTrackIndex = (shotstackType === 'audio') ? 4 : 0;
 
         sdk.current.edit.addClip({
             asset: { type: shotstackType, src: proxiedUrl },
             length: shotstackType === 'audio' ? 20 : 5, // Default lengths
-        });
+        }, targetTrackIndex);
     };
 
     const handleDeleteClip = () => {
