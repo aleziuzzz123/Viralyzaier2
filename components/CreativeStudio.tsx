@@ -1,3 +1,8 @@
+
+
+
+
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { Edit, Canvas, Timeline } from "@shotstack/shotstack-studio";
 import { useAppContext } from '../contexts/AppContext';
@@ -71,13 +76,17 @@ export const CreativeStudio: React.FC = () => {
         let playListener: (() => void) | null = null;
         let pauseListener: (() => void) | null = null;
         
+        // Keep track of created instances for cleanup
+        let canvasInstance: Canvas | null = null;
+        let timelineInstance: Timeline | null = null;
+
         (async () => {
             try {
-                // Import Application and Edit from the SDK
-                const { Application, Edit } = await import('@shotstack/shotstack-studio');
+                // The SDK is loaded via import map.
+                const { Edit, Canvas, Timeline } = await import('@shotstack/shotstack-studio');
 
-                if (!Application || !Edit) {
-                    throw new Error("Failed to import Shotstack Studio Application or Edit class.");
+                if (!Edit || !Canvas || !Timeline) {
+                    throw new Error("Failed to import Shotstack Studio components (Edit, Canvas, Timeline).");
                 }
 
                 const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
@@ -85,22 +94,33 @@ export const CreativeStudio: React.FC = () => {
                 
                 const template = proxyifyEdit(sanitizedJson);
 
-                // Use the high-level Application class for robust mounting
-                const app = new Application({
-                    studio: hostCanvas,
-                    timeline: hostTimeline,
-                });
-                appRef.current = app; // Store for cleanup
-
-                // The Edit constructor for the Application class takes the app instance
-                const edit = new Edit(app, template);
-                
-                // app.load handles all the complex setup and mounting
-                await app.load(edit);
+                // --- Manual SDK component setup ---
+                const edit = new Edit(template.output.size, template.timeline.background);
+                await edit.load();
                 if (cancelled) return;
 
-                // After loading, the canvas and timeline instances are available on the app
-                sdk.current = { edit, canvas: app.canvas, timeline: app.timeline };
+                // Load the timeline data into the edit instance
+                await edit.loadEdit(template);
+                if (cancelled) return;
+
+                // Create and load Canvas
+                canvasInstance = new Canvas(template.output.size, edit);
+                await canvasInstance.load();
+                if (cancelled) return;
+                hostCanvas.innerHTML = ''; // Clear previous content
+                hostCanvas.appendChild((canvasInstance as any).view);
+
+                // Create and load Timeline
+                timelineInstance = new Timeline(edit, {
+                    width: hostTimeline.clientWidth,
+                    height: hostTimeline.clientHeight || 250
+                });
+                await timelineInstance.load();
+                if (cancelled) return;
+                hostTimeline.innerHTML = ''; // Clear previous content
+                hostTimeline.appendChild((timelineInstance as any).view);
+                
+                sdk.current = { edit, canvas: canvasInstance, timeline: timelineInstance };
 
                 // Attach event listeners to the edit instance
                 changeListener = () => debouncedUpdateProject(edit);
@@ -117,7 +137,7 @@ export const CreativeStudio: React.FC = () => {
                 edit.events.on("stop", pauseListener);
 
                 setIsReady(true);
-                app.canvas.zoomToFit();
+                canvasInstance.zoomToFit();
 
             } catch (e: any) {
                 if (!cancelled) setError(e?.message ?? String(e));
@@ -136,12 +156,18 @@ export const CreativeStudio: React.FC = () => {
             }
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
             
-            // Use the app's destroy method for proper cleanup
-            appRef.current?.destroy();
+            // Cleanup SDK components
+            timelineInstance?.destroy();
+            canvasInstance?.destroy();
+            sdk.current?.edit.destroy();
+
             sdk.current = null;
-            appRef.current = null;
             
             setIsReady(false);
+            
+            // Clear DOM elements
+            if (hostCanvas) hostCanvas.innerHTML = '';
+            if (hostTimeline) hostTimeline.innerHTML = '';
         };
     }, [activeProjectDetails, debouncedUpdateProject]);
 
