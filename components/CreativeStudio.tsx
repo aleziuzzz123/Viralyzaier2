@@ -69,7 +69,7 @@ export const CreativeStudio: React.FC = () => {
     (async () => {
       try {
         // Load Shotstack modules (SDK loaded via import; pixi/sound was pre-loaded in index.tsx)
-        // FIX: Changed to use a named import for `Application` as the dynamic import was not resolving the default export correctly.
+        // FIX: Import `Application` as a named export, not a default export.
         const { Application, Edit } = await import('@shotstack/shotstack-studio');
 
         // Sanitize and proxy the saved template JSON
