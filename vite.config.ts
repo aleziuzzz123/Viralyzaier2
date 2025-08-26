@@ -18,7 +18,7 @@ export default defineConfig({
         // This is critical to prevent Vite from removing the side-effectful
         // import of @pixi/sound, which registers the audio loader globally.
         moduleSideEffects: (id) => {
-          return id.includes('/node_modules/@pixi/sound');
+          return id.includes('@pixi/sound');
         }
       }
     }
