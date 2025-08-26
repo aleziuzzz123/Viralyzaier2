@@ -2,6 +2,8 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!api/|assets/|favicon|robots|manifest).*)", "destination": "/index.html" }
+    { "source": "/studio", "destination": "/studio.html" },
+    { "source": "/studio/", "destination": "/studio.html" },
+    { "source": "/((?!api/|assets/|studio\\.html|favicon|robots|manifest).*)", "destination": "/index.html" }
   ]
 }
