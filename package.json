@@ -5,15 +5,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "postinstall": "node -e \"import('pixi.js').then(m=>console.log('[pixi]',m.VERSION)).catch(e=>{console.error('[pixi-check-failed]',e?.message||e);process.exit(1)})\""
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "1.15.0",
-    "@pixi/sound": "5.2.1",
+    "@pixi/sound": "4.2.1",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "2.44.4",
-    "pixi.js": "7.4.2",
+    "pixi.js": "6.5.10",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "uuid": "9.0.1"
@@ -31,8 +30,7 @@
     "vite": "5.2.0"
   },
   "overrides": {
-    "pixi.js": "7.4.2",
-    "@pixi/sound": "5.2.1"
+    "pixi.js": "6.5.10"
   },
   "packageManager": "npm@10",
   "sideEffects": [
