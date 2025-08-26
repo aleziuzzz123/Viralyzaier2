@@ -6,15 +6,36 @@
     <title>Viralyaizer 5.0</title>
     <base href="/" />
 
-    <!-- Shotstack Studio CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio@1.5.0/dist/style.css" />
-
     <!-- Use Tailwind CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
       body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
       .toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.75rem;align-items:flex-end}
+      
+      /* Shotstack Studio CSS Overrides */
+      .shotstack-host {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        gap: 16px;
+      }
+      [data-shotstack-studio] {
+        flex: 1 1 auto;
+        min-height: 420px;
+        background: #000;
+        border-radius: 8px;
+      }
+      [data-shotstack-timeline] {
+        flex: 0 0 320px;
+        background: #111827;
+        border-radius: 8px;
+      }
+      /* Neutralize hostile global CSS */
+      .shotstack-host canvas {
+        height: 100% !important;
+        width: 100% !important;
+      }
     </style>
     <script>
       // Fallback env for AI Studio preview only.
@@ -30,17 +51,21 @@
 <script type="importmap">
 {
   "imports": {
-    "@pixi/sound": "https://aistudiocdn.com/@pixi/sound@^6.0.1",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1",
-    "uuid": "https://aistudiocdn.com/uuid@^11.1.0",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.56.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.15.0",
-    "vite": "https://aistudiocdn.com/vite@^7.1.3",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.1",
-    "@shotstack/shotstack-studio": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0"
+    "react": "https://esm.sh/react@^18.3.1",
+    "react/": "https://esm.sh/react@^18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@^18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@^18.3.1/client",
+    "uuid": "https://esm.sh/uuid@^11.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.15.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.56.0",
+    "vite": "https://esm.sh/vite@^7.1.3",
+    "path": "https://esm.sh/path@^0.12.7",
+    "@pixi/sound": "https://esm.sh/@pixi/sound@^6.0.1",
+    "url": "https://esm.sh/url@^0.11.4",
+    "react-dom/": "https://esm.sh/react-dom@^18.3.1/",
+    "@shotstack/shotstack-studio": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0",
+    "@shotstack/shotstack-studio/": "https://aistudiocdn.com/@shotstack/shotstack-studio@^1.5.0/"
   }
 }
 </script>

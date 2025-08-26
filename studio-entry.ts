@@ -2,8 +2,6 @@
 // It MUST come before any other Shotstack Studio imports.
 import '@pixi/sound';
 
-import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
-
 // --- Asset Proxying Logic ---
 // This is necessary to avoid CORS errors when loading assets from external domains.
 const supabaseUrl = (window as any).ENV?.VITE_SUPABASE_URL;
@@ -45,9 +43,9 @@ function proxyifyEdit(editJson: any): any {
 (async () => {
   const loadingIndicator = document.getElementById('loading-indicator');
   const errorIndicator = document.getElementById('error-indicator');
-  const studioEl = document.querySelector<HTMLElement>('[data-shotstack-studio]');
-  const timelineEl = document.querySelector<HTMLElement>('[data-shotstack-timeline]');
-  const controlsEl = document.querySelector<HTMLElement>('[data-shotstack-controls]');
+  const studioEl = document.querySelector('[data-shotstack-studio]');
+  const timelineEl = document.querySelector('[data-shotstack-timeline]');
+  const controlsEl = document.querySelector('[data-shotstack-controls]');
   
   const showError = (message: string) => {
     if (errorIndicator) {
@@ -65,35 +63,39 @@ function proxyifyEdit(editJson: any): any {
     if (!studioEl || !timelineEl || !controlsEl) {
         throw new Error("DOM mount points '[data-shotstack-studio]', '[data-shotstack-timeline]', or '[data-shotstack-controls]' not found.");
     }
+
+    // Dynamically import the SDK to resolve module issues
+    const { Edit, Canvas, Controls, Timeline } = await import('@shotstack/shotstack-studio');
     
     // 2. Fetch a simple template to load
     const res = await fetch('https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json');
     if (!res.ok) throw new Error(`Failed to fetch template: ${res.statusText}`);
     const rawTemplate = await res.json();
     
-    // 3. Proxy all asset URLs within the template to avoid CORS issues
+    // **FIX**: Proxy all asset URLs within the template to avoid CORS issues
     const template = proxyifyEdit(rawTemplate);
 
-    // 4. Create and load the core Edit instance and other components
-    const edit = new Edit(template.output.size, template.timeline.background);
-    await edit.load();
-    
-    const canvas = new Canvas(template.output.size, edit);
-    await canvas.load();
-    studioEl.appendChild((canvas as any).view);
+    // 3. Create and load instances
+    const size = template.output.size;
+    const bg = template.timeline.background;
 
-    await edit.loadEdit(template);
+    const edit = new Edit(size, bg);
+    await edit.load();
+
+    const canvas = new Canvas(size, edit);
+    await canvas.load();
 
     const controls = new Controls(edit);
     await controls.load();
-    controlsEl.appendChild((controls as any).view);
 
-    const timeline = new Timeline(edit, { 
-        width: timelineEl.clientWidth, 
-        height: timelineEl.clientHeight || 300 
+    const timeline = new Timeline(edit, {
+      width: (timelineEl as HTMLElement).clientWidth,
+      height: 300,
     });
     await timeline.load();
-    timelineEl.appendChild((timeline as any).view);
+
+    // 4. Load the template data into the editor
+    await edit.loadEdit(template);
     
     // Hide loading indicator on success
     if (loadingIndicator) {
