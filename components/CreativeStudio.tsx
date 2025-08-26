@@ -59,7 +59,10 @@ export const CreativeStudio: React.FC = () => {
   // Initialize Shotstack editor when a project is selected
   useEffect(() => {
     if (!activeProjectDetails) return;
-    if (!canvasHostRef.current || !timelineHostRef.current || !controlsHostRef.current) return;
+    const { current: canvasHost } = canvasHostRef;
+    const { current: timelineHost } = timelineHostRef;
+    const { current: controlsHost } = controlsHostRef;
+    if (!canvasHost || !timelineHost || !controlsHost) return;
 
     let cancelled = false;
     setError(null);
@@ -68,9 +71,8 @@ export const CreativeStudio: React.FC = () => {
 
     (async () => {
       try {
-        // Load Shotstack modules (SDK loaded via import; pixi/sound was pre-loaded in index.tsx)
-        // FIX: Import `Application` as a named export, not a default export.
-        const { Application, Edit } = await import('@shotstack/shotstack-studio');
+        // Import the modular Shotstack Studio components
+        const { Edit, Canvas, Timeline, Controls } = await import('@shotstack/shotstack-studio');
 
         // Sanitize and proxy the saved template JSON
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
@@ -79,7 +81,6 @@ export const CreativeStudio: React.FC = () => {
 
         // Fetch token via secure Supabase function
         const getToken = async (): Promise<string> => {
-          // Use our Supabase Edge Function to get a short-lived token
           const result = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
           if (!result?.token) {
             throw new Error("Failed to retrieve Shotstack session token.");
@@ -87,19 +88,35 @@ export const CreativeStudio: React.FC = () => {
           return result.token;
         };
 
-        // Create the Application instance with DOM refs and token callback
-        const app = new Application({
-          studio: canvasHostRef.current,
-          timeline: timelineHostRef.current,
-          controls: controlsHostRef.current,
-          token: getToken,
+        // Initialize the Edit instance with the template and token provider
+        const edit = new Edit({
+            ...template,
+            token: getToken,
         });
 
-        // Create the Edit instance from the template data
-        const edit = new Edit(app, template);
+        await edit.load();
+        if (cancelled) return;
 
-        // Load the application (loads edit, canvas, controls, timeline into the DOM)
-        await app.load(edit);
+        // Initialize individual UI components and mount them
+        // FIX: The Canvas constructor expects the size of the canvas as the first argument.
+        const canvas = new Canvas(sanitizedJson.output.size, edit);
+        await canvas.load();
+        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        canvasHost.appendChild((canvas as any).view);
+
+        const controls = new Controls(edit);
+        await controls.load();
+        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        controlsHost.appendChild((controls as any).view);
+
+        const timeline = new Timeline(edit, {
+            width: timelineHost.clientWidth,
+            height: timelineHost.clientHeight || 250,
+        });
+        await timeline.load();
+        // FIX: The `view` property is not exposed in the types, but exists on the instance. Use `as any` to bypass type checking.
+        timelineHost.appendChild((timeline as any).view);
+
         if (cancelled) return;
 
         // Save edit reference
@@ -109,7 +126,6 @@ export const CreativeStudio: React.FC = () => {
         edit.events.on('clip:selected', (data: any) => {
           setSelection({ clip: data.clip, trackIndex: data.trackIndex, clipIndex: data.clipIndex });
         });
-        // If the user clears selection by other means, you may want to handle a deselect event here.
         edit.events.on('clip:updated', () => debouncedUpdateProject(edit));
         edit.events.on('play', () => setIsPlaying(true));
         edit.events.on('pause', () => setIsPlaying(false));
@@ -140,9 +156,9 @@ export const CreativeStudio: React.FC = () => {
       // Clear any pending save timeout
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       // Clear the DOM containers
-      if (canvasHostRef.current) canvasHostRef.current.innerHTML = '';
-      if (controlsHostRef.current) controlsHostRef.current.innerHTML = '';
-      if (timelineHostRef.current) timelineHostRef.current.innerHTML = '';
+      if (canvasHost) canvasHost.innerHTML = '';
+      if (controlsHost) controlsHost.innerHTML = '';
+      if (timelineHost) timelineHost.innerHTML = '';
       setIsReady(false);
       setSelection(null);
     };
