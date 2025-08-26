@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "npm run verify:pixi && vite build",
     "preview": "vite preview",
-    "verify:pixi": "node -e \"console.log('pixi:', require('pixi.js/package.json').version)\""
+    "verify:pixi": "node -e \"console.log('pixi', require('pixi.js/package.json').version)\""
   },
   "dependencies": {
     "@google/genai": "1.15.0",
