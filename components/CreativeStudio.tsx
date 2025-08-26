@@ -1,19 +1,12 @@
 
-
-
-
-
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type { Edit, Canvas, Timeline } from "@shotstack/shotstack-studio";
+import React, { useEffect, useRef, useState } from 'react';
+// Fix: Correctly import the type of the default export from the Shotstack Studio SDK.
+import type ShotstackApplication from "@shotstack/shotstack-studio";
 import { useAppContext } from '../contexts/AppContext';
 import { deproxyifyEdit, proxyifyEdit, sanitizeShotstackJson } from '../utils';
-import { ArrowLeftIcon, PhotoIcon, SparklesIcon } from './Icons';
-import EditorToolbar from './EditorToolbar';
-import AssetBrowserModal from './AssetBrowserModal';
-import TopInspectorPanel from './TopInspectorPanel';
-import { ShotstackClipSelection } from '../types';
-
-type SdkHandles = { edit: Edit; canvas: any; timeline: any; };
+import { ArrowLeftIcon, SparklesIcon } from './Icons';
+import { invokeEdgeFunction } from '../services/supabaseService';
+import { customEditorTheme } from '../themes/customEditorTheme';
 
 export const CreativeStudio: React.FC = () => {
     const { 
@@ -22,23 +15,14 @@ export const CreativeStudio: React.FC = () => {
         handleRenderProject, 
         setActiveProjectId,
         addToast,
-        session,
-        lockAndExecute,
     } = useAppContext();
     
-    const canvasHostRef = useRef<HTMLDivElement>(null);
-    const timelineHostRef = useRef<HTMLDivElement>(null);
-    const sdk = useRef<SdkHandles | null>(null);
-    const appRef = useRef<any>(null);
+    const hostRef = useRef<HTMLDivElement>(null);
+    const appRef = useRef<ShotstackApplication | null>(null);
 
     const [error, setError] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
     const [isRendering, setIsRendering] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
-    const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
-    const saveTimeoutRef = useRef<number | null>(null);
 
     // Full screen effect
     useEffect(() => {
@@ -46,136 +30,80 @@ export const CreativeStudio: React.FC = () => {
         return () => { document.body.style.overflow = ''; };
     }, []);
 
-    const debouncedUpdateProject = useCallback((edit: Edit) => {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        
-        setIsSaving(true);
-        saveTimeoutRef.current = window.setTimeout(() => {
-            if (activeProjectDetails) {
-                const editJson = edit.getEdit();
-                const deproxiedEdit = deproxyifyEdit(editJson);
-                handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit }).finally(() => {
-                    setIsSaving(false);
-                });
-            } else {
-                setIsSaving(false);
-            }
-        }, 1500);
-    }, [activeProjectDetails, handleUpdateProject]);
-
+    // Main SDK initialization effect
     useEffect(() => {
-        if (!activeProjectDetails || !canvasHostRef.current || !timelineHostRef.current) return;
-
+        if (!activeProjectDetails || !hostRef.current) return;
+        
         let cancelled = false;
-        
-        const hostCanvas = canvasHostRef.current;
-        const hostTimeline = timelineHostRef.current;
-        let changeListener: (() => void) | null = null;
-        let selectListener: ((sel: ShotstackClipSelection) => void) | null = null;
-        let deselectListener: (() => void) | null = null;
-        let playListener: (() => void) | null = null;
-        let pauseListener: (() => void) | null = null;
-        
-        // Keep track of created instances for cleanup
-        let canvasInstance: Canvas | null = null;
-        let timelineInstance: Timeline | null = null;
+        const host = hostRef.current;
 
-        (async () => {
+        const initializeEditor = async () => {
             try {
-                // The SDK is loaded via import map.
-                const { Edit, Canvas, Timeline } = await import('@shotstack/shotstack-studio');
+                // The SDK is loaded via import map in index.html
+                // Fix: Changed dynamic import to handle potential CJS/ESM interop issues.
+                const StudioSDK = await import('@shotstack/shotstack-studio');
+                const Application = (StudioSDK.default || StudioSDK) as any;
 
-                if (!Edit || !Canvas || !Timeline) {
-                    throw new Error("Failed to import Shotstack Studio components (Edit, Canvas, Timeline).");
+
+                if (!Application) {
+                    throw new Error("Failed to import Shotstack Studio Application class.");
                 }
 
+                // Sanitize and proxy asset URLs in the project JSON
                 const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
                 if (!sanitizedJson) throw new Error("Project has invalid or missing timeline data.");
-                
                 const template = proxyifyEdit(sanitizedJson);
 
-                // --- Manual SDK component setup ---
-                const edit = new Edit(template.output.size, template.timeline.background);
-                await edit.load();
-                if (cancelled) return;
-
-                // Load the timeline data into the edit instance
-                await edit.loadEdit(template);
-                if (cancelled) return;
-
-                // Create and load Canvas
-                canvasInstance = new Canvas(template.output.size, edit);
-                await canvasInstance.load();
-                if (cancelled) return;
-                hostCanvas.innerHTML = ''; // Clear previous content
-                hostCanvas.appendChild((canvasInstance as any).view);
-
-                // Create and load Timeline
-                timelineInstance = new Timeline(edit, {
-                    width: hostTimeline.clientWidth,
-                    height: hostTimeline.clientHeight || 250
+                // Initialize the Shotstack Application
+                appRef.current = new Application({
+                    host,
+                    theme: customEditorTheme,
+                    // This function securely fetches the session token from your backend
+                    token: async () => {
+                        const { token } = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
+                        if (!token) throw new Error('Received an invalid token from the server.');
+                        return token;
+                    },
                 });
-                await timelineInstance.load();
-                if (cancelled) return;
-                hostTimeline.innerHTML = ''; // Clear previous content
-                hostTimeline.appendChild((timelineInstance as any).view);
                 
-                sdk.current = { edit, canvas: canvasInstance, timeline: timelineInstance };
+                // Event listener for real-time saving
+                appRef.current.on('change', (edit) => {
+                    const deproxiedEdit = deproxyifyEdit(edit);
+                    handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxiedEdit });
+                });
 
-                // Attach event listeners to the edit instance
-                changeListener = () => debouncedUpdateProject(edit);
-                selectListener = (sel: any) => setSelection(sel);
-                deselectListener = () => setSelection(null);
-                playListener = () => setIsPlaying(true);
-                pauseListener = () => setIsPlaying(false);
+                // Load the editor with your project's timeline data
+                await appRef.current.load(template);
 
-                edit.events.on("change", changeListener);
-                edit.events.on("select", selectListener);
-                edit.events.on("deselect", deselectListener);
-                edit.events.on("play", playListener);
-                edit.events.on("pause", pauseListener);
-                edit.events.on("stop", pauseListener);
-
-                setIsReady(true);
-                canvasInstance.zoomToFit();
+                if (!cancelled) {
+                    setIsReady(true);
+                }
 
             } catch (e: any) {
-                if (!cancelled) setError(e?.message ?? String(e));
+                if (!cancelled) {
+                    const message = e?.detail || e?.message || String(e);
+                    setError(`Error during editor initialization: ${message}`);
+                    console.error(e);
+                }
             }
-        })();
+        };
+
+        initializeEditor();
 
         return () => {
             cancelled = true;
-            if (sdk.current?.edit) {
-                const edit = sdk.current.edit;
-                if (changeListener) edit.events.off("change", changeListener);
-                if (selectListener) edit.events.off("select", selectListener);
-                if (deselectListener) edit.events.off("deselect", deselectListener);
-                if (playListener) edit.events.off("play", playListener);
-                if (pauseListener) edit.events.off("pause", pauseListener);
-            }
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            
-            // Cleanup SDK components
-            timelineInstance?.destroy();
-            canvasInstance?.destroy();
-            sdk.current?.edit.destroy();
-
-            sdk.current = null;
-            
+            appRef.current?.destroy();
+            appRef.current = null;
+            if (host) host.innerHTML = '';
             setIsReady(false);
-            
-            // Clear DOM elements
-            if (hostCanvas) hostCanvas.innerHTML = '';
-            if (hostTimeline) hostTimeline.innerHTML = '';
         };
-    }, [activeProjectDetails, debouncedUpdateProject]);
+    }, [activeProjectDetails, handleUpdateProject]);
 
 
     const handleRender = () => {
-        if (sdk.current?.edit && activeProjectDetails) {
+        if (appRef.current && activeProjectDetails) {
             setIsRendering(true);
-            const editJson = sdk.current.edit.getEdit();
+            const editJson = appRef.current.getEdit();
             const deproxied = deproxyifyEdit(editJson);
             handleRenderProject(activeProjectDetails.id, deproxied).finally(() => {
                 setIsRendering(false);
@@ -183,37 +111,8 @@ export const CreativeStudio: React.FC = () => {
         }
     };
     
-    const handleAddClip = (assetType: 'video' | 'image' | 'audio' | 'sticker', url: string) => {
-        if (!sdk.current) return;
-        const typeMap: { [key: string]: 'video' | 'image' | 'audio' } = {
-            video: 'video',
-            image: 'image',
-            sticker: 'image', // Treat stickers as images
-            audio: 'audio',
-        };
-        const shotstackType = typeMap[assetType];
-        if (!shotstackType) return;
-
-        const proxiedUrl = proxyifyEdit({ timeline: { tracks: [{ clips: [{ asset: { src: url } }] }] } })
-            .timeline.tracks[0].clips[0].asset.src;
-        
-        // Visuals go to A-Roll (0), Audio goes to Music (4) by default.
-        const targetTrackIndex = (shotstackType === 'audio') ? 4 : 0;
-
-        sdk.current.edit.addClip(targetTrackIndex, {
-            asset: { type: shotstackType, src: proxiedUrl },
-            length: shotstackType === 'audio' ? 20 : 5, // Default lengths
-        });
-    };
-
-    const handleDeleteClip = () => {
-        if (sdk.current && selection) {
-            sdk.current.edit.deleteClip(selection.trackIndex, selection.clipIndex);
-            setSelection(null);
-        }
-    };
-
     const handleBack = () => {
+        // Return to the blueprint step
         if (activeProjectDetails) handleUpdateProject(activeProjectDetails.id, { workflowStep: 2 });
         else setActiveProjectId(null);
     };
@@ -226,59 +125,28 @@ export const CreativeStudio: React.FC = () => {
                 </button>
                 <div className="text-white font-bold truncate px-4">{activeProjectDetails?.name}</div>
                 <div className="flex items-center gap-4">
-                     <span className={`text-sm transition-opacity ${isSaving ? 'opacity-100' : 'opacity-0'} text-gray-400`}>Saving...</span>
+                    <button 
+                        onClick={handleRender} 
+                        disabled={isRendering || !isReady}
+                        className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors text-sm disabled:bg-gray-600"
+                    >
+                        <SparklesIcon className="w-5 h-5 mr-2" />
+                        {isRendering ? 'Submitting Render...' : 'Render & Proceed'}
+                    </button>
                 </div>
             </header>
             
-             <div className="flex-1 grid grid-cols-[1fr_350px] gap-4 p-4 overflow-hidden">
-                <main className="flex flex-col gap-4 overflow-hidden">
-                    <div ref={canvasHostRef} data-shotstack-studio className="flex-1 bg-black rounded-lg relative flex items-center justify-center">
-                        {!isReady && <p className="text-gray-400">Loading Editor...</p>}
+            <main ref={hostRef} className="flex-1 w-full h-full relative">
+                {!isReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                        <p className="text-gray-400 text-lg animate-pulse">Initializing Creative Studio...</p>
                     </div>
-                    <div ref={timelineHostRef} data-shotstack-timeline className="h-[250px] bg-gray-800 rounded-lg" />
-                    <EditorToolbar
-                        isPlaying={isPlaying}
-                        onPlayPause={() => isPlaying ? sdk.current?.edit.pause() : sdk.current?.edit.play()}
-                        onStop={() => sdk.current?.edit.stop()}
-                        onUndo={() => sdk.current?.edit.undo()}
-                        onRedo={() => sdk.current?.edit.redo()}
-                        onAiPolish={() => addToast("AI Polish coming soon!", "info")}
-                        onRender={handleRender}
-                        onOpenHelp={() => {}}
-                        onAddMedia={() => setIsAssetBrowserOpen(true)}
-                    />
-                </main>
-                <aside className="bg-gray-800/50 rounded-lg overflow-y-auto">
-                     {selection ? (
-                        <TopInspectorPanel 
-                            selection={selection} 
-                            studio={sdk.current?.edit} 
-                            onDeleteClip={handleDeleteClip}
-                        />
-                    ) : (
-                         <div className="p-4 text-center text-gray-500 space-y-4 pt-10">
-                             <PhotoIcon className="w-12 h-12 mx-auto text-gray-600"/>
-                             <h3 className="font-bold text-gray-300">Inspector Panel</h3>
-                            <p className="text-sm">Select a clip on the timeline to inspect and edit its properties.</p>
-                        </div>
-                    )}
-                </aside>
-            </div>
-
-            {isAssetBrowserOpen && (
-                <AssetBrowserModal
-                    project={activeProjectDetails}
-                    session={session}
-                    onClose={() => setIsAssetBrowserOpen(false)}
-                    onAddClip={handleAddClip}
-                    addToast={addToast}
-                    lockAndExecute={lockAndExecute}
-                />
-            )}
+                )}
+            </main>
 
             {error && (
                 <div className="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-red-800 text-white rounded-lg shadow-2xl z-50">
-                    <strong>Error Loading Creative Studio:</strong> {error}
+                    <strong>Error:</strong> {error}
                 </div>
             )}
         </div>
