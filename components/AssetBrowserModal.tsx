@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { NormalizedStockAsset, Project, User } from '../types';
 import { SearchIcon, SparklesIcon, XCircleIcon, UploadIcon } from './Icons';
-import * as geminiService from '../services/geminiService';
+// FIX: Import search functions from their respective services instead of geminiService
+import { searchPexels } from '../services/pexelsService';
+import { searchJamendoMusic } from '../services/jamendoService';
+import { searchGiphy } from '../services/giphyService';
 import { generateAiImage } from '../services/generativeMediaService';
 import * as supabase from '../services/supabaseService';
 import { v4 as uuidv4 } from 'uuid';
@@ -126,10 +129,10 @@ const AssetBrowserModal: React.FC<AssetBrowserModalProps> = ({ project, session,
         try {
             let searchResults: NormalizedStockAsset[] = [];
             switch (activeTab) {
-                case 'Video': searchResults = await geminiService.searchPexels(searchTerm, 'videos'); break;
-                case 'Image': searchResults = await geminiService.searchPexels(searchTerm, 'photos'); break;
-                case 'Music': searchResults = await geminiService.searchJamendoMusic(searchTerm); break;
-                case 'Stickers': searchResults = await geminiService.searchGiphy(searchTerm, 'stickers'); break;
+                case 'Video': searchResults = await searchPexels(searchTerm, 'videos'); break;
+                case 'Image': searchResults = await searchPexels(searchTerm, 'photos'); break;
+                case 'Music': searchResults = await searchJamendoMusic(searchTerm); break;
+                case 'Stickers': searchResults = await searchGiphy(searchTerm, 'stickers'); break;
             }
             setResults(searchResults);
         } catch (e) {
