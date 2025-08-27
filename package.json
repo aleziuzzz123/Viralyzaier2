@@ -8,8 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "1.15.0",
-    "@pixi/sound": "^5.2.4",
+    "@google/genai": "0.15.0",
+    "@pixi/sound": "^5.2.3",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "2.44.4",
     "pixi.js": "^7.4.2",
