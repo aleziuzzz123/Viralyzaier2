@@ -6,11 +6,6 @@ export default defineConfig({
   resolve: {
     // Only dedupe the top-level packages to ensure a single instance.
     dedupe: ["@shotstack/shotstack-studio", "pixi.js"],
-    // Add alias to force v7 paths to resolve to the v6 package, fixing the Vercel build error.
-    alias: {
-      'pixi.js/dist/esm/pixi.mjs': 'pixi.js',
-      'pixi.js/lib/index.mjs': 'pixi.js',
-    },
   },
   optimizeDeps: {
     // This avoids Vite trying to massage Pixi/Studio in ways that break the build.
