@@ -6,11 +6,10 @@
     "dev": "vite",
     "build": "npm run verify:pixi && vite build",
     "preview": "vite preview",
-    "verify:pixi": "node -e \"console.log('pixi=', require('pixi.js/package.json').version); console.log('pixi path=', require.resolve('pixi.js'))\""
+    "verify:pixi": "node -e \"console.log('pixi=', require('pixi.js/package.json').version)\""
   },
   "dependencies": {
     "@google/genai": "0.15.0",
-    "@pixi/sound": "4.2.1",
     "@shotstack/shotstack-studio": "1.5.0",
     "@supabase/supabase-js": "2.45.5",
     "pixi.js": "6.5.10",
@@ -31,9 +30,6 @@
     "vite": "5.2.0"
   },
   "packageManager": "npm@10",
-  "sideEffects": [
-    "@pixi/sound"
-  ],
   "overrides": {
     "pixi.js": "6.5.10",
     "@pixi/*": "6.5.10"
