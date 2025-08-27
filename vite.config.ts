@@ -4,12 +4,14 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Only dedupe the top-level packages to ensure a single instance.
-    dedupe: ["@shotstack/shotstack-studio", "pixi.js"],
+    alias: {
+      // Force the ESM build of Pixi v6 that contains the expected named exports
+      'pixi.js': 'pixi.js/dist/esm/pixi.mjs'
+    }
   },
   optimizeDeps: {
     // This avoids Vite trying to massage Pixi/Studio in ways that break the build.
-    exclude: ['@shotstack/shotstack-studio', 'pixi.js'],
+    exclude: ['@shotstack/shotstack-studio', 'pixi.js', '@pixi/sound'],
   },
   build: {
     sourcemap: false,
