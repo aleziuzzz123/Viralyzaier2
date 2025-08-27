@@ -1,6 +1,5 @@
-// This import is for side-effects only and is critical for audio support.
-// It MUST come before any other Shotstack Studio imports.
-import '@pixi/sound';
+// This file is part of a standalone test environment and its import of '@pixi/sound'
+// was removed to prevent any potential interference with the main application's build process.
 
 import { Edit, Canvas, Controls, Timeline } from '@shotstack/shotstack-studio';
 

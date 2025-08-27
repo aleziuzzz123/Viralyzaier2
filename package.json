@@ -31,7 +31,6 @@
   },
   "packageManager": "npm@10",
   "overrides": {
-    "pixi.js": "6.5.10",
-    "@pixi/*": "6.5.10"
+    "pixi.js": "6.5.10"
   }
 }
