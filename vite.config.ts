@@ -3,12 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      // Force the ESM build of Pixi v6 that contains the expected named exports
-      'pixi.js': 'pixi.js/dist/esm/pixi.mjs'
-    }
-  },
+  // The 'resolve.alias' section has been removed as it was causing a build error.
+  // Vite will now correctly use the 'module' field from pixi.js's package.json,
+  // and the 'overrides' in package.json ensures it's the correct v6.5.10.
   optimizeDeps: {
     // This avoids Vite trying to massage Pixi/Studio in ways that break the build.
     exclude: ['@shotstack/shotstack-studio', 'pixi.js', '@pixi/sound'],
