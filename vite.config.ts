@@ -12,6 +12,7 @@ export default defineConfig({
     exclude: ['@shotstack/shotstack-studio', 'pixi.js'],
   },
   build: {
+    sourcemap: false,
     commonjsOptions: { transformMixedEsModules: true },
     rollupOptions: {
       // NOTE: Input is omitted, Vite will default to index.html for a standard SPA build.
