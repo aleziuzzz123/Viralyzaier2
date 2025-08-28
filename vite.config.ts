@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     commonjsOptions: { transformMixedEsModules: true },
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      external: ['@shotstack/shotstack-studio'],
+    },
   }
 });
