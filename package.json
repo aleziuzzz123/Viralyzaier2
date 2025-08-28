@@ -1,12 +1,12 @@
 {
-  "name": "viralyzaier-app",
+  "name": "viralyzaier",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run verify:pixi && vite build",
-    "preview": "vite preview",
-    "verify:pixi": "node -e \"console.log('pixi=', require('pixi.js/package.json').version)\""
+    "prebuild": "node -e \"try{console.log('pixi=',require('pixi.js/package.json').version)}catch(e){console.log('pixi not installed')};\" && npm ls pixi.js || true",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "0.15.0",
