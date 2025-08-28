@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node -e \"try{console.log('pixi=',require('pixi.js/package.json').version)}catch(e){console.log('pixi not installed')};\" && npm ls pixi.js || true",
-    "build": "vite build",
+    "verify:pixi": "node -e \"const v=require('pixi.js/package.json').version; console.log('VERIFYING PIXI VERSION:', v); if (v !== '6.5.10') { console.error('ERROR: Incorrect pixi.js version found:', v, 'Expected 6.5.10'); process.exit(1); }\"",
+    "build": "npm run verify:pixi && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
