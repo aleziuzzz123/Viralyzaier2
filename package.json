@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "verify:pixi": "node -e \"const v=require('pixi.js/package.json').version; console.log('VERIFYING PIXI VERSION:', v); if (v !== '6.5.10') { console.error('ERROR: Incorrect pixi.js version found:', v, 'Expected 6.5.10'); process.exit(1); }\"",
     "build": "npm run verify:pixi && vite build",
+    "verify:pixi": "node -e \"const v=require('pixi.js/package.json').version; console.log('VERIFYING PIXI VERSION:', v); if (v !== '6.5.10') { console.error('ERROR: Incorrect pixi.js version found:', v, 'Expected 6.5.10'); process.exit(1); }\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -31,7 +31,6 @@
     "typescript": "5.2.2",
     "vite": "5.2.0"
   },
-  "packageManager": "npm@10",
   "overrides": {
     "pixi.js": "6.5.10"
   }
