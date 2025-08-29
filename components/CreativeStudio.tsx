@@ -107,20 +107,48 @@ export const CreativeStudio: React.FC = () => {
         }
     };
     
-    const waitForSdk = (retries = 50) => {
+    const loadScriptAndInit = () => {
         if (cancelled) return;
         if ((window as any).shotstack?.Edit) {
             init();
-        } else if (retries > 0) {
-            setTimeout(() => waitForSdk(retries - 1), 100);
-        } else {
-            setError("Shotstack Studio SDK failed to load from the CDN. Please check your internet connection and refresh the page.");
+            return;
         }
+
+        setError(null);
+        setIsReady(false);
+
+        const existingScript = document.getElementById('shotstack-sdk-script');
+        if (existingScript) {
+            let retries = 50; // 5 second timeout
+            const poll = setInterval(() => {
+                if ((window as any).shotstack?.Edit) {
+                    clearInterval(poll);
+                    if (!cancelled) init();
+                } else if (--retries <= 0) {
+                    clearInterval(poll);
+                    if (!cancelled) setError("Shotstack Studio SDK failed to load. The script tag exists but initialization failed.");
+                }
+            }, 100);
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'shotstack-sdk-script';
+        script.src = 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio@1.1.2/dist/shotstack-studio.global.js';
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+
+        script.onload = () => {
+            if (!cancelled) init();
+        };
+        script.onerror = () => {
+            if (!cancelled) setError("Shotstack Studio SDK failed to load from the CDN. Please check your internet connection and refresh the page.");
+        };
+
+        document.body.appendChild(script);
     };
 
-    setError(null);
-    setIsReady(false);
-    waitForSdk();
+    loadScriptAndInit();
 
     return cleanup;
   }, [activeProjectDetails, debouncedUpdateProject]);
