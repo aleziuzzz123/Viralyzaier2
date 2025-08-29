@@ -99,28 +99,32 @@ export const CreativeStudio: React.FC = () => {
                   return result.token;
                 };
 
+                // Create the edit with dimensions and background
                 const edit = new Edit(template.output.size, template.timeline.background);
                 sdkHandles.edit = edit;
                 await edit.load();
                 if (cancelled) return;
                 
+                // Create canvas to display the edit
                 const canvas = new Canvas(template.output.size, edit);
                 await canvas.load();
                 if (cancelled) return;
                 canvasHost.innerHTML = '';
-                canvasHost.appendChild((canvas as any).view);
+                canvasHost.appendChild(canvas.view);
                 
-                // **FIX**: The getToken function must be awaited BEFORE being passed to loadEdit.
+                // Get session token
                 const sessionToken = await getToken();
                 if (cancelled) return;
                 
+                // Load the template with token
                 await edit.loadEdit({ ...template, token: sessionToken });
                 if (cancelled) return;
 
                 sdkRef.current = sdkHandles as SdkHandles;
-                edit.events.on('play', () => setIsPlaying(true));
-                edit.events.on('pause', () => setIsPlaying(false));
-                edit.events.on('selection:changed', (sel: ShotstackClipSelection | null) => setSelection(sel));
+                // Set up event listeners
+                edit.events.on('playback:play', () => setIsPlaying(true));
+                edit.events.on('playback:pause', () => setIsPlaying(false));
+                edit.events.on('clip:selected', (data: any) => setSelection({ trackIndex: data.trackIndex, clipIndex: data.clipIndex }));
                 edit.events.on('clip:updated', () => debouncedUpdateProject(edit));
                 edit.events.on('timeline:updated', () => debouncedUpdateProject(edit));
                 
@@ -166,7 +170,7 @@ export const CreativeStudio: React.FC = () => {
 
     const handleDeleteClip = () => {
         if (sdkRef.current?.edit && selection) {
-            sdkRef.current.edit.removeClip(selection.trackIndex, selection.clipIndex);
+            sdkRef.current.edit.deleteClip(selection.trackIndex, selection.clipIndex);
             setSelection(null);
         }
     };
@@ -183,11 +187,10 @@ export const CreativeStudio: React.FC = () => {
         }
         const clip = {
             asset: { type: assetType === 'sticker' ? 'image' : assetType, src: url },
-            // FIX: The Shotstack Studio SDK uses the `currentTime` property, not a `getCurrentTime()` method.
-            start: edit.currentTime,
+            start: edit.playbackTime / 1000, // Convert milliseconds to seconds
             length: assetType === 'audio' ? 10 : 5,
         };
-        edit.addClip(clip, targetTrack.id);
+        edit.addClip(targetTrack.id, clip);
         setIsAssetBrowserOpen(false);
     };
 
