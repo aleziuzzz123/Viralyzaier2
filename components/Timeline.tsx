@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Script } from '../types';
-import { PhotoIcon, MicIcon } from './Icons';
+
 
 interface TimelineProps {
     script: Script | null;
@@ -60,9 +60,8 @@ const Timeline: React.FC<TimelineProps> = ({ script, onSceneSelect, player }) =>
                             style={{ width: `${(sceneDuration / totalDuration) * 100}%` }}
                             title={`Scene ${index + 1}: ${scene.visual}`}
                         >
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <PhotoIcon className="w-4 h-4 flex-shrink-0" />
-                                <MicIcon className="w-4 h-4 flex-shrink-0" />
+                            <div className="text-gray-400 text-xs font-medium">
+                                Scene {index + 1}
                             </div>
                         </div>
                     );
