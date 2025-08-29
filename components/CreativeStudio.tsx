@@ -7,10 +7,16 @@ import AssetBrowserModal from './AssetBrowserModal';
 import TopInspectorPanel from './TopInspectorPanel';
 import type { ShotstackClipSelection } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
-import { PhotoIcon, SparklesIcon } from './Icons';
+import { PhotoIcon } from './Icons';
 import HelpModal from './HelpModal';
 
 type SdkHandles = { edit: any; };
+
+const SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio@1.1.2/dist/shotstack-studio.global.js';
+const SCRIPT_ID = 'shotstack-sdk-script';
+const CSS_URL = 'https://cdn.jsdelivr.net/npm/@shotstack/shotstack-studio@1.1.2/dist/style.css';
+const CSS_ID = 'shotstack-sdk-style';
+
 
 export const CreativeStudio: React.FC = () => {
   const { 
@@ -36,6 +42,7 @@ export const CreativeStudio: React.FC = () => {
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
   const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [sdkStatus, setSdkStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const saveTimeoutRef = useRef<number | null>(null);
 
   const debouncedUpdateProject = useCallback((edit: any) => {
@@ -52,9 +59,60 @@ export const CreativeStudio: React.FC = () => {
       }
     }, 1500);
   }, [activeProjectDetails, handleUpdateProject]);
-
+  
+  // Effect to dynamically load the SDK script and stylesheet
   useEffect(() => {
-    if (!activeProjectDetails) return;
+      // Load CSS
+      if (!document.getElementById(CSS_ID)) {
+          const link = document.createElement('link');
+          link.id = CSS_ID;
+          link.rel = 'stylesheet';
+          link.href = CSS_URL;
+          document.head.appendChild(link);
+      }
+
+      // Check if SDK is already loaded
+      if ((window as any).shotstack) {
+          setSdkStatus('ready');
+          return;
+      }
+      
+      // Check if script tag is already present (e.g., from another component instance)
+      if (document.getElementById(SCRIPT_ID)) {
+          const pollForSdk = setInterval(() => {
+              if ((window as any).shotstack) {
+                  clearInterval(pollForSdk);
+                  setSdkStatus('ready');
+              }
+          }, 100);
+          return () => clearInterval(pollForSdk);
+      }
+
+      const script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.src = SCRIPT_URL;
+      script.async = true;
+
+      const onScriptLoad = () => setSdkStatus('ready');
+      const onScriptError = () => {
+          setSdkStatus('error');
+          setError("Failed to load the Creative Studio SDK from the content delivery network (CDN). This can be caused by a network issue, a firewall, or a browser extension (like an ad blocker). Please check your connection, disable any blockers for this site, and refresh the page.");
+      };
+
+      script.addEventListener('load', onScriptLoad);
+      script.addEventListener('error', onScriptError);
+      document.body.appendChild(script);
+
+      return () => {
+          script.removeEventListener('load', onScriptLoad);
+          script.removeEventListener('error', onScriptError);
+      };
+  }, []);
+
+  // Effect to initialize the editor once the SDK is ready
+  useEffect(() => {
+    if (sdkStatus !== 'ready' || !activeProjectDetails) return;
+    
     const { current: canvasHost } = canvasHostRef;
     const { current: timelineHost } = timelineHostRef;
     const { current: controlsHost } = controlsHostRef;
@@ -69,7 +127,7 @@ export const CreativeStudio: React.FC = () => {
       try {
         const { Edit, Canvas, Timeline, Controls } = (window as any).shotstack;
         if (!Edit || !Canvas) {
-            throw new Error("Shotstack Studio SDK not found. It might have failed to load from the CDN.");
+            throw new Error("Shotstack Studio SDK appears to be loaded but is incomplete. Please refresh the page.");
         }
         
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
@@ -135,7 +193,7 @@ export const CreativeStudio: React.FC = () => {
       setIsReady(false);
       setSelection(null);
     };
-  }, [activeProjectDetails, debouncedUpdateProject]);
+  }, [sdkStatus, activeProjectDetails, debouncedUpdateProject]);
 
   const handleRender = () => {
     lockAndExecute(async () => {
@@ -218,11 +276,26 @@ export const CreativeStudio: React.FC = () => {
         {/* Right Column: Canvas, Timeline, Controls */}
         <main className="col-span-9 flex flex-col h-full gap-4">
           <div ref={canvasHostRef} className="flex-1 bg-black rounded-lg relative flex items-center justify-center">
-            {!isReady && (
-              <div className="text-center text-gray-400">
-                <PhotoIcon className="w-16 h-16 mx-auto mb-4 text-gray-700"/>
-                {error ? `Error: ${error}` : 'Loading Creative Studio...'}
-              </div>
+             {sdkStatus !== 'ready' ? (
+                <div className="text-center text-gray-400 p-8">
+                    <PhotoIcon className="w-16 h-16 mx-auto mb-4 text-gray-700"/>
+                    {sdkStatus === 'error' ? (
+                        <div className="text-red-400 space-y-2">
+                            <p className="font-bold">Error Loading Editor</p>
+                            <p className="text-sm">{error}</p>
+                        </div>
+                    ) : 'Loading SDK...'}
+                </div>
+            ) : !isReady && (
+                <div className="text-center text-gray-400 p-8">
+                    <PhotoIcon className="w-16 h-16 mx-auto mb-4 text-gray-700"/>
+                    {error ? (
+                         <div className="text-red-400 space-y-2">
+                            <p className="font-bold">Initialization Error</p>
+                            <p className="text-sm">{error}</p>
+                        </div>
+                    ) : 'Initializing Studio...'}
+                </div>
             )}
           </div>
           <div ref={timelineHostRef} className="flex-shrink-0 h-64 bg-gray-800/50 rounded-lg border border-gray-700"></div>
