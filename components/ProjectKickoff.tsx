@@ -6,6 +6,7 @@ import * as supabase from '../services/supabaseService';
 import { Project, BrandIdentity } from '../types';
 import CompetitorAnalysis from './CompetitorAnalysis';
 import TrendExplorer from './TrendExplorer';
+import TitleOptimizer from './TitleOptimizer';
 
 interface ProjectKickoffProps {
     onProjectCreated: (projectId: string) => void;
@@ -13,10 +14,13 @@ interface ProjectKickoffProps {
 }
 
 type KickoffPath = 'Topic' | 'Competitor' | 'Trends' | 'Brand';
+type KickoffStep = 'idea' | 'titles';
 
 const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExit }) => {
     const { t, addToast, lockAndExecute, user, consumeCredits } = useAppContext();
     const [activePath, setActivePath] = useState<KickoffPath>('Topic');
+    const [kickoffStep, setKickoffStep] = useState<KickoffStep>('idea');
+    const [finalTopic, setFinalTopic] = useState('');
     const [topic, setTopic] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -31,25 +35,33 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
         }
     }, [user, addToast]);
 
-    const handleCreateProject = useCallback((projectTopic: string, title?: string) => {
-        lockAndExecute(async () => {
-            if (!projectTopic.trim()) { setError("Please provide a topic for your video."); return; }
-            if (!user) { setError("User not found."); return; }
+    const proceedToTitles = (projectTopic: string) => {
+        if (!projectTopic.trim()) {
+            setError("Please provide a topic, competitor URL, or niche to get started.");
+            return;
+        }
+        setFinalTopic(projectTopic);
+        setError('');
+        setKickoffStep('titles');
+    };
 
+    const handleCreateProject = useCallback((selectedTitle: string) => {
+        lockAndExecute(async () => {
+            if (!finalTopic.trim()) { setError("Project topic is missing. Please go back and provide one."); return; }
+            if (!user) { setError("User not found."); return; }
             if (!await consumeCredits(1)) return;
 
             setIsLoading(true);
             setError('');
             try {
-                const finalTitle = title || projectTopic.substring(0, 50) || 'New Project';
                 const newProjectData: Omit<Project, 'id' | 'lastUpdated'> = {
-                    name: finalTitle,
-                    topic: projectTopic,
+                    name: selectedTitle,
+                    topic: finalTopic,
                     platform: 'youtube_long',
                     videoSize: '16:9',
                     status: 'Idea',
                     workflowStep: 2,
-                    title: finalTitle,
+                    title: selectedTitle,
                     script: null, analysis: null, competitorAnalysis: null, moodboard: null, assets: {},
                     soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,
                     voiceoverVoiceId: null, lastPerformanceCheck: null
@@ -67,22 +79,22 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                 setIsLoading(false);
             }
         });
-    }, [user, addToast, lockAndExecute, consumeCredits, onProjectCreated]);
-    
+    }, [user, addToast, lockAndExecute, consumeCredits, onProjectCreated, finalTopic]);
+
     const renderPathContent = () => {
         switch(activePath) {
             case 'Competitor':
                 return (
                     <div className="space-y-4">
                         <p className="text-center text-gray-400">Deconstruct a competitor's success. Paste a YouTube URL to extract their viral formula, keywords, and get upgraded title ideas to inspire your own project.</p>
-                        <CompetitorAnalysis project={{id: 'temp-project-for-analysis'} as Project} onApplyTitle={(title) => handleCreateProject(title, title)} />
+                        <CompetitorAnalysis project={{id: 'temp-project-for-analysis'} as Project} onApplyTitle={(title) => proceedToTitles(title)} />
                     </div>
                 );
             case 'Trends':
                 return (
                      <div className="space-y-4">
                         <p className="text-center text-gray-400">Discover what's buzzing right now. Enter a niche or topic, and our AI will find and synthesize the latest viral trends into actionable video ideas for you.</p>
-                        <TrendExplorer onCreateProject={handleCreateProject} />
+                        <TrendExplorer onCreateProject={proceedToTitles} />
                     </div>
                 );
             case 'Brand':
@@ -107,9 +119,9 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                         <p className="text-center text-gray-400">Have a specific idea in mind? Enter your topic or a detailed prompt below to get started with the AI Blueprint generator.</p>
                         <textarea value={topic} onChange={e => setTopic(e.target.value)} placeholder={t('blueprint_modal.topic_placeholder')} rows={4} className="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                         <div className="text-center">
-                            <button onClick={() => handleCreateProject(topic)} disabled={isLoading} className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-gray-600">
+                            <button onClick={() => proceedToTitles(topic)} disabled={!topic.trim()} className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg disabled:bg-gray-600">
                                 <SparklesIcon className="w-6 h-6 mr-3" />
-                                Continue to Blueprint (1 Credit)
+                                Continue to Title Optimizer
                             </button>
                         </div>
                     </div>
@@ -133,6 +145,29 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
         );
     }
 
+    if (kickoffStep === 'titles') {
+        return (
+            <div className="animate-fade-in-up space-y-8 max-w-5xl mx-auto">
+                <header className="text-center">
+                    <h1 className="text-4xl font-bold text-white">Step 2: Optimize Your Title</h1>
+                    <p className="mt-2 text-lg text-gray-400">A great title is key. Draft a few options, get AI feedback, and choose a winner to create your project.</p>
+                </header>
+                
+                <TitleOptimizer 
+                    initialTopic={finalTopic} 
+                    platform="youtube_long"
+                    onTitleSelect={handleCreateProject} 
+                />
+
+                {error && <p className="text-red-400 text-center mt-4">{error}</p>}
+
+                <div className="text-center">
+                    <button onClick={() => setKickoffStep('idea')} className="text-gray-400 hover:text-white text-sm font-semibold">&larr; Back to Idea Selection</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="animate-fade-in-up space-y-8 max-w-5xl mx-auto">
             <header className="text-center">
@@ -140,18 +175,25 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                 <p className="mt-2 text-lg text-gray-400">Choose your strategic starting point. How do you want to find your next viral idea?</p>
             </header>
             
-            <div className="bg-gray-800/50 p-2 rounded-2xl border border-gray-700">
-                <div className="flex items-center justify-center p-2 bg-gray-900/50 rounded-xl mb-4 gap-2">
-                    {kickoffPaths.map(path => (
-                        <button
-                            key={path.id}
-                            onClick={() => setActivePath(path.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${activePath === path.id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-700/50'}`}
-                        >
-                            <path.icon className="w-5 h-5" />
-                            {path.name}
-                        </button>
-                    ))}
+            <div className="bg-gray-800/50 rounded-2xl border border-gray-700">
+                {/* Tab-style navigation */}
+                <div className="border-b border-gray-700 px-6">
+                    <nav className="-mb-px flex justify-center space-x-8">
+                        {kickoffPaths.map(path => (
+                            <button
+                                key={path.id}
+                                onClick={() => setActivePath(path.id)}
+                                className={`flex items-center gap-3 whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                                    activePath === path.id 
+                                    ? 'border-indigo-500 text-indigo-400' 
+                                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-500'
+                                }`}
+                            >
+                                <path.icon className="w-5 h-5" />
+                                {path.name}
+                            </button>
+                        ))}
+                    </nav>
                 </div>
                 
                 <div className="p-6 min-h-[300px] flex flex-col justify-center">

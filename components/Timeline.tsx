@@ -23,7 +23,8 @@ const Timeline: React.FC<TimelineProps> = ({ script, onSceneSelect, player }) =>
         
         // Initial values
         setDuration(player.getDuration());
-        setCurrentTime(player.getCurrentTime());
+        // FIX: The Shotstack Studio SDK uses the `currentTime` property, not a `getCurrentTime()` method.
+        setCurrentTime(player.currentTime);
 
         return () => {
             player.off('timeupdate', onTimeUpdate);
