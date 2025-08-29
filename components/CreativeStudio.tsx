@@ -215,7 +215,7 @@ export const CreativeStudio: React.FC = () => {
           )}
         </aside>
 
-        {/* Right Column: Canvas, Controls, Timeline */}
+        {/* Right Column: Canvas, Timeline, Controls */}
         <main className="col-span-9 flex flex-col h-full gap-4">
           <div ref={canvasHostRef} className="flex-1 bg-black rounded-lg relative flex items-center justify-center">
             {!isReady && (
@@ -225,6 +225,7 @@ export const CreativeStudio: React.FC = () => {
               </div>
             )}
           </div>
+          <div ref={timelineHostRef} className="flex-shrink-0 h-64 bg-gray-800/50 rounded-lg border border-gray-700"></div>
           <div className="flex-shrink-0">
              <EditorToolbar
                 isPlaying={isPlaying}
@@ -238,9 +239,10 @@ export const CreativeStudio: React.FC = () => {
                 onAddMedia={() => setIsAssetBrowserOpen(true)}
              />
           </div>
-          <div ref={timelineHostRef} className="flex-shrink-0 h-64 bg-gray-800/50 rounded-lg border border-gray-700"></div>
         </main>
       </div>
+
+      <div ref={controlsHostRef} className="absolute -left-[9999px] top-0"></div>
 
       {isAssetBrowserOpen && (
         <AssetBrowserModal project={activeProjectDetails} session={session} onClose={() => setIsAssetBrowserOpen(false)} onAddClip={handleAddClip} addToast={addToast} lockAndExecute={lockAndExecute} />
