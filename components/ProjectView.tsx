@@ -6,7 +6,6 @@ import Launchpad from './Launchpad';
 import TutorialCallout from './TutorialCallout';
 import { TranslationKey } from '../translations';
 import AnalysisStep from './AnalysisStep';
-import { CreativeStudio } from './CreativeStudio';
 
 interface ProjectViewProps {
     project: Project;
@@ -38,6 +37,11 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
         switch (project.workflowStep) {
             case 2:
                 return <ScriptGenerator project={project} />;
+            case 3:
+                // This state is handled by App.tsx which renders CreativeStudio in full-screen.
+                // Returning null here prevents this component from incorrectly rendering
+                // the ScriptGenerator again while the state transition is happening.
+                return null;
             case 4:
                 return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 5:
