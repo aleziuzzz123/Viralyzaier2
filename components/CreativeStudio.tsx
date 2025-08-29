@@ -110,7 +110,11 @@ export const CreativeStudio: React.FC = () => {
                 canvasHost.innerHTML = '';
                 canvasHost.appendChild((canvas as any).view);
                 
-                await edit.loadEdit({ ...template, token: getToken });
+                // **FIX**: The getToken function must be awaited BEFORE being passed to loadEdit.
+                const sessionToken = await getToken();
+                if (cancelled) return;
+                
+                await edit.loadEdit({ ...template, token: sessionToken });
                 if (cancelled) return;
 
                 sdkRef.current = sdkHandles as SdkHandles;
