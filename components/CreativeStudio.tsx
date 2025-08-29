@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { deproxyifyEdit, proxyifyEdit, sanitizeShotstackJson } from '../utils';
-import { invokeEdgeFunction } from '../services/supabaseService';
 import { PhotoIcon } from './Icons';
 
 type SdkHandles = { edit: any; };
@@ -78,12 +77,6 @@ export const CreativeStudio: React.FC = () => {
                 };
             }
             
-            const getToken = async (): Promise<string> => {
-              const result = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
-              if (!result?.token) throw new Error("Failed to retrieve Shotstack session token.");
-              return result.token;
-            };
-
             const edit = new Edit(template.output.size, template.timeline.background);
             editInstance = edit;
             await edit.load();
@@ -95,7 +88,7 @@ export const CreativeStudio: React.FC = () => {
             canvasHost.innerHTML = '';
             canvasHost.appendChild((canvas as any).view);
             
-            await edit.loadEdit({ ...template, token: getToken });
+            await edit.loadEdit(template);
             if (cancelled) return;
 
             sdkRef.current = { edit };
