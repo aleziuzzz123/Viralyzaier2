@@ -12,13 +12,40 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
+  // Log all requests for debugging
+  console.log(`[${new Date().toISOString()}] Request received: ${req.method} ${req.url}`);
+  
   if (req.method === "OPTIONS") {
+    console.log("[CORS] Preflight request handled");
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Check for authorization header
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      console.error("[AUTH] No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "No authorization header provided" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Extract and verify JWT token
+    const token = authHeader.replace("Bearer ", "");
+    if (!token) {
+      console.error("[AUTH] Invalid authorization header format");
+      return new Response(
+        JSON.stringify({ error: "Invalid authorization header format" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    console.log("[AUTH] Authorization header received, proceeding with Shotstack API call");
+
     const apiKey = (Deno.env.get("SHOTSTACK_API_KEY") || "").trim();
     if (!apiKey) {
+      console.error("[CONFIG] SHOTSTACK_API_KEY not configured");
       throw new Error("Missing SHOTSTACK_API_KEY secret. Please ensure this is set in your Supabase project's Edge Function secrets.");
     }
 
@@ -26,8 +53,10 @@ serve(async (req: Request) => {
     // Production keys start with `v1_`, sandbox keys start with `sandbox_`.
     // This makes the function robust and prevents authentication mismatches.
     const environment = apiKey.startsWith("sandbox_") ? "stage" : "v1";
+    console.log(`[SHOTSTACK] Using environment: ${environment}`);
 
     const signUrl = `https://api.shotstack.io/${environment}/studio/sign`;
+    console.log(`[SHOTSTACK] Calling sign endpoint: ${signUrl}`);
 
     const res = await fetch(signUrl, {
       method: "POST",
@@ -37,6 +66,8 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({}), // Empty body as required by the sign endpoint
     });
+
+    console.log(`[SHOTSTACK] Response status: ${res.status}`);
 
     const text = await res.text();
 
@@ -65,6 +96,7 @@ serve(async (req: Request) => {
     }
     
     const { token } = JSON.parse(text);
+    console.log(`[SUCCESS] Shotstack token retrieved successfully`);
 
     return new Response(JSON.stringify({ token }), {
         headers: corsHeaders,
