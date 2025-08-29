@@ -2,9 +2,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
-import { supabaseUrl } from '../services/supabaseClient.js';
-import type { Database } from '../services/database.types.js';
-import type { Script, Trend, EnhancedTopic, VideoDeconstruction, ViralScoreBreakdown, OptimizationStep, Plan } from '../types.js';
+import { supabaseUrl } from '../services/supabaseServer';
+import type {
+  Database,
+  Script,
+  Trend,
+  EnhancedTopic,
+  VideoDeconstruction,
+  ViralScoreBreakdown,
+  OptimizationStep,
+  Plan,
+} from '../types';
 
 // Schemas
 const viralityAnalysisSchema = { type: Type.OBJECT, properties: { overallScore: { type: Type.NUMBER, description: "A score from 1-100 for overall viral potential." }, hookAnalysis: { type: Type.STRING, description: "1-sentence analysis of the hook's strength and attention-grabbing power." }, pacingAnalysis: { type: Type.STRING, description: "1-sentence analysis of the script's pacing, flow, and ability to hold attention." }, valueAnalysis: { type: Type.STRING, description: "1-sentence analysis of the value (entertainment, education, emotion) delivered to the viewer." }, ctaAnalysis: { type: Type.STRING, description: "1-sentence analysis of the call-to-action's effectiveness and clarity." }, finalVerdict: { type: Type.STRING, description: "A concluding one-sentence rationale for the overall score, summarizing the script's strongest and weakest points." } }, required: ["overallScore", "hookAnalysis", "pacingAnalysis", "valueAnalysis", "ctaAnalysis", "finalVerdict"] };
