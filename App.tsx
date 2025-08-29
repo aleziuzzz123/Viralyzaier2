@@ -31,15 +31,19 @@ const BackendErrorModal: React.FC = () => {
 
     if (!backendError) return null;
     
-    const isTimeoutError = backendError.message.toLowerCase().includes('timed out');
+    const errorMessage = typeof backendError.message === 'string' && backendError.message.trim() !== ''
+        ? backendError.message
+        : '';
+    const isTimeoutError = errorMessage.toLowerCase().includes('timed out');
+    const titleId = backendError.title ? 'backend-error-modal-title' : undefined;
     
     return (
-         <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" 
+         <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]"
             onClick={clearBackendError}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="backend-error-modal-title"
+            aria-labelledby={titleId}
         >
             <div 
                 className="bg-gray-800 border border-red-500/50 rounded-2xl shadow-2xl w-full max-w-2xl m-4 p-8 text-center transform transition-all"
@@ -51,15 +55,21 @@ const BackendErrorModal: React.FC = () => {
                 <div className="mx-auto bg-red-900/50 border border-red-500/50 p-3 rounded-full w-fit mb-6">
                    <WarningIcon className="w-10 h-10 text-red-400" />
                 </div>
-                <h2 id="backend-error-modal-title" className="text-2xl font-bold text-white mb-3">{backendError.title}</h2>
+                {backendError.title && (
+                    <h2 id="backend-error-modal-title" className="text-2xl font-bold text-white mb-3">
+                        {backendError.title}
+                    </h2>
+                )}
                 <p className="text-gray-300 mb-6">
                     {t('backend_error.description')}
                 </p>
                 <div className="mt-4 text-left bg-gray-900 p-4 rounded-md">
                     <p className="text-sm text-gray-400 font-semibold">{t('backend_error.server_error_details')}</p>
-                    <p className="mt-4 text-sm text-red-300 font-mono bg-red-900/50 p-2 rounded">
-                        {backendError.message}
-                    </p>
+                    {errorMessage && (
+                        <p className="mt-4 text-sm text-red-300 font-mono bg-red-900/50 p-2 rounded">
+                            {errorMessage}
+                        </p>
+                    )}
                     {isTimeoutError ? (
                         <div className="mt-4 text-sm text-amber-300 bg-amber-900/50 p-3 rounded-lg">
                             <p className="font-bold">What does this mean?</p>
