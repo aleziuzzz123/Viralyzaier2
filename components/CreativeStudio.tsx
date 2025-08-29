@@ -6,8 +6,8 @@ import { invokeEdgeFunction } from '../services/supabaseService';
 import { PhotoIcon } from './Icons';
 
 // Import the new top-level Application class and styles
-// FIX: Changed to a default import as 'Application' is likely the default export of the module.
-import Application from '@shotstack/shotstack-studio';
+// FIX: The default import was causing type and constructor errors. Switched to a named import to correctly resolve the Application class.
+import { Application } from '@shotstack/shotstack-studio';
 import '@shotstack/shotstack-studio/dist/style.css';
 import darkTheme from '@shotstack/shotstack-studio/themes/dark.json';
 
