@@ -86,12 +86,6 @@ export const base64ToBlob = (base64: string, contentType: string = ''): Blob => 
 export const createAssetProxyUrl = (url?: string | null): string => {
   if (!url || !/^https?:\/\//i.test(url)) return url || '';
   if (url.includes('/functions/v1/asset-proxy')) return url; // Idempotent
-  
-  // If the asset is already hosted on our own Supabase storage, don't proxy it.
-  // This assumes the bucket is public with correct CORS settings.
-  if (supabaseUrl && url.startsWith(supabaseUrl)) {
-      return url;
-  }
 
   const base = `${supabaseUrl}/functions/v1/asset-proxy`;
   let file = 'file';
