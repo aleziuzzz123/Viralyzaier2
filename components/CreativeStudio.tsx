@@ -36,7 +36,6 @@ export const CreativeStudio: React.FC = () => {
   const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
   const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  // FIX: Use `number` for the timeout ref type to be explicit about using the browser's `setTimeout` return type and avoid conflicts with Node.js types (`NodeJS.Timeout`).
   const saveTimeoutRef = useRef<number | null>(null);
 
   const debouncedUpdateProject = useCallback((edit: any) => {
@@ -68,7 +67,11 @@ export const CreativeStudio: React.FC = () => {
 
     (async () => {
       try {
-        const { Edit, Canvas, Timeline, Controls } = await import('@shotstack/shotstack-studio');
+        const { Edit, Canvas, Timeline, Controls } = (window as any).shotstack;
+        if (!Edit || !Canvas) {
+            throw new Error("Shotstack Studio SDK not found. It might have failed to load from the CDN.");
+        }
+        
         const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
         if (!sanitizedJson) throw new Error("Invalid or missing project timeline data.");
         const template = proxyifyEdit(sanitizedJson);

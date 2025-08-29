@@ -15,7 +15,10 @@ interface ProjectViewProps {
 export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const { handleUpdateProject, t, dismissedTutorials } = useAppContext();
     
-    const isStudioActive = project.workflowStep === 3;
+    // If the project is in the Creative Studio step, render the fullscreen editor immediately.
+    if (project.workflowStep === 3) {
+        return <CreativeStudio />;
+    }
 
     const handleProceedToLaunchpad = () => {
         handleUpdateProject(project.id, {
@@ -59,7 +62,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     ];
 
     return (
-        <div className={`h-full flex flex-col ${isStudioActive ? 'gap-2' : 'gap-8'}`}>
+        <div className="h-full flex flex-col gap-8">
             <nav className="p-4 bg-gray-800/50 rounded-xl flex-shrink-0">
                 <ol className="flex items-center justify-center space-x-2 sm:space-x-4">
                     {steps.map((step, index) => {

@@ -4,15 +4,17 @@ import LoginModal from './LoginModal';
 import { useAppContext } from '../contexts/AppContext';
 import LanguageSwitcher from './LanguageSwitcher';
 
+const supabaseAssetBase = 'https://wpgrfukcnpcoyruymxdd.supabase.co/storage/v1/object/public/assets/landing-page';
+
 const generatedImages = {
-    featureBlueprint: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_blueprint.jpeg`,
-    featureStudio: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_03.jpeg`,
-    featureGenerative: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_generative.jpeg`,
-    featureAutopilot: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_autopilot.jpeg`,
-    promoVideo: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/final_promo_01.mp4`,
-    testimonial1: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_01.jpeg`,
-    testimonial2: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_02.jpeg`,
-    testimonial3: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_03.jpeg`
+    featureBlueprint: `${supabaseAssetBase}/feature_blueprint.jpg`,
+    featureStudio: `${supabaseAssetBase}/feature_studio.jpg`,
+    featureGenerative: `${supabaseAssetBase}/feature_generative.jpg`,
+    featureAutopilot: `${supabaseAssetBase}/feature_autopilot.jpg`,
+    promoVideo: `${supabaseAssetBase}/promo_video.mp4`,
+    testimonial1: `${supabaseAssetBase}/testimonial_01.jpg`,
+    testimonial2: `${supabaseAssetBase}/testimonial_02.jpg`,
+    testimonial3: `${supabaseAssetBase}/testimonial_03.jpg`,
 };
 
 interface FAQItemProps {
