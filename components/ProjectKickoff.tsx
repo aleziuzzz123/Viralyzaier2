@@ -48,7 +48,7 @@ const ProjectKickoff: React.FC<ProjectKickoffProps> = ({ onProjectCreated, onExi
                     platform: 'youtube_long',
                     videoSize: '16:9',
                     status: 'Idea',
-                    workflowStep: 3,
+                    workflowStep: 2,
                     title: finalTitle,
                     script: null, analysis: null, competitorAnalysis: null, moodboard: null, assets: {},
                     soundDesign: null, launchPlan: null, performance: null, scheduledDate: null, publishedUrl: null,

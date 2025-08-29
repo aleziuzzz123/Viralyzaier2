@@ -30,10 +30,8 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     };
     
     const handleStepClick = (step: WorkflowStep) => {
-        // Allow navigation only to previous or current steps
-        if (step <= project.workflowStep) {
-            handleUpdateProject(project.id, { workflowStep: step });
-        }
+        // Allow navigation to any step for easier debugging and access
+        handleUpdateProject(project.id, { workflowStep: step });
     };
     
     const renderContent = () => {
@@ -65,7 +63,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
                     {steps.map((step, index) => {
                         const isCompleted = project.workflowStep > step.step;
                         const isCurrent = project.workflowStep === step.step;
-                        const isClickable = project.workflowStep >= step.step;
+                        const isClickable = true; // Always allow navigation
 
                         return (
                             <li key={step.step} className="flex items-center">
