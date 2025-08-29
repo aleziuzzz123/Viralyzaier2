@@ -20,8 +20,6 @@ import UpgradeModal from './components/UpgradeModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
-import { CreativeStudio } from './components/CreativeStudio';
-
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
 
@@ -134,7 +132,6 @@ const MainApp = () => {
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
 
     useEffect(() => {
         if(activeProjectId) {
@@ -206,9 +203,7 @@ const MainApp = () => {
         return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
     }
 
-    if (isStudioActive) {
-        return <CreativeStudio />;
-    }
+    // The logic to render CreativeStudio is now handled inside ProjectView, simplifying this component.
     
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col">
