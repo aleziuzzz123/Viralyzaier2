@@ -79,7 +79,7 @@ export const CreativeStudio: React.FC = () => {
         const init = async () => {
             if (cancelled) return;
             try {
-                const { Edit, Canvas } = (window as any).ShotstackStudio;
+                const { Edit, Canvas } = (window as any);
                 let template;
                 if (activeProjectDetails.shotstackEditJson) {
                     const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
@@ -143,7 +143,7 @@ export const CreativeStudio: React.FC = () => {
             setIsReady(false);
             let retries = 50;
             pollInterval = window.setInterval(() => {
-                if ((window as any).ShotstackStudio?.Edit) {
+                if ((window as any).Edit) {
                     if(pollInterval) clearInterval(pollInterval);
                     if (!cancelled) init();
                 } else if (--retries <= 0) {
