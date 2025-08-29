@@ -7,7 +7,7 @@ export default defineConfig({
     commonjsOptions: { transformMixedEsModules: true },
     sourcemap: false,
     rollupOptions: {
-      external: ['@shotstack/shotstack-studio'],
+      
     },
   }
 });
