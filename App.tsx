@@ -7,7 +7,7 @@ import ContentCalendar from './components/ContentCalendar';
 import PricingPage from './components/PricingPage';
 import UserMenu from './components/UserMenu';
 import { LandingPage } from './components/Homepage';
-import { DashboardIcon, CalendarIcon, GithubIcon, SparklesIcon, CheckCircleIcon, XCircleIcon, InfoIcon, ChartPieIcon, PhotoIcon, BellIcon, RocketLaunchIcon, WarningIcon } from './components/Icons';
+import { DashboardIcon, CalendarIcon, GithubIcon, SparklesIcon, CheckCircleIcon, XCircleIcon, InfoIcon, ChartPieIcon, PhotoIcon, BellIcon, RocketLaunchIcon, WarningIcon, ScissorsIcon } from './components/Icons';
 import ChannelHub from './components/ChannelHub';
 import AssetLibrary from './components/AssetLibrary';
 import { AppProvider, useAppContext } from './contexts/AppContext';
@@ -21,6 +21,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import { CreativeStudio } from './components/CreativeStudio';
+import * as supabaseService from './services/supabaseService';
 
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
@@ -130,7 +131,8 @@ const MainApp = () => {
         toasts, dismissToast, activeProjectId, setActiveProjectId,
         t,
         confirmation, handleConfirmation, handleCancelConfirmation,
-        activeProjectDetails, isProjectDetailsLoading
+        activeProjectDetails, isProjectDetailsLoading,
+        handleUpdateProject, addToast
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -163,6 +165,35 @@ const MainApp = () => {
     
     const handleNewProject = () => {
         handleSetView('kickoff');
+    };
+
+    const handleGoToStudio = async () => {
+        if (activeProjectId) {
+            // A project is already active, just switch to studio view
+            await handleUpdateProject(activeProjectId, { workflowStep: 3 });
+            // The useEffect on activeProjectId already sets the view to 'project'
+            // and the isStudioActive flag will become true.
+        } else {
+            // No active project, find the most recent one
+            if (user) {
+                addToast("Finding your most recent project...", "info");
+                try {
+                    const projects = await supabaseService.getProjectsForUser(user.id);
+                    if (projects && projects.length > 0) {
+                        const latestProject = projects[0];
+                        // Setting this will trigger the useEffect to load details and set view to 'project'
+                        setActiveProjectId(latestProject.id);
+                        // Also ensure its workflow step is set to 3
+                        await handleUpdateProject(latestProject.id, { workflowStep: 3 });
+                    } else {
+                        addToast("No projects found. Let's create one to get started!", "info");
+                        handleSetView('kickoff');
+                    }
+                } catch (error) {
+                    addToast("Failed to load your projects.", "error");
+                }
+            }
+        }
     };
 
     const renderCurrentView = () => {
@@ -222,6 +253,7 @@ const MainApp = () => {
                         <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><DashboardIcon className="w-5 h-5 inline mr-2"/>{t('nav.dashboard')}</button>
                         <button onClick={() => handleSetView('autopilot')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'autopilot' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><RocketLaunchIcon className="w-5 h-5 inline mr-2"/>{t('nav.autopilot')}</button>
                         <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'calendar' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><CalendarIcon className="w-5 h-5 inline mr-2"/>{t('nav.calendar')}</button>
+                        <button onClick={handleGoToStudio} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isStudioActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ScissorsIcon className="w-5 h-5 inline mr-2"/>{t('nav.creative_studio')}</button>
                         <button onClick={() => handleSetView('channel')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'channel' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ChartPieIcon className="w-5 h-5 inline mr-2"/>{t('nav.my_channel')}</button>
                         <button onClick={() => handleSetView('assetLibrary')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'assetLibrary' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><PhotoIcon className="w-5 h-5 inline mr-2"/>{t('nav.asset_library')}</button>
                     </nav>
