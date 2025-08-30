@@ -8,9 +8,9 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        entryFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.js`,
-        chunkFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.js`,
-        assetFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.[ext]`
+        entryFileNames: `assets/[name]-[hash].js`,
+        chunkFileNames: `assets/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`
       }
     },
     external: ['@shotstack/shotstack-studio'],
