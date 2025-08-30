@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Create viral videos with AI-powered editing tools">
     <title>Viralyzer - Your AI Video Growth Engine</title>
-    <link rel="icon" type="image/svg+xml" href="/viralyzer-icon.svg">
-    <link rel="stylesheet" href="/index.css">
+    <link rel="icon" type="image/svg+xml" href="/viralyzer-icon.svg?v=2025-08-30-00-52-30">
+    <link rel="stylesheet" href="/index.css?v=2025-08-30-00-52-30">
+    <!-- CACHE BUST: 2025-08-30-00-52-30 -->
   </head>
   <body class="bg-gray-900">
     <noscript>
@@ -17,11 +18,17 @@
 
     <div id="root"></div>
     <div id="toast-container" class="toast-container"></div>
-    
+
     <!-- Required containers for Shotstack Studio SDK (as per official docs) -->
     <div data-shotstack-studio></div>
     <div data-shotstack-timeline></div>
-    
+
+    <!-- FORCE CACHE BUST - This should work even if everything else is broken -->
+    <script>
+        console.log('🧪 FORCE CACHE BUST: Basic JavaScript executing at', new Date().toISOString());
+        alert('🧪 FORCE CACHE BUST: Alert should appear at ' + new Date().toISOString());
+        document.body.innerHTML += '<div style="color:red;padding:20px;font-size:24px;background:yellow;border:3px solid red;">🧪 FORCE CACHE BUST: This text should appear on the page at ' + new Date().toISOString() + '</div>';
+    </script>
     <!-- Vite entry -->
     <script type="module" src="/index.tsx"></script>
   </body>
