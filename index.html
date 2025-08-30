@@ -60,6 +60,11 @@
     
     <!-- PURE HTML/JS TEST MODE - COMPLETELY BYPASSES REACT -->
     <script>
+        console.log('🔍 Script execution started');
+        console.log('🔍 Current URL:', window.location.href);
+        console.log('🔍 Search params:', window.location.search);
+        console.log('🔍 Test mode check:', window.location.search.includes('test=shotstack'));
+        
         // Check if we're in test mode BEFORE React loads
         if (window.location.search.includes('test=shotstack')) {
             console.log('🧪 PURE HTML/JS TEST MODE: Starting BEFORE React loads...');
