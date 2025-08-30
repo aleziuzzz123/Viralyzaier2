@@ -4,7 +4,7 @@ import LoginModal from './LoginModal';
 import { useAppContext } from '../contexts/AppContext';
 import LanguageSwitcher from './LanguageSwitcher';
 
-const supabaseAssetBase = 'https://wpgrfukcnpcoyruymxdd.supabase.co/storage/v1/object/public/assets/landing-page';
+const supabaseAssetBase = 'https://wpgrfukcnpcoyruymxdd.supabase.co/storage/v1/object/public/assets/35ec9cdd-1f44-40c1-8525-033ce1c5fa86/3f4ca1d4-e118-4828-b013-1f00b1040806';
 
 const generatedImages = {
     featureBlueprint: `${supabaseAssetBase}/feature_blueprint.jpg`,
