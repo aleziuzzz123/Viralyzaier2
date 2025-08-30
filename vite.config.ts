@@ -7,7 +7,12 @@ export default defineConfig({
     commonjsOptions: { transformMixedEsModules: true },
     sourcemap: false,
     rollupOptions: {
-      external: ['@shotstack/shotstack-studio'],
+      output: {
+        entryFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-[hash]-NUCLEAR-FIX-${Date.now()}.[ext]`
+      }
     },
+    external: ['@shotstack/shotstack-studio'],
   }
 });
