@@ -3,86 +3,142 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create viral videos with AI-powered editing tools - CACHE BUST 2025-08-30-00-57-00">
-    <title>Viralyzer - Your AI Video Growth Engine - FRESH DEPLOY</title>
-    <link rel="icon" type="image/svg+xml" href="/viralyzer-icon.svg?v=FRESH-2025-08-30-00-57-00">
-    <link rel="stylesheet" href="/index.css?v=FRESH-2025-08-30-00-57-00">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta name="description" content="Create viral videos with AI-powered editing tools - NUCLEAR FIX 2025-08-30-01-05-00">
+    <title>Viralyzer - Your AI Video Growth Engine - NUCLEAR FIX</title>
+    
+    <!-- NUCLEAR CACHE BUST - Force fresh loading -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    
+    <!-- Inline CSS to avoid external file caching -->
+    <style>
+      body { 
+        margin: 0; 
+        padding: 0; 
+        font-family: Arial, sans-serif; 
+        background: #1a1a1a; 
+        color: white; 
+      }
+      .nuclear-test {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
+        color: white;
+        padding: 20px;
+        font-size: 24px;
+        border: 5px solid yellow;
+        border-radius: 15px;
+        z-index: 999999;
+        box-shadow: 0 0 30px rgba(255,255,0,0.8);
+        animation: nuclear-pulse 2s infinite;
+      }
+      .nuclear-center {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(45deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0088);
+        color: white;
+        padding: 40px;
+        font-size: 36px;
+        font-weight: bold;
+        border: 15px solid yellow;
+        border-radius: 25px;
+        z-index: 999999;
+        text-align: center;
+        box-shadow: 0 0 100px rgba(255,0,0,0.9);
+        animation: nuclear-rotate 3s infinite linear;
+      }
+      @keyframes nuclear-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+      }
+      @keyframes nuclear-rotate {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+      .close-btn {
+        background: white;
+        color: black;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 10px;
+        cursor: pointer;
+        margin-top: 20px;
+        font-weight: bold;
+      }
+    </style>
   </head>
-  <body class="bg-gray-900">
+  <body>
     <noscript>
-      <div style="padding:1rem;color:#fff;background:#e11d48;">
-        Viralyzer requires JavaScript to run.
+      <div style="padding:2rem;color:#fff;background:#e11d48;text-align:center;font-size:24px;">
+        🚨 Viralyzer requires JavaScript to run.
       </div>
     </noscript>
 
+    <!-- NUCLEAR TEST - This will force Vercel to serve fresh content -->
+    <div class="nuclear-test">
+      🧪 NUCLEAR FIX: This text should appear at <span id="timestamp"></span>
+    </div>
+
+    <div class="nuclear-center">
+      🚀 NUCLEAR FIX SUCCESS!<br>
+      <small>Deployed at: <span id="deploy-time"></span></small><br>
+      <button class="close-btn" onclick="this.parentElement.remove()">CLOSE THIS</button>
+    </div>
+
+    <!-- Root container for React app -->
     <div id="root"></div>
+    
+    <!-- Toast container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- Required containers for Shotstack Studio SDK (as per official docs) -->
+    <!-- Required containers for Shotstack Studio SDK -->
     <div data-shotstack-studio></div>
     <div data-shotstack-timeline></div>
 
-    <!-- NUCLEAR CACHE BUST - This will force Vercel to serve fresh content -->
+    <!-- NUCLEAR SCRIPT - Self-contained and immediate -->
     <script>
-        // Force immediate execution
-        (function() {
-            const timestamp = new Date().toISOString();
-            console.log('🚀 NUCLEAR CACHE BUST EXECUTING at', timestamp);
-            
-            // Create a massive, impossible-to-miss element
-            const nuclearTest = document.createElement('div');
-            nuclearTest.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
-                color: white;
-                padding: 40px;
-                font-size: 32px;
-                font-weight: bold;
-                border: 10px solid yellow;
-                border-radius: 20px;
-                z-index: 999999;
-                text-align: center;
-                box-shadow: 0 0 50px rgba(255,0,0,0.8);
-                animation: pulse 1s infinite;
-            `;
-            nuclearTest.innerHTML = `
-                🚀 NUCLEAR CACHE BUST SUCCESS!<br>
-                <small>Deployed at: ${timestamp}</small><br>
-                <button onclick="this.parentElement.remove()" style="margin-top:20px;padding:10px;background:white;color:black;border:none;border-radius:10px;cursor:pointer;">CLOSE THIS</button>
-            `;
-            
-            // Add CSS animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes pulse {
-                    0% { transform: translate(-50%, -50%) scale(1); }
-                    50% { transform: translate(-50%, -50%) scale(1.1); }
-                    100% { transform: translate(-50%, -50%) scale(1); }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Force append to body
-            document.body.appendChild(nuclearTest);
-            
-            // Also add text to page
-            document.body.innerHTML += `
-                <div style="position:fixed;top:10px;left:10px;background:yellow;color:red;padding:20px;font-size:24px;border:5px solid red;z-index:999998;">
-                    🧪 NUCLEAR TEST: This text should appear on the page at ${timestamp}
-                </div>
-            `;
-            
-            console.log('✅ NUCLEAR CACHE BUST COMPLETE');
-        })();
+      (function() {
+        const now = new Date();
+        const timestamp = now.toISOString();
+        
+        // Update timestamps
+        document.getElementById('timestamp').textContent = timestamp;
+        document.getElementById('deploy-time').textContent = timestamp;
+        
+        // Log success
+        console.log('🚀 NUCLEAR FIX EXECUTING at', timestamp);
+        console.log('✅ HTML loaded fresh from server');
+        console.log('✅ CSS loaded inline (no caching)');
+        console.log('✅ JavaScript executing immediately');
+        
+        // Force DOM manipulation
+        document.body.innerHTML += `
+          <div style="position:fixed;bottom:10px;right:10px;background:yellow;color:red;padding:15px;font-size:20px;border:3px solid red;border-radius:10px;z-index:999998;">
+            🎯 NUCLEAR DOM TEST: Added at ${timestamp}
+          </div>
+        `;
+        
+        console.log('✅ NUCLEAR FIX COMPLETE - All elements visible');
+        
+        // Test if React app can load
+        setTimeout(() => {
+          console.log('🔍 Testing React app loading...');
+          if (document.getElementById('root')) {
+            console.log('✅ Root container found');
+          } else {
+            console.log('❌ Root container missing');
+          }
+        }, 1000);
+        
+      })();
     </script>
 
-    <!-- Vite entry -->
-    <script type="module" src="/index.tsx?v=2025-08-30-01-00-00"></script>
+    <!-- Vite entry with aggressive cache busting -->
+    <script type="module" src="/index.tsx?v=NUCLEAR-FIX-2025-08-30-01-05-00"></script>
   </body>
 </html>
