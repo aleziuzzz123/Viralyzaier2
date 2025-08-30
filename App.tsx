@@ -144,7 +144,7 @@ const MainApp = () => {
     
     if (window.location.search.includes('test=shotstack') && !testModeRef.current) {
         testModeRef.current = true;
-        console.log('🧪 ULTRA-MINIMAL TEST MODE: Starting...');
+        console.log('🧪 COMPLETELY ISOLATED TEST MODE: Starting...');
         
         // Add timeout to prevent infinite loops
         setTimeout(() => {
@@ -163,34 +163,40 @@ const MainApp = () => {
                 shotstackEditJson: null,
                 script: null
             };
-            console.log('🧪 ULTRA-MINIMAL: Test project created:', testProject);
+            console.log('🧪 COMPLETELY ISOLATED: Test project created:', testProject);
             
-            // ULTRA-MINIMAL VERSION - No complex logic, no ErrorBoundary
+            // COMPLETELY ISOLATED VERSION - No context, no providers, just pure React
             return (
                 <div className="min-h-screen bg-gray-900 text-white">
                     <div className="p-4 bg-green-900 text-center">
-                        <h1 className="text-2xl font-bold">🧪 ULTRA-MINIMAL TEST MODE</h1>
-                        <p>If you see this, React is working!</p>
+                        <h1 className="text-2xl font-bold">🧪 COMPLETELY ISOLATED TEST MODE</h1>
+                        <p>If you see this, React is working without any context!</p>
                         <p className="text-sm mt-2">Project ID: {testProject.id}</p>
                     </div>
                     
-                    {/* ULTRA-MINIMAL CreativeStudio - No props, no complex logic */}
+                    {/* COMPLETELY ISOLATED - No context dependencies */}
                     <div className="p-8 text-center">
-                        <h2 className="text-xl font-bold mb-4">Ultra-Minimal CreativeStudio</h2>
-                        <p className="mb-4">This should render without React errors.</p>
+                        <h2 className="text-xl font-bold mb-4">Completely Isolated Test</h2>
+                        <p className="mb-4">This bypasses ALL context and providers.</p>
                         <div className="bg-blue-900 p-4 rounded">
                             <p>Project: {testProject.name}</p>
                             <p>ID: {testProject.id}</p>
                             <p>Status: ✅ Working</p>
                         </div>
+                        <button 
+                            onClick={() => alert('Button works!')} 
+                            className="mt-4 bg-white text-blue-900 px-4 py-2 rounded"
+                        >
+                            Test Button
+                        </button>
                     </div>
                 </div>
             );
         } catch (error) {
-            console.error('💥 Ultra-minimal test mode failed:', error);
+            console.error('💥 Completely isolated test mode failed:', error);
             return (
                 <div className="bg-red-900 text-white p-8 text-center">
-                    <h1 className="text-2xl font-bold mb-4">Ultra-Minimal Test Mode Failed</h1>
+                    <h1 className="text-2xl font-bold mb-4">Completely Isolated Test Mode Failed</h1>
                     <p className="mb-4">Error: {String(error)}</p>
                     <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
                         Reload Page
