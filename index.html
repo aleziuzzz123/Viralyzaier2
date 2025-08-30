@@ -1,45 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create viral videos with AI-powered editing tools">
     <title>Viralyzer - Your AI Video Growth Engine</title>
-    
-    <!-- Force fresh loading -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
-    <!-- Inline CSS to avoid external file caching -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
-      body { 
-        margin: 0; 
-        padding: 0; 
-        font-family: Arial, sans-serif; 
-        background: #1a1a1a; 
-        color: white; 
-      }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .test-mode { 
+            min-height: 100vh; 
+            background: linear-gradient(135deg, #1e3a8a, #1e40af); 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            padding: 2rem; 
+        }
+        .test-banner { 
+            background: #059669; 
+            padding: 1rem; 
+            border-radius: 0.5rem; 
+            margin-bottom: 2rem; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+        }
+        .test-content { 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 2rem; 
+            border-radius: 1rem; 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+        }
+        .test-button { 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            padding: 0.75rem 1.5rem; 
+            border-radius: 0.5rem; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            margin: 1rem; 
+            transition: all 0.2s; 
+        }
+        .test-button:hover { 
+            background: #2563eb; 
+            transform: translateY(-2px); 
+        }
+        .status-box { 
+            background: #059669; 
+            padding: 1rem; 
+            border-radius: 0.5rem; 
+            margin: 1rem 0; 
+        }
     </style>
-  </head>
-  <body>
-    <noscript>
-      <div style="padding:2rem;color:#fff;background:#e11d48;text-align:center;font-size:24px;">
-        🚨 Viralyzer requires JavaScript to run.
-      </div>
-    </noscript>
-    
-    <!-- Root container for React app -->
+</head>
+<body>
     <div id="root"></div>
     
-    <!-- Toast container -->
-    <div id="toast-container" class="toast-container"></div>
+    <!-- PURE HTML/JS TEST MODE - COMPLETELY BYPASSES REACT -->
+    <script>
+        // Check if we're in test mode BEFORE React loads
+        if (window.location.search.includes('test=shotstack')) {
+            console.log('🧪 PURE HTML/JS TEST MODE: Starting BEFORE React loads...');
+            
+            // Hide the React root
+            document.getElementById('root').style.display = 'none';
+            
+            // Create pure HTML test interface
+            const testHTML = `
+                <div class="test-mode">
+                    <div class="test-banner">
+                        <h1 style="margin: 0; font-size: 2rem;">🧪 PURE HTML/JS TEST MODE</h1>
+                        <p style="margin: 0.5rem 0 0 0;">This completely bypasses React!</p>
+                    </div>
+                    
+                    <div class="test-content">
+                        <h2>Pure HTML/JavaScript Test</h2>
+                        <p>If you see this, we've successfully bypassed React completely.</p>
+                        
+                        <div class="status-box">
+                            <h3>✅ Status: Working</h3>
+                            <p>No React involved - pure HTML/JS only!</p>
+                        </div>
+                        
+                        <button class="test-button" onclick="testPureJS()">
+                            Test Pure JavaScript
+                        </button>
+                        
+                        <button class="test-button" onclick="testDOM()">
+                            Test DOM Manipulation
+                        </button>
+                        
+                        <div id="test-output" style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 0.5rem; display: none;">
+                            <h4>Test Output:</h4>
+                            <p id="test-result"></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Insert the test HTML
+            document.body.insertAdjacentHTML('afterbegin', testHTML);
+            
+            // Test functions
+            window.testPureJS = function() {
+                alert('Pure JavaScript works! No React involved!');
+                console.log('🧪 Pure JS function called successfully');
+                showTestOutput('Pure JavaScript function executed successfully!');
+            };
+            
+            window.testDOM = function() {
+                const output = document.getElementById('test-output');
+                const result = document.getElementById('test-result');
+                output.style.display = 'block';
+                result.textContent = 'DOM manipulation working! Button clicked at: ' + new Date().toLocaleTimeString();
+                console.log('🧪 DOM manipulation test successful');
+            };
+            
+            function showTestOutput(message) {
+                const output = document.getElementById('test-output');
+                const result = document.getElementById('test-result');
+                output.style.display = 'block';
+                result.textContent = message;
+            }
+            
+            console.log('🧪 PURE HTML/JS TEST MODE: Setup complete - React completely bypassed');
+        }
+    </script>
     
-    <!-- Required containers for Shotstack Studio SDK -->
-    <div data-shotstack-studio></div>
-    <div data-shotstack-timeline></div>
-    
-    <!-- Load React app -->
     <script type="module" src="/index.tsx"></script>
-  </body>
+</body>
 </html>
