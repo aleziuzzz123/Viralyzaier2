@@ -186,10 +186,7 @@ const MainApp = () => {
     
     if (window.location.search.includes('test=shotstack') && !testModeRef.current) {
         testModeRef.current = true;
-        console.log('🧪 TEST MODE: Forcing Creative Studio view');
-        console.log('🧪 Current URL:', window.location.href);
-        console.log('🧪 Search params:', window.location.search);
-        console.log('🧪 About to create test project...');
+        console.log('🧪 ULTRA-MINIMAL TEST MODE: Starting...');
         
         // Add timeout to prevent infinite loops
         setTimeout(() => {
@@ -208,48 +205,34 @@ const MainApp = () => {
                 shotstackEditJson: null,
                 script: null
             };
-            console.log('🧪 Test project created:', testProject);
-            console.log('🧪 About to call setActiveProjectDetails...');
-            console.log('🧪 Current activeProjectDetails before set:', activeProjectDetails);
+            console.log('🧪 ULTRA-MINIMAL: Test project created:', testProject);
             
-            setActiveProjectDetails(testProject);
-            
-            console.log('🧪 setActiveProjectDetails called');
-            console.log('🧪 About to render CreativeStudio component...');
-            
-            // Wrap in error boundary
-            try {
-                return (
-                    <div className="min-h-screen bg-gray-900">
-                        <div className="p-4 bg-blue-900 text-white text-center">
-                            <h1 className="text-xl font-bold">🧪 TEST MODE ACTIVE - CreativeStudio Component</h1>
-                            <p>If you see this, the component is loading...</p>
-                            <p className="text-sm mt-2">Project ID: {testProject.id}</p>
-                            <p className="text-sm">Active Project: {activeProjectDetails?.id || 'NONE'}</p>
+            // ULTRA-MINIMAL VERSION - No complex logic, no ErrorBoundary
+            return (
+                <div className="min-h-screen bg-gray-900 text-white">
+                    <div className="p-4 bg-green-900 text-center">
+                        <h1 className="text-2xl font-bold">🧪 ULTRA-MINIMAL TEST MODE</h1>
+                        <p>If you see this, React is working!</p>
+                        <p className="text-sm mt-2">Project ID: {testProject.id}</p>
+                    </div>
+                    
+                    {/* ULTRA-MINIMAL CreativeStudio - No props, no complex logic */}
+                    <div className="p-8 text-center">
+                        <h2 className="text-xl font-bold mb-4">Ultra-Minimal CreativeStudio</h2>
+                        <p className="mb-4">This should render without React errors.</p>
+                        <div className="bg-blue-900 p-4 rounded">
+                            <p>Project: {testProject.name}</p>
+                            <p>ID: {testProject.id}</p>
+                            <p>Status: ✅ Working</p>
                         </div>
-                        <ErrorBoundary>
-                            {/* Pass the test project directly to avoid state timing issues */}
-                            <CreativeStudio key={testProject.id} testProject={testProject} />
-                        </ErrorBoundary>
                     </div>
-                );
-            } catch (componentError) {
-                console.error('💥 CreativeStudio component failed to render:', componentError);
-                return (
-                    <div className="bg-red-900 text-white p-8 text-center">
-                        <h1 className="text-2xl font-bold mb-4">CreativeStudio Component Failed</h1>
-                        <p className="mb-4">Error: {String(componentError)}</p>
-                        <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
-                            Reload Page
-                        </button>
-                    </div>
-                );
-            }
+                </div>
+            );
         } catch (error) {
-            console.error('💥 Test mode setup failed:', error);
+            console.error('💥 Ultra-minimal test mode failed:', error);
             return (
                 <div className="bg-red-900 text-white p-8 text-center">
-                    <h1 className="text-2xl font-bold mb-4">Test Mode Failed</h1>
+                    <h1 className="text-2xl font-bold mb-4">Ultra-Minimal Test Mode Failed</h1>
                     <p className="mb-4">Error: {String(error)}</p>
                     <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
                         Reload Page
