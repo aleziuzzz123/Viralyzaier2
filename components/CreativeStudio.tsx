@@ -13,7 +13,7 @@ import { ShotstackClipSelection } from '../types';
 
 type SdkHandles = { edit: any; canvas: any; timeline: any; controls: any; };
 
-export const CreativeStudio: React.FC = () => {
+export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject }) => {
     const { 
         activeProjectDetails, 
         handleUpdateProject, 
@@ -25,21 +25,27 @@ export const CreativeStudio: React.FC = () => {
         session
     } = useAppContext();
 
+    // Use testProject if provided, otherwise use activeProjectDetails
+    const projectToUse = testProject || activeProjectDetails;
+
     // Debug logging
     console.log('🔍 CreativeStudio: Component rendering');
     console.log('🔍 CreativeStudio: activeProjectDetails:', activeProjectDetails);
-    console.log('🔍 CreativeStudio: activeProjectDetails?.id:', activeProjectDetails?.id);
+    console.log('🔍 CreativeStudio: testProject:', testProject);
+    console.log('🔍 CreativeStudio: projectToUse:', projectToUse);
+    console.log('🔍 CreativeStudio: projectToUse?.id:', projectToUse?.id);
 
     // Guard against missing project details
-    if (!activeProjectDetails?.id) {
-        console.error('❌ CreativeStudio: No active project details');
+    if (!projectToUse?.id) {
+        console.error('❌ CreativeStudio: No project details available');
         console.error('❌ CreativeStudio: activeProjectDetails:', activeProjectDetails);
+        console.error('❌ CreativeStudio: testProject:', testProject);
         return (
             <div className="fixed inset-0 flex items-center justify-center bg-gray-900 text-white">
                 <div className="text-center">
                     <h1 className="text-2xl font-bold mb-4">No Active Project</h1>
                     <p className="mb-4">Please select a project to continue.</p>
-                    <p className="mb-4 text-sm text-gray-400">Debug: {JSON.stringify(activeProjectDetails)}</p>
+                    <p className="mb-4 text-sm text-gray-400">Debug: {JSON.stringify(projectToUse)}</p>
                     <button 
                         onClick={() => setActiveProjectId(null)} 
                         className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded"
@@ -81,7 +87,7 @@ export const CreativeStudio: React.FC = () => {
     }, [activeProjectDetails?.id, handleUpdateProject]);
 
     useEffect(() => {
-        if (!activeProjectDetails?.id) return;
+        if (!projectToUse?.id) return;
         const { current: canvasHost } = canvasHostRef;
         if (!canvasHost) return;
 
@@ -131,12 +137,12 @@ export const CreativeStudio: React.FC = () => {
                 }
                 
                 let template;
-                if (activeProjectDetails.shotstackEditJson) {
-                    const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
+                if (projectToUse.shotstackEditJson) {
+                    const sanitizedJson = sanitizeShotstackJson(projectToUse.shotstackEditJson);
                     if (!sanitizedJson) throw new Error("Project has invalid timeline data.");
                     template = proxyifyEdit(sanitizedJson);
                 } else {
-                    const size = activeProjectDetails.videoSize === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };
+                    const size = projectToUse.videoSize === '16:9' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 };
                     template = {
                         timeline: { background: '#000000', tracks: [{ name: 'A-Roll', clips: [] }, { name: 'Overlays', clips: [] }, { name: 'Music', clips: [] }] },
                         output: { format: 'mp4', size: size },
@@ -275,7 +281,7 @@ export const CreativeStudio: React.FC = () => {
 
         initializeWithDelay();
         return cleanup;
-    }, [activeProjectDetails?.id, debouncedUpdateProject]);
+    }, [projectToUse?.id, debouncedUpdateProject]);
 
     const handleBack = () => {
         if (activeProjectDetails) handleUpdateProject(activeProjectDetails.id, { workflowStep: 2 });
@@ -283,9 +289,9 @@ export const CreativeStudio: React.FC = () => {
     };
     
     const handleRender = () => lockAndExecute(async () => {
-        if (!sdkRef.current?.edit || !activeProjectDetails) return;
+        if (!sdkRef.current?.edit || !projectToUse) return;
         const editJson = sdkRef.current.edit.getEdit();
-        await handleRenderProject(activeProjectDetails.id, editJson);
+        await handleRenderProject(projectToUse.id, editJson);
     });
 
     const handleDeleteClip = () => {
@@ -320,7 +326,7 @@ export const CreativeStudio: React.FC = () => {
                 <button onClick={handleBack} className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-800">
                     &larr; Back to Blueprint
                 </button>
-                <div className="text-white font-bold px-4 truncate">{activeProjectDetails?.name}</div>
+                <div className="text-white font-bold px-4 truncate">{projectToUse?.name}</div>
                 <div className="flex items-center gap-4">
                     <span className={`text-sm text-gray-400 transition-opacity ${isSaving ? 'opacity-100' : 'opacity-0'}`}>Saving...</span>
                 </div>
@@ -361,12 +367,12 @@ export const CreativeStudio: React.FC = () => {
             </main>
             
             <footer className="flex-shrink-0 h-24 p-4 pt-0">
-                <TimelineComponent script={activeProjectDetails?.script ?? null} onSceneSelect={() => {}} player={sdkRef.current?.edit} />
+                <TimelineComponent script={projectToUse?.script ?? null} onSceneSelect={() => {}} player={sdkRef.current?.edit} />
             </footer>
             
             {isAssetBrowserOpen && (
                 <AssetBrowserModal 
-                    project={activeProjectDetails} 
+                    project={projectToUse} 
                     session={session}
                     onClose={() => setIsAssetBrowserOpen(false)} 
                     onAddClip={handleAddClip}

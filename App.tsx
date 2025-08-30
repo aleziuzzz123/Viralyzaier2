@@ -228,7 +228,8 @@ const MainApp = () => {
                             <p className="text-sm">Active Project: {activeProjectDetails?.id || 'NONE'}</p>
                         </div>
                         <ErrorBoundary>
-                            <CreativeStudio />
+                            {/* Pass the test project directly to avoid state timing issues */}
+                            <CreativeStudio key={testProject.id} testProject={testProject} />
                         </ErrorBoundary>
                     </div>
                 );
