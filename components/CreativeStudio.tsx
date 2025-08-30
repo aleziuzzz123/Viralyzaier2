@@ -17,12 +17,32 @@ export const CreativeStudio: React.FC = () => {
     const { 
         activeProjectDetails, 
         handleUpdateProject, 
+        setActiveProjectDetails,
         setActiveProjectId,
         handleRenderProject,
         addToast,
         lockAndExecute,
         session
     } = useAppContext();
+
+    // Guard against missing project details
+    if (!activeProjectDetails?.id) {
+        console.error('❌ CreativeStudio: No active project details');
+        return (
+            <div className="fixed inset-0 flex items-center justify-center bg-gray-900 text-white">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">No Active Project</h1>
+                    <p className="mb-4">Please select a project to continue.</p>
+                    <button 
+                        onClick={() => setActiveProjectId(null)} 
+                        className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded"
+                    >
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const canvasHostRef = useRef<HTMLDivElement>(null);
     const sdkRef = useRef<SdkHandles | null>(null);
@@ -51,10 +71,10 @@ export const CreativeStudio: React.FC = () => {
                 setIsSaving(false);
             }
         }, 1500);
-    }, [activeProjectDetails, handleUpdateProject]);
+    }, [activeProjectDetails?.id, handleUpdateProject]);
 
     useEffect(() => {
-        if (!activeProjectDetails) return;
+        if (!activeProjectDetails?.id) return;
         const { current: canvasHost } = canvasHostRef;
         if (!canvasHost) return;
 
@@ -248,7 +268,7 @@ export const CreativeStudio: React.FC = () => {
 
         initializeWithDelay();
         return cleanup;
-    }, [activeProjectDetails, debouncedUpdateProject]);
+    }, [activeProjectDetails?.id, debouncedUpdateProject]);
 
     const handleBack = () => {
         if (activeProjectDetails) handleUpdateProject(activeProjectDetails.id, { workflowStep: 2 });
