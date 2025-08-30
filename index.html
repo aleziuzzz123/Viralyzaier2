@@ -1,13 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create viral videos with AI-powered editing tools">
-    <title>Viralyzer - Your AI Video Growth Engine</title>
-    <link rel="icon" type="image/svg+xml" href="/viralyzer-icon.svg?v=2025-08-30-00-52-30">
-    <link rel="stylesheet" href="/index.css?v=2025-08-30-00-52-30">
-    <!-- CACHE BUST: 2025-08-30-00-52-30 -->
+    <meta name="description" content="Create viral videos with AI-powered editing tools - CACHE BUST 2025-08-30-00-57-00">
+    <title>Viralyzer - Your AI Video Growth Engine - FRESH DEPLOY</title>
+    <link rel="icon" type="image/svg+xml" href="/viralyzer-icon.svg?v=FRESH-2025-08-30-00-57-00">
+    <link rel="stylesheet" href="/index.css?v=FRESH-2025-08-30-00-57-00">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
   </head>
   <body class="bg-gray-900">
     <noscript>
@@ -23,12 +25,63 @@
     <div data-shotstack-studio></div>
     <div data-shotstack-timeline></div>
 
-    <!-- FORCE CACHE BUST - This should work even if everything else is broken -->
+    <!-- NUCLEAR CACHE BUST - This will force Vercel to serve fresh content -->
     <script>
-        console.log('🧪 FORCE CACHE BUST: Basic JavaScript executing at', new Date().toISOString());
-        alert('🧪 FORCE CACHE BUST: Alert should appear at ' + new Date().toISOString());
-        document.body.innerHTML += '<div style="color:red;padding:20px;font-size:24px;background:yellow;border:3px solid red;">🧪 FORCE CACHE BUST: This text should appear on the page at ' + new Date().toISOString() + '</div>';
+        // Force immediate execution
+        (function() {
+            const timestamp = new Date().toISOString();
+            console.log('🚀 NUCLEAR CACHE BUST EXECUTING at', timestamp);
+            
+            // Create a massive, impossible-to-miss element
+            const nuclearTest = document.createElement('div');
+            nuclearTest.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
+                color: white;
+                padding: 40px;
+                font-size: 32px;
+                font-weight: bold;
+                border: 10px solid yellow;
+                border-radius: 20px;
+                z-index: 999999;
+                text-align: center;
+                box-shadow: 0 0 50px rgba(255,0,0,0.8);
+                animation: pulse 1s infinite;
+            `;
+            nuclearTest.innerHTML = `
+                🚀 NUCLEAR CACHE BUST SUCCESS!<br>
+                <small>Deployed at: ${timestamp}</small><br>
+                <button onclick="this.parentElement.remove()" style="margin-top:20px;padding:10px;background:white;color:black;border:none;border-radius:10px;cursor:pointer;">CLOSE THIS</button>
+            `;
+            
+            // Add CSS animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes pulse {
+                    0% { transform: translate(-50%, -50%) scale(1); }
+                    50% { transform: translate(-50%, -50%) scale(1.1); }
+                    100% { transform: translate(-50%, -50%) scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Force append to body
+            document.body.appendChild(nuclearTest);
+            
+            // Also add text to page
+            document.body.innerHTML += `
+                <div style="position:fixed;top:10px;left:10px;background:yellow;color:red;padding:20px;font-size:24px;border:5px solid red;z-index:999998;">
+                    🧪 NUCLEAR TEST: This text should appear on the page at ${timestamp}
+                </div>
+            `;
+            
+            console.log('✅ NUCLEAR CACHE BUST COMPLETE');
+        })();
     </script>
+
     <!-- Vite entry -->
     <script type="module" src="/index.tsx"></script>
   </body>
