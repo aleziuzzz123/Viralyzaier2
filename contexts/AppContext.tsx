@@ -399,21 +399,47 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, [activeProjectId, t, addToast, openConfirmationModal, setActiveProjectId]);
     
     const handleRenderProject = useCallback(async (projectId: string, editJson: any) => {
-        await handleUpdateProject(projectId, { shotstackEditJson: editJson });
-        if (!await consumeCredits(10)) return; // Cost for rendering
-
         try {
+            // First update the project with the edit data
+            await handleUpdateProject(projectId, { shotstackEditJson: editJson });
+            
+            // Check credits before proceeding
+            if (!await consumeCredits(10)) {
+                addToast('Insufficient credits for rendering. Please upgrade your plan.', 'error');
+                return;
+            }
+
+            // Submit render
             const { renderId } = await shotstackService.submitRender(editJson, projectId);
+            
+            // Update project status
             await handleUpdateProject(projectId, {
                 shotstackRenderId: renderId,
                 status: 'Rendering',
                 workflowStep: 4,
             });
+            
             addToast('Render submitted! Your video is being created in the cloud.', 'success');
+            
         } catch (e) {
-            addToast(`Render submission failed: ${getErrorMessage(e)}`, 'error');
+            console.error('Render submission failed:', e);
+            const errorMessage = e instanceof Error ? e.message : 'Unknown render error';
+            
+            // Provide specific error messages for common issues
+            let userMessage = `Render submission failed: ${errorMessage}`;
+            if (errorMessage.includes('SHOTSTACK_API_KEY')) {
+                userMessage = 'Render service configuration error. Please contact support.';
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                userMessage = 'Network error. Please check your connection and try again.';
+            }
+            
+            addToast(userMessage, 'error');
+            
             // Revert status if submission fails
-            handleUpdateProject(projectId, { status: 'Scripting', workflowStep: 3 });
+            await handleUpdateProject(projectId, { 
+                status: 'Scripting', 
+                workflowStep: 3 
+            });
         }
     }, [handleUpdateProject, consumeCredits, addToast]);
     

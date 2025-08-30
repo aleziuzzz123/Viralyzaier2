@@ -5,13 +5,13 @@ import { deproxyifyEdit, proxyifyEdit, sanitizeShotstackJson } from '../utils';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { PhotoIcon, XCircleIcon } from './Icons';
 import EditorToolbar from './EditorToolbar';
-import Timeline from './Timeline';
+import TimelineComponent from './Timeline';
 import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
 import HelpModal from './HelpModal';
 import { ShotstackClipSelection } from '../types';
 
-type SdkHandles = { edit: any; };
+type SdkHandles = { edit: any; canvas: any; timeline: any; controls: any; };
 
 export const CreativeStudio: React.FC = () => {
     const { 
@@ -34,6 +34,7 @@ export const CreativeStudio: React.FC = () => {
     const [selection, setSelection] = useState<ShotstackClipSelection | null>(null);
     const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
   
     const saveTimeoutRef = useRef<number | null>(null);
 
@@ -58,28 +59,44 @@ export const CreativeStudio: React.FC = () => {
         if (!canvasHost) return;
 
         let cancelled = false;
-        let pollInterval: number | null = null;
         const sdkHandles: Partial<SdkHandles> = {};
 
         const cleanup = () => {
             cancelled = true;
-            if (pollInterval) clearInterval(pollInterval);
             if (sdkHandles.edit) {
-                sdkHandles.edit.events.off('play');
-                sdkHandles.edit.events.off('pause');
-                sdkHandles.edit.events.off('selection:changed');
+                sdkHandles.edit.events.off('clip:selected');
+                sdkHandles.edit.events.off('clip:updated');
                 sdkHandles.edit.destroy();
+            }
+            if (sdkHandles.canvas) {
+                sdkHandles.canvas.dispose();
+            }
+            if (sdkHandles.timeline) {
+                sdkHandles.timeline.dispose();
+            }
+            if (sdkHandles.controls) {
+                sdkHandles.controls.dispose();
             }
             sdkRef.current = null;
             if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
             if (canvasHost) canvasHost.innerHTML = '';
             setIsReady(false);
+            setIsLoading(true);
         };
 
         const init = async () => {
             if (cancelled) return;
             try {
-                const { Edit, Canvas } = (window as any);
+                setIsLoading(true);
+                setError(null);
+                console.log('Loading Shotstack Studio SDK dynamically...');
+                
+                // Dynamic import to avoid module resolution issues
+                const ShotstackStudio = await import('@shotstack/shotstack-studio');
+                console.log('Shotstack Studio SDK loaded:', ShotstackStudio);
+                
+                const { Edit, Canvas, Timeline, Controls } = ShotstackStudio;
+                
                 let template;
                 if (activeProjectDetails.shotstackEditJson) {
                     const sanitizedJson = sanitizeShotstackJson(activeProjectDetails.shotstackEditJson);
@@ -94,66 +111,94 @@ export const CreativeStudio: React.FC = () => {
                 }
                 
                 const getToken = async (): Promise<string> => {
-                  const result = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
-                  if (!result?.token) throw new Error("Failed to retrieve Shotstack session token.");
-                  return result.token;
+                    console.log('Requesting Shotstack session token...');
+                    const result = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
+                    if (!result?.token) throw new Error("Failed to retrieve Shotstack session token.");
+                    console.log('Shotstack session token received');
+                    return result.token;
                 };
 
-                // Create the edit with dimensions and background
+                // Following official docs exactly (like in the working examples):
+                // 1. Initialize the edit
+                console.log('1. Creating Edit instance...');
                 const edit = new Edit(template.output.size, template.timeline.background);
                 sdkHandles.edit = edit;
                 await edit.load();
                 if (cancelled) return;
                 
-                // Create canvas to display the edit
+                // 2. Create canvas to display the edit
+                console.log('2. Creating Canvas instance...');
                 const canvas = new Canvas(template.output.size, edit);
-                await canvas.load();
+                await canvas.load(); // Renders to [data-shotstack-studio] element
+                sdkHandles.canvas = canvas;
                 if (cancelled) return;
-                canvasHost.innerHTML = '';
-                canvasHost.appendChild(canvas.view);
                 
-                // Get session token
+                // 3. Get session token
                 const sessionToken = await getToken();
                 if (cancelled) return;
                 
-                // Load the template with token
+                // 4. Load the template with token
+                console.log('3. Loading edit template...');
                 await edit.loadEdit({ ...template, token: sessionToken });
                 if (cancelled) return;
 
+                // 5. Initialize the Timeline
+                console.log('4. Creating Timeline...');
+                const timeline = new Timeline(edit, { width: 1280, height: 300 });
+                await timeline.load(); // Renders to [data-shotstack-timeline] element
+                sdkHandles.timeline = timeline;
+                if (cancelled) return;
+
+                // 6. Add keyboard controls
+                console.log('5. Adding Controls...');
+                const controls = new Controls(edit);
+                await controls.load();
+                sdkHandles.controls = controls;
+                if (cancelled) return;
+
                 sdkRef.current = sdkHandles as SdkHandles;
-                // Set up event listeners
-                edit.events.on('playback:play', () => setIsPlaying(true));
-                edit.events.on('playback:pause', () => setIsPlaying(false));
-                edit.events.on('clip:selected', (data: any) => setSelection({ trackIndex: data.trackIndex, clipIndex: data.clipIndex }));
-                edit.events.on('clip:updated', () => debouncedUpdateProject(edit));
-                edit.events.on('timeline:updated', () => debouncedUpdateProject(edit));
                 
+                // Set up event listeners (following official docs)
+                edit.events.on('clip:selected', (data: any) => {
+                    console.log('Clip selected:', data.clip);
+                    console.log('Track index:', data.trackIndex);
+                    console.log('Clip index:', data.clipIndex);
+                    setSelection({ trackIndex: data.trackIndex, clipIndex: data.clipIndex });
+                });
+                
+                edit.events.on('clip:updated', (data: any) => {
+                    console.log('Clip updated:', data);
+                    debouncedUpdateProject(edit);
+                });
+                
+                // Add playback events
+                edit.events.on('edit:play', () => setIsPlaying(true));
+                edit.events.on('edit:pause', () => setIsPlaying(false));
+                edit.events.on('edit:stop', () => setIsPlaying(false));
+                
+                console.log('Shotstack Studio SDK initialized successfully with dynamic import!');
                 setIsReady(true);
+                setIsLoading(false);
+                setError(null);
+                
             } catch (e: any) {
                 if (!cancelled) {
-                  console.error("Shotstack initialization error:", e);
-                  setError(e.message || String(e));
+                    console.error("Shotstack initialization error:", e);
+                    setError(e.message || String(e));
+                    setIsLoading(false);
                 }
             }
         };
-        
-        const waitForSdkAndInit = () => {
-            if (cancelled) return;
-            setError(null);
-            setIsReady(false);
-            let retries = 50;
-            pollInterval = window.setInterval(() => {
-                if ((window as any).Edit) {
-                    if(pollInterval) clearInterval(pollInterval);
-                    if (!cancelled) init();
-                } else if (--retries <= 0) {
-                    if(pollInterval) clearInterval(pollInterval);
-                    if (!cancelled) setError("Shotstack Studio SDK failed to load. Please check your internet connection and refresh.");
-                }
-            }, 100);
+
+        // Small delay to ensure DOM is ready (like in working examples)
+        const initializeWithDelay = async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (!cancelled) {
+                init();
+            }
         };
 
-        waitForSdkAndInit();
+        initializeWithDelay();
         return cleanup;
     }, [activeProjectDetails, debouncedUpdateProject]);
 
@@ -241,7 +286,7 @@ export const CreativeStudio: React.FC = () => {
             </main>
             
             <footer className="flex-shrink-0 h-24 p-4 pt-0">
-                <Timeline script={activeProjectDetails?.script ?? null} onSceneSelect={() => {}} player={sdkRef.current?.edit} />
+                <TimelineComponent script={activeProjectDetails?.script ?? null} onSceneSelect={() => {}} player={sdkRef.current?.edit} />
             </footer>
             
             {isAssetBrowserOpen && (
@@ -259,3 +304,4 @@ export const CreativeStudio: React.FC = () => {
         </div>
     );
 };
+
