@@ -23,6 +23,49 @@ import Loader from './components/Loader';
 import { CreativeStudio } from './components/CreativeStudio';
 import * as supabaseService from './services/supabaseService';
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+    { children: React.ReactNode },
+    { hasError: boolean; error: Error | null }
+> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error('💥 Error Boundary caught an error:', error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="bg-red-900 text-white p-8 text-center min-h-screen">
+                    <h1 className="text-2xl font-bold mb-4">🚨 React Component Crashed</h1>
+                    <p className="mb-4">Error: {this.state.error?.message || 'Unknown error'}</p>
+                    <button 
+                        onClick={() => this.setState({ hasError: false, error: null })} 
+                        className="bg-white text-red-900 px-4 py-2 rounded mr-2"
+                    >
+                        Try Again
+                    </button>
+                    <button 
+                        onClick={() => window.location.reload()} 
+                        className="bg-white text-red-900 px-4 py-2 rounded"
+                    >
+                        Reload Page
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
 
@@ -160,7 +203,17 @@ const MainApp = () => {
             
             // Wrap in error boundary
             try {
-                return <CreativeStudio />;
+                return (
+                    <div className="min-h-screen bg-gray-900">
+                        <div className="p-4 bg-blue-900 text-white text-center">
+                            <h1 className="text-xl font-bold">🧪 TEST MODE ACTIVE - CreativeStudio Component</h1>
+                            <p>If you see this, the component is loading...</p>
+                        </div>
+                        <ErrorBoundary>
+                            <CreativeStudio />
+                        </ErrorBoundary>
+                    </div>
+                );
             } catch (componentError) {
                 console.error('💥 CreativeStudio component failed to render:', componentError);
                 return (
@@ -172,7 +225,7 @@ const MainApp = () => {
                         </button>
                     </div>
                 );
-            }
+                    }
         } catch (error) {
             console.error('💥 Test mode setup failed:', error);
             return (
@@ -346,7 +399,9 @@ const MainApp = () => {
 function App() {
     return (
         <AppProvider>
-            <MainApp />
+            <ErrorBoundary>
+                <MainApp />
+            </ErrorBoundary>
         </AppProvider>
     )
 }
