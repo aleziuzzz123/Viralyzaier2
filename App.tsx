@@ -209,7 +209,12 @@ const MainApp = () => {
                 script: null
             };
             console.log('🧪 Test project created:', testProject);
+            console.log('🧪 About to call setActiveProjectDetails...');
+            console.log('🧪 Current activeProjectDetails before set:', activeProjectDetails);
+            
             setActiveProjectDetails(testProject);
+            
+            console.log('🧪 setActiveProjectDetails called');
             console.log('🧪 About to render CreativeStudio component...');
             
             // Wrap in error boundary
@@ -219,6 +224,8 @@ const MainApp = () => {
                         <div className="p-4 bg-blue-900 text-white text-center">
                             <h1 className="text-xl font-bold">🧪 TEST MODE ACTIVE - CreativeStudio Component</h1>
                             <p>If you see this, the component is loading...</p>
+                            <p className="text-sm mt-2">Project ID: {testProject.id}</p>
+                            <p className="text-sm">Active Project: {activeProjectDetails?.id || 'NONE'}</p>
                         </div>
                         <ErrorBoundary>
                             <CreativeStudio />
