@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast } from './types';
 import Dashboard from './components/Dashboard';
@@ -182,11 +182,22 @@ const MainApp = () => {
     const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
 
     // TEMPORARY DEBUG: Force Creative Studio for testing
-    if (window.location.search.includes('test=shotstack')) {
+    const testModeRef = useRef(false);
+    
+    if (window.location.search.includes('test=shotstack') && !testModeRef.current) {
+        testModeRef.current = true;
         console.log('🧪 TEST MODE: Forcing Creative Studio view');
         console.log('🧪 Current URL:', window.location.href);
         console.log('🧪 Search params:', window.location.search);
         console.log('🧪 About to create test project...');
+        
+        // Add timeout to prevent infinite loops
+        setTimeout(() => {
+            if (testModeRef.current) {
+                console.log('🧪 Test mode timeout - preventing infinite loop');
+                testModeRef.current = false;
+            }
+        }, 5000);
         
         try {
             const testProject = {
@@ -225,7 +236,7 @@ const MainApp = () => {
                         </button>
                     </div>
                 );
-                    }
+            }
         } catch (error) {
             console.error('💥 Test mode setup failed:', error);
             return (
