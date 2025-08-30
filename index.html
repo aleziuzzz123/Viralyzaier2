@@ -126,9 +126,19 @@
             }
             
             console.log('🧪 PURE HTML/JS TEST MODE: Setup complete - React completely bypassed');
+            
+            // CRITICAL: DO NOT LOAD REACT AT ALL in test mode
+            console.log('🚫 React loading completely prevented in test mode');
+        } else {
+            // Only load React when NOT in test mode
+            console.log('📱 Loading React app normally...');
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = '/index.tsx';
+            document.body.appendChild(script);
         }
     </script>
     
-    <script type="module" src="/index.tsx"></script>
+    <!-- REMOVED: <script type="module" src="/index.tsx"></script> -->
 </body>
 </html>
