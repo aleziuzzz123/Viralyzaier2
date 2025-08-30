@@ -144,7 +144,7 @@ const MainApp = () => {
     
     if (window.location.search.includes('test=shotstack') && !testModeRef.current) {
         testModeRef.current = true;
-        console.log('🧪 COMPLETELY ISOLATED TEST MODE: Starting...');
+        console.log('🧪 PURE HTML/JS TEST MODE: Starting...');
         
         // Add timeout to prevent infinite loops
         setTimeout(() => {
@@ -163,40 +163,49 @@ const MainApp = () => {
                 shotstackEditJson: null,
                 script: null
             };
-            console.log('🧪 COMPLETELY ISOLATED: Test project created:', testProject);
+            console.log('🧪 PURE HTML/JS: Test project created:', testProject);
             
-            // COMPLETELY ISOLATED VERSION - No context, no providers, just pure React
+            // PURE HTML/JS VERSION - No React at all, just DOM manipulation
             return (
                 <div className="min-h-screen bg-gray-900 text-white">
                     <div className="p-4 bg-green-900 text-center">
-                        <h1 className="text-2xl font-bold">🧪 COMPLETELY ISOLATED TEST MODE</h1>
+                        <h1 className="text-2xl font-bold">🧪 PURE HTML/JS TEST MODE</h1>
                         <p>If you see this, React is working without any context!</p>
                         <p className="text-sm mt-2">Project ID: {testProject.id}</p>
                     </div>
                     
-                    {/* COMPLETELY ISOLATED - No context dependencies */}
+                    {/* PURE HTML/JS - No React dependencies */}
                     <div className="p-8 text-center">
-                        <h2 className="text-xl font-bold mb-4">Completely Isolated Test</h2>
-                        <p className="mb-4">This bypasses ALL context and providers.</p>
+                        <h2 className="text-xl font-bold mb-4">Pure HTML/JS Test</h2>
+                        <p className="mb-4">This bypasses ALL React rendering.</p>
                         <div className="bg-blue-900 p-4 rounded">
                             <p>Project: {testProject.name}</p>
                             <p>ID: {testProject.id}</p>
                             <p>Status: ✅ Working</p>
                         </div>
                         <button 
-                            onClick={() => alert('Button works!')} 
+                            onClick={() => {
+                                // Pure JavaScript alert
+                                alert('Pure JS Button works! No React involved!');
+                                console.log('🧪 Pure JS button clicked successfully');
+                            }} 
                             className="mt-4 bg-white text-blue-900 px-4 py-2 rounded"
                         >
-                            Test Button
+                            Test Pure JS Button
                         </button>
+                        <div className="mt-4 p-4 bg-yellow-900 rounded">
+                            <h3 className="font-bold">Pure JavaScript Test</h3>
+                            <p>If you see this yellow box, React is rendering correctly.</p>
+                            <p>If you see errors, the issue is in React itself.</p>
+                        </div>
                     </div>
                 </div>
             );
         } catch (error) {
-            console.error('💥 Completely isolated test mode failed:', error);
+            console.error('💥 Pure HTML/JS test mode failed:', error);
             return (
                 <div className="bg-red-900 text-white p-8 text-center">
-                    <h1 className="text-2xl font-bold mb-4">Completely Isolated Test Mode Failed</h1>
+                    <h1 className="text-2xl font-bold mb-4">Pure HTML/JS Test Mode Failed</h1>
                     <p className="mb-4">Error: {String(error)}</p>
                     <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
                         Reload Page

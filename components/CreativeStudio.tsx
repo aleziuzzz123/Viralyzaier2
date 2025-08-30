@@ -26,13 +26,39 @@ export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject })
     // Use testProject if provided, otherwise use activeProjectDetails
     const projectToUse = testProject;
 
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+    const canvasHostRef = useRef<HTMLDivElement>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [isReady, setIsReady] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Simple initialization effect - MUST BE CALLED EVERY TIME
+    useEffect(() => {
+        console.log('🚀 MINIMAL VERSION: useEffect running');
+        console.log('🚀 MINIMAL VERSION: projectToUse:', projectToUse);
+        
+        if (!projectToUse?.id) {
+            console.log('🚀 MINIMAL VERSION: No project, returning early');
+            return;
+        }
+
+        // Simple timeout to simulate initialization
+        const timer = setTimeout(() => {
+            console.log('🚀 MINIMAL VERSION: Setting ready state');
+            setIsReady(true);
+            setIsLoading(false);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [projectToUse?.id]);
+
     // Debug logging
     console.log('🔍 CreativeStudio: Component rendering');
     console.log('🔍 CreativeStudio: testProject:', testProject);
     console.log('🔍 CreativeStudio: projectToUse:', projectToUse);
     console.log('🔍 CreativeStudio: projectToUse?.id:', projectToUse?.id);
 
-    // Guard against missing project details
+    // Guard against missing project details - AFTER ALL HOOKS
     if (!projectToUse?.id) {
         console.error('❌ CreativeStudio: No project details available');
         console.error('❌ CreativeStudio: testProject:', testProject);
@@ -52,32 +78,6 @@ export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject })
             </div>
         );
     }
-
-    // MINIMAL VERSION - Only essential hooks
-    const canvasHostRef = useRef<HTMLDivElement>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [isReady, setIsReady] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Simple initialization effect
-    useEffect(() => {
-        console.log('🚀 MINIMAL VERSION: useEffect running');
-        console.log('🚀 MINIMAL VERSION: projectToUse:', projectToUse);
-        
-        if (!projectToUse?.id) {
-            console.log('🚀 MINIMAL VERSION: No project, returning early');
-            return;
-        }
-
-        // Simple timeout to simulate initialization
-        const timer = setTimeout(() => {
-            console.log('🚀 MINIMAL VERSION: Setting ready state');
-            setIsReady(true);
-            setIsLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [projectToUse?.id]);
 
     const handleBack = () => {
         if (projectToUse) handleUpdateProject(projectToUse.id, { workflowStep: 2 });
