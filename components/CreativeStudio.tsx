@@ -145,8 +145,13 @@ export const CreativeStudio: React.FC = () => {
                 sdkHandles.canvas = canvas;
                 
                 console.log('⏳ Loading Canvas instance...');
-                await canvas.load(); // Renders to [data-shotstack-studio] element
-                console.log('✅ Canvas instance loaded successfully');
+                try {
+                    await canvas.load(); // Renders to [data-shotstack-studio] element
+                    console.log('✅ Canvas instance loaded successfully');
+                } catch (canvasError) {
+                    console.error('💥 Canvas load failed:', canvasError);
+                    throw new Error(`Canvas load failed: ${canvasError}`);
+                }
                 if (cancelled) return;
                 
                 // 3. Get session token
@@ -156,8 +161,13 @@ export const CreativeStudio: React.FC = () => {
                 
                 // 4. Load the template with token
                 console.log('📋 Step 4: Loading edit template...');
-                await edit.loadEdit({ ...template, token: sessionToken });
-                console.log('✅ Edit template loaded successfully');
+                try {
+                    await edit.loadEdit({ ...template, token: sessionToken });
+                    console.log('✅ Edit template loaded successfully');
+                } catch (editError) {
+                    console.error('💥 Edit template load failed:', editError);
+                    throw new Error(`Edit template load failed: ${editError}`);
+                }
                 if (cancelled) return;
 
                 // 5. Initialize the Timeline
@@ -167,8 +177,13 @@ export const CreativeStudio: React.FC = () => {
                 sdkHandles.timeline = timeline;
                 
                 console.log('⏳ Loading Timeline instance...');
-                await timeline.load(); // Renders to [data-shotstack-timeline] element
-                console.log('✅ Timeline instance loaded successfully');
+                try {
+                    await timeline.load(); // Renders to [data-shotstack-timeline] element
+                    console.log('✅ Timeline instance loaded successfully');
+                } catch (timelineError) {
+                    console.error('💥 Timeline load failed:', timelineError);
+                    throw new Error(`Timeline load failed: ${timelineError}`);
+                }
                 if (cancelled) return;
 
                 // 6. Add keyboard controls
@@ -178,8 +193,13 @@ export const CreativeStudio: React.FC = () => {
                 sdkHandles.controls = controls;
                 
                 console.log('⏳ Loading Controls instance...');
-                await controls.load();
-                console.log('✅ Controls instance loaded successfully');
+                try {
+                    await controls.load();
+                    console.log('✅ Controls instance loaded successfully');
+                } catch (controlsError) {
+                    console.error('💥 Controls load failed:', controlsError);
+                    throw new Error(`Controls load failed: ${controlsError}`);
+                }
                 if (cancelled) return;
 
                 sdkRef.current = sdkHandles as SdkHandles;
