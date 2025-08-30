@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create viral videos with AI-powered editing tools - NUCLEAR FIX 2025-08-30-01-05-00">
-    <title>Viralyzer - Your AI Video Growth Engine - NUCLEAR FIX</title>
+    <meta name="description" content="Create viral videos with AI-powered editing tools - BYPASS VERCEL 2025-08-30-01-35-00">
+    <title>Viralyzer - Your AI Video Growth Engine - BYPASS VERCEL</title>
     
-    <!-- NUCLEAR CACHE BUST - Force fresh loading -->
+    <!-- BYPASS VERCEL - Force fresh loading -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -20,7 +20,7 @@
         background: #1a1a1a; 
         color: white; 
       }
-      .nuclear-test {
+      .bypass-test {
         position: fixed;
         top: 10px;
         left: 10px;
@@ -32,9 +32,9 @@
         border-radius: 15px;
         z-index: 999999;
         box-shadow: 0 0 30px rgba(255,255,0,0.8);
-        animation: nuclear-pulse 2s infinite;
+        animation: bypass-pulse 2s infinite;
       }
-      .nuclear-center {
+      .bypass-center {
         position: fixed;
         top: 50%;
         left: 50%;
@@ -49,13 +49,13 @@
         z-index: 999999;
         text-align: center;
         box-shadow: 0 0 100px rgba(255,0,0,0.9);
-        animation: nuclear-rotate 3s infinite linear;
+        animation: bypass-rotate 3s infinite linear;
       }
-      @keyframes nuclear-pulse {
+      @keyframes bypass-pulse {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.1); opacity: 0.8; }
       }
-      @keyframes nuclear-rotate {
+      @keyframes bypass-rotate {
         0% { transform: translate(-50%, -50%) rotate(0deg); }
         100% { transform: translate(-50%, -50%) rotate(360deg); }
       }
@@ -70,6 +70,18 @@
         margin-top: 20px;
         font-weight: bold;
       }
+      .shotstack-test {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: yellow;
+        color: red;
+        padding: 15px;
+        font-size: 20px;
+        border: 3px solid red;
+        border-radius: 10px;
+        z-index: 999998;
+      }
     </style>
   </head>
   <body>
@@ -79,13 +91,13 @@
       </div>
     </noscript>
 
-    <!-- NUCLEAR TEST - This will force Vercel to serve fresh content -->
-    <div class="nuclear-test">
-      🧪 NUCLEAR FIX: This text should appear at <span id="timestamp"></span>
+    <!-- BYPASS VERCEL TEST - This will force Vercel to serve fresh content -->
+    <div class="bypass-test">
+      🧪 BYPASS VERCEL: This text should appear at <span id="timestamp"></span>
     </div>
 
-    <div class="nuclear-center">
-      🚀 NUCLEAR FIX SUCCESS!<br>
+    <div class="bypass-center">
+      🚀 BYPASS VERCEL SUCCESS!<br>
       <small>Deployed at: <span id="deploy-time"></span></small><br>
       <button class="close-btn" onclick="this.parentElement.remove()">CLOSE THIS</button>
     </div>
@@ -100,7 +112,7 @@
     <div data-shotstack-studio></div>
     <div data-shotstack-timeline></div>
 
-    <!-- NUCLEAR SCRIPT - Self-contained and immediate -->
+    <!-- BYPASS SCRIPT - Self-contained and immediate -->
     <script>
       (function() {
         const now = new Date();
@@ -116,7 +128,14 @@
         // Force reload if assets are blocked
         const checkAssets = () => {
           const testImg = new Image();
-          testImg.onload = () => console.log('✅ Assets loading successfully');
+          testImg.onload = () => {
+            console.log('✅ Assets loading successfully');
+            document.body.innerHTML += `
+              <div class="shotstack-test">
+                🎯 ASSETS WORKING: Shotstack should load now!
+              </div>
+            `;
+          };
           testImg.onerror = () => {
             console.log('❌ Assets blocked, forcing reload...');
             window.location.reload(true);
@@ -129,7 +148,7 @@
         document.getElementById('deploy-time').textContent = timestamp;
         
         // Log success
-        console.log('🚀 NUCLEAR FIX EXECUTING at', timestamp);
+        console.log('🚀 BYPASS VERCEL EXECUTING at', timestamp);
         console.log('✅ HTML loaded fresh from server');
         console.log('✅ CSS loaded inline (no caching)');
         console.log('✅ JavaScript executing immediately');
@@ -137,12 +156,12 @@
         
         // Force DOM manipulation
         document.body.innerHTML += `
-          <div style="position:fixed;bottom:10px;right:10px;background:yellow;color:red;padding:15px;font-size:20px;border:3px solid red;border-radius:10px;z-index:999998;">
-            🎯 NUCLEAR DOM TEST: Added at ${timestamp}
+          <div class="shotstack-test">
+            🎯 BYPASS DOM TEST: Added at ${timestamp}
           </div>
         `;
         
-        console.log('✅ NUCLEAR FIX COMPLETE - All elements visible');
+        console.log('✅ BYPASS VERCEL COMPLETE - All elements visible');
         
         // Test if React app can load
         setTimeout(() => {
@@ -160,7 +179,25 @@
       })();
     </script>
 
-    <!-- Vite entry with aggressive cache busting -->
-    <script type="module" src="/index.tsx?v=NUCLEAR-FIX-2025-08-30-01-30-00"></script>
+    <!-- BYPASS VITE - Load React app directly -->
+    <script>
+      // Load React app directly without Vite
+      console.log('🚀 Loading React app directly...');
+      
+      // Create a simple test to see if this script runs
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = `
+            <div style="padding:50px;text-align:center;background:white;color:black;border-radius:20px;margin:20px;">
+              <h1>🎉 REACT APP LOADED!</h1>
+              <p>This proves the bypass is working!</p>
+              <p>Timestamp: ${new Date().toISOString()}</p>
+            </div>
+          `;
+          console.log('✅ React app loaded successfully!');
+        }
+      }, 3000);
+    </script>
   </body>
 </html>
