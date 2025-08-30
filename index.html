@@ -106,6 +106,24 @@
         const now = new Date();
         const timestamp = now.toISOString();
         
+        // Force cache clear
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+          });
+        }
+        
+        // Force reload if assets are blocked
+        const checkAssets = () => {
+          const testImg = new Image();
+          testImg.onload = () => console.log('✅ Assets loading successfully');
+          testImg.onerror = () => {
+            console.log('❌ Assets blocked, forcing reload...');
+            window.location.reload(true);
+          };
+          testImg.src = 'https://wpgrfukcnpcoyruymxdd.supabase.co/storage/v1/object/public/assets/landing-page/feature_studio.jpg?v=' + Date.now();
+        };
+        
         // Update timestamps
         document.getElementById('timestamp').textContent = timestamp;
         document.getElementById('deploy-time').textContent = timestamp;
@@ -115,6 +133,7 @@
         console.log('✅ HTML loaded fresh from server');
         console.log('✅ CSS loaded inline (no caching)');
         console.log('✅ JavaScript executing immediately');
+        console.log('🔍 Checking asset loading...');
         
         // Force DOM manipulation
         document.body.innerHTML += `
@@ -135,10 +154,13 @@
           }
         }, 1000);
         
+        // Check assets after a delay
+        setTimeout(checkAssets, 2000);
+        
       })();
     </script>
 
     <!-- Vite entry with aggressive cache busting -->
-    <script type="module" src="/index.tsx?v=NUCLEAR-FIX-2025-08-30-01-15-00"></script>
+    <script type="module" src="/index.tsx?v=NUCLEAR-FIX-2025-08-30-01-30-00"></script>
   </body>
 </html>
