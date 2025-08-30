@@ -23,49 +23,7 @@ import Loader from './components/Loader';
 import { CreativeStudio } from './components/CreativeStudio';
 import * as supabaseService from './services/supabaseService';
 
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-    { children: React.ReactNode },
-    { hasError: boolean; error: Error | null }
-> {
-    constructor(props: { children: React.ReactNode }) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-
-    static getDerivedStateFromError(error: Error) {
-        return { hasError: true, error };
-    }
-
-    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('💥 Error Boundary caught an error:', error, errorInfo);
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="bg-red-900 text-white p-8 text-center min-h-screen">
-                    <h1 className="text-2xl font-bold mb-4">🚨 React Component Crashed</h1>
-                    <p className="mb-4">Error: {this.state.error?.message || 'Unknown error'}</p>
-                    <button 
-                        onClick={() => this.setState({ hasError: false, error: null })} 
-                        className="bg-white text-red-900 px-4 py-2 rounded mr-2"
-                    >
-                        Try Again
-                    </button>
-                    <button 
-                        onClick={() => window.location.reload()} 
-                        className="bg-white text-red-900 px-4 py-2 rounded"
-                    >
-                        Reload Page
-                    </button>
-                </div>
-            );
-        }
-
-        return this.props.children;
-    }
-}
+// Error Boundary Component - REMOVED TO ISOLATE REACT ERROR #310
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
 
@@ -401,9 +359,7 @@ const MainApp = () => {
 function App() {
     return (
         <AppProvider>
-            <ErrorBoundary>
-                <MainApp />
-            </ErrorBoundary>
+            <MainApp />
         </AppProvider>
     )
 }
