@@ -59,6 +59,7 @@ export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject })
 
     const canvasHostRef = useRef<HTMLDivElement>(null);
     const sdkRef = useRef<SdkHandles | null>(null);
+    const isMountedRef = useRef(false);
 
     const [error, setError] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
@@ -71,23 +72,33 @@ export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject })
   
     const saveTimeoutRef = useRef<number | null>(null);
 
+    // Mark component as mounted
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const debouncedUpdateProject = useCallback((edit: any) => {
         if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
         setIsSaving(true);
         saveTimeoutRef.current = window.setTimeout(() => {
-            if (activeProjectDetails) {
+            if (projectToUse) {
                 const editJson = edit.getEdit();
                 const deproxied = deproxyifyEdit(editJson);
-                handleUpdateProject(activeProjectDetails.id, { shotstackEditJson: deproxied })
+                handleUpdateProject(projectToUse.id, { shotstackEditJson: deproxied })
                   .finally(() => setIsSaving(false));
             } else {
                 setIsSaving(false);
             }
         }, 1500);
-    }, [activeProjectDetails?.id, handleUpdateProject]);
+    }, [projectToUse?.id, handleUpdateProject]);
 
     useEffect(() => {
-        if (!projectToUse?.id) return;
+        // Only run if component is mounted and we have a project
+        if (!isMountedRef.current || !projectToUse?.id) return;
+        
         const { current: canvasHost } = canvasHostRef;
         if (!canvasHost) return;
 
@@ -118,7 +129,7 @@ export const CreativeStudio: React.FC<{ testProject?: any }> = ({ testProject })
         };
 
         const init = async () => {
-            if (cancelled) return;
+            if (cancelled || !isMountedRef.current) return;
             try {
                 setIsLoading(true);
                 setError(null);
