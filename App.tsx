@@ -131,12 +131,32 @@ const MainApp = () => {
         toasts, dismissToast, activeProjectId, setActiveProjectId,
         t,
         confirmation, handleConfirmation, handleCancelConfirmation,
-        activeProjectDetails, isProjectDetailsLoading,
+        activeProjectDetails, isProjectDetailsLoading, setActiveProjectDetails,
         handleUpdateProject, addToast
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
+
+    // TEMPORARY DEBUG: Force Creative Studio for testing
+    if (window.location.search.includes('test=shotstack')) {
+        console.log('🧪 TEST MODE: Forcing Creative Studio view');
+        console.log('🧪 Current URL:', window.location.href);
+        console.log('🧪 Search params:', window.location.search);
+        console.log('🧪 About to create test project...');
+        const testProject = {
+            id: 'test-' + Date.now(),
+            name: 'Test Project',
+            workflowStep: 3,
+            videoSize: '16:9' as const,
+            shotstackEditJson: null,
+            script: null
+        };
+        console.log('🧪 Test project created:', testProject);
+        setActiveProjectDetails(testProject);
+        console.log('🧪 About to render CreativeStudio component...');
+        return <CreativeStudio />;
+    }
 
     useEffect(() => {
         if(activeProjectId) {

@@ -76,6 +76,7 @@ interface AppContextType {
     
     // User Actions
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
+    setActiveProjectDetails: React.Dispatch<React.SetStateAction<Project | null>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -461,7 +462,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             handleCancelConfirmation, clearBackendError, dismissTutorial, lockAndExecute, handleUpdateProject,
             handleDeleteProject, handleCreateProjectForBlueprint, handleCreateProjectFromIdea,
             handleCreateProjectFromInsights, handleRenderProject,
-            setUser
+            setUser, setActiveProjectDetails
         }}>
             {children}
         </AppContext.Provider>

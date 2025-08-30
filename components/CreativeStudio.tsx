@@ -89,13 +89,19 @@ export const CreativeStudio: React.FC = () => {
             try {
                 setIsLoading(true);
                 setError(null);
-                console.log('Loading Shotstack Studio SDK dynamically...');
+                console.log('🚀 Starting Shotstack initialization...');
                 
                 // Dynamic import to avoid module resolution issues
+                console.log('📦 Attempting to import Shotstack Studio SDK...');
                 const ShotstackStudio = await import('@shotstack/shotstack-studio');
-                console.log('Shotstack Studio SDK loaded:', ShotstackStudio);
+                console.log('✅ Shotstack Studio SDK imported successfully:', ShotstackStudio);
                 
                 const { Edit, Canvas, Timeline, Controls } = ShotstackStudio;
+                console.log('🔍 Extracted components:', { Edit: !!Edit, Canvas: !!Canvas, Timeline: !!Timeline, Controls: !!Controls });
+                
+                if (!Edit || !Canvas) {
+                    throw new Error(`Missing required components: Edit=${!!Edit}, Canvas=${!!Canvas}`);
+                }
                 
                 let template;
                 if (activeProjectDetails.shotstackEditJson) {
@@ -110,64 +116,85 @@ export const CreativeStudio: React.FC = () => {
                     };
                 }
                 
+                console.log('📋 Template prepared:', template);
+                
                 const getToken = async (): Promise<string> => {
-                    console.log('Requesting Shotstack session token...');
+                    console.log('🔑 Requesting Shotstack session token...');
                     const result = await invokeEdgeFunction<{ token: string }>('shotstack-studio-token', {});
                     if (!result?.token) throw new Error("Failed to retrieve Shotstack session token.");
-                    console.log('Shotstack session token received');
+                    console.log('✅ Shotstack session token received');
                     return result.token;
                 };
 
                 // Following official docs exactly (like in the working examples):
                 // 1. Initialize the edit
-                console.log('1. Creating Edit instance...');
+                console.log('🎬 Step 1: Creating Edit instance...');
                 const edit = new Edit(template.output.size, template.timeline.background);
+                console.log('✅ Edit instance created:', edit);
                 sdkHandles.edit = edit;
+                
+                console.log('⏳ Loading Edit instance...');
                 await edit.load();
+                console.log('✅ Edit instance loaded successfully');
                 if (cancelled) return;
                 
                 // 2. Create canvas to display the edit
-                console.log('2. Creating Canvas instance...');
+                console.log('🎨 Step 2: Creating Canvas instance...');
                 const canvas = new Canvas(template.output.size, edit);
-                await canvas.load(); // Renders to [data-shotstack-studio] element
+                console.log('✅ Canvas instance created:', canvas);
                 sdkHandles.canvas = canvas;
+                
+                console.log('⏳ Loading Canvas instance...');
+                await canvas.load(); // Renders to [data-shotstack-studio] element
+                console.log('✅ Canvas instance loaded successfully');
                 if (cancelled) return;
                 
                 // 3. Get session token
+                console.log('🔑 Step 3: Getting session token...');
                 const sessionToken = await getToken();
                 if (cancelled) return;
                 
                 // 4. Load the template with token
-                console.log('3. Loading edit template...');
+                console.log('📋 Step 4: Loading edit template...');
                 await edit.loadEdit({ ...template, token: sessionToken });
+                console.log('✅ Edit template loaded successfully');
                 if (cancelled) return;
 
                 // 5. Initialize the Timeline
-                console.log('4. Creating Timeline...');
+                console.log('⏰ Step 5: Creating Timeline instance...');
                 const timeline = new Timeline(edit, { width: 1280, height: 300 });
-                await timeline.load(); // Renders to [data-shotstack-timeline] element
+                console.log('✅ Timeline instance created:', timeline);
                 sdkHandles.timeline = timeline;
+                
+                console.log('⏳ Loading Timeline instance...');
+                await timeline.load(); // Renders to [data-shotstack-timeline] element
+                console.log('✅ Timeline instance loaded successfully');
                 if (cancelled) return;
 
                 // 6. Add keyboard controls
-                console.log('5. Adding Controls...');
+                console.log('⌨️ Step 6: Adding keyboard controls...');
                 const controls = new Controls(edit);
-                await controls.load();
+                console.log('✅ Controls instance created:', controls);
                 sdkHandles.controls = controls;
+                
+                console.log('⏳ Loading Controls instance...');
+                await controls.load();
+                console.log('✅ Controls instance loaded successfully');
                 if (cancelled) return;
 
                 sdkRef.current = sdkHandles as SdkHandles;
                 
                 // Set up event listeners (following official docs)
+                console.log('🎧 Setting up event listeners...');
                 edit.events.on('clip:selected', (data: any) => {
-                    console.log('Clip selected:', data.clip);
-                    console.log('Track index:', data.trackIndex);
-                    console.log('Clip index:', data.clipIndex);
+                    console.log('📎 Clip selected:', data.clip);
+                    console.log('📎 Track index:', data.trackIndex);
+                    console.log('📎 Clip index:', data.clipIndex);
                     setSelection({ trackIndex: data.trackIndex, clipIndex: data.clipIndex });
                 });
                 
                 edit.events.on('clip:updated', (data: any) => {
-                    console.log('Clip updated:', data);
+                    console.log('📝 Clip updated:', data);
                     debouncedUpdateProject(edit);
                 });
                 
@@ -176,14 +203,15 @@ export const CreativeStudio: React.FC = () => {
                 edit.events.on('edit:pause', () => setIsPlaying(false));
                 edit.events.on('edit:stop', () => setIsPlaying(false));
                 
-                console.log('Shotstack Studio SDK initialized successfully with dynamic import!');
+                console.log('🎉 Shotstack Studio SDK initialized successfully with dynamic import!');
                 setIsReady(true);
                 setIsLoading(false);
                 setError(null);
                 
             } catch (e: any) {
                 if (!cancelled) {
-                    console.error("Shotstack initialization error:", e);
+                    console.error("💥 Shotstack initialization error:", e);
+                    console.error("💥 Error stack:", e.stack);
                     setError(e.message || String(e));
                     setIsLoading(false);
                 }
