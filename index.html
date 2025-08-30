@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Create viral videos with AI-powered editing tools - BYPASS VERCEL 2025-08-30-01-35-00">
-    <title>Viralyzer - Your AI Video Growth Engine - BYPASS VERCEL</title>
+    <meta name="description" content="Create viral videos with AI-powered editing tools">
+    <title>Viralyzer - Your AI Video Growth Engine</title>
     
-    <!-- BYPASS VERCEL - Force fresh loading -->
+    <!-- Force fresh loading -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -20,68 +20,6 @@
         background: #1a1a1a; 
         color: white; 
       }
-      .bypass-test {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
-        color: white;
-        padding: 20px;
-        font-size: 24px;
-        border: 5px solid yellow;
-        border-radius: 15px;
-        z-index: 999999;
-        box-shadow: 0 0 30px rgba(255,255,0,0.8);
-        animation: bypass-pulse 2s infinite;
-      }
-      .bypass-center {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(45deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0088);
-        color: white;
-        padding: 40px;
-        font-size: 36px;
-        font-weight: bold;
-        border: 15px solid yellow;
-        border-radius: 25px;
-        z-index: 999999;
-        text-align: center;
-        box-shadow: 0 0 100px rgba(255,0,0,0.9);
-        animation: bypass-rotate 3s infinite linear;
-      }
-      @keyframes bypass-pulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.1); opacity: 0.8; }
-      }
-      @keyframes bypass-rotate {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
-      }
-      .close-btn {
-        background: white;
-        color: black;
-        border: none;
-        padding: 15px 30px;
-        font-size: 18px;
-        border-radius: 10px;
-        cursor: pointer;
-        margin-top: 20px;
-        font-weight: bold;
-      }
-      .shotstack-test {
-        position: fixed;
-        bottom: 10px;
-        right: 10px;
-        background: yellow;
-        color: red;
-        padding: 15px;
-        font-size: 20px;
-        border: 3px solid red;
-        border-radius: 10px;
-        z-index: 999998;
-      }
     </style>
   </head>
   <body>
@@ -90,114 +28,18 @@
         🚨 Viralyzer requires JavaScript to run.
       </div>
     </noscript>
-
-    <!-- BYPASS VERCEL TEST - This will force Vercel to serve fresh content -->
-    <div class="bypass-test">
-      🧪 BYPASS VERCEL: This text should appear at <span id="timestamp"></span>
-    </div>
-
-    <div class="bypass-center">
-      🚀 BYPASS VERCEL SUCCESS!<br>
-      <small>Deployed at: <span id="deploy-time"></span></small><br>
-      <button class="close-btn" onclick="this.parentElement.remove()">CLOSE THIS</button>
-    </div>
-
+    
     <!-- Root container for React app -->
     <div id="root"></div>
     
     <!-- Toast container -->
     <div id="toast-container" class="toast-container"></div>
-
+    
     <!-- Required containers for Shotstack Studio SDK -->
     <div data-shotstack-studio></div>
     <div data-shotstack-timeline></div>
-
-    <!-- BYPASS SCRIPT - Self-contained and immediate -->
-    <script>
-      (function() {
-        const now = new Date();
-        const timestamp = now.toISOString();
-        
-        // Force cache clear
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (let name of names) caches.delete(name);
-          });
-        }
-        
-        // Force reload if assets are blocked
-        const checkAssets = () => {
-          const testImg = new Image();
-          testImg.onload = () => {
-            console.log('✅ Assets loading successfully');
-            document.body.innerHTML += `
-              <div class="shotstack-test">
-                🎯 ASSETS WORKING: Shotstack should load now!
-              </div>
-            `;
-          };
-          testImg.onerror = () => {
-            console.log('❌ Assets blocked, forcing reload...');
-            window.location.reload(true);
-          };
-          testImg.src = 'https://wpgrfukcnpcoyruymxdd.supabase.co/storage/v1/object/public/assets/35ec9cdd-1f44-40c1-8525-033ce1c5fa86/3f4ca1d4-e118-4828-b013-1f00b1040806/feature_studio.jpg?v=' + Date.now();
-        };
-        
-        // Update timestamps
-        document.getElementById('timestamp').textContent = timestamp;
-        document.getElementById('deploy-time').textContent = timestamp;
-        
-        // Log success
-        console.log('🚀 BYPASS VERCEL EXECUTING at', timestamp);
-        console.log('✅ HTML loaded fresh from server');
-        console.log('✅ CSS loaded inline (no caching)');
-        console.log('✅ JavaScript executing immediately');
-        console.log('🔍 Checking asset loading...');
-        
-        // Force DOM manipulation
-        document.body.innerHTML += `
-          <div class="shotstack-test">
-            🎯 BYPASS DOM TEST: Added at ${timestamp}
-          </div>
-        `;
-        
-        console.log('✅ BYPASS VERCEL COMPLETE - All elements visible');
-        
-        // Test if React app can load
-        setTimeout(() => {
-          console.log('🔍 Testing React app loading...');
-          if (document.getElementById('root')) {
-            console.log('✅ Root container found');
-          } else {
-            console.log('❌ Root container missing');
-          }
-        }, 1000);
-        
-        // Check assets after a delay
-        setTimeout(checkAssets, 2000);
-        
-      })();
-    </script>
-
-    <!-- BYPASS VITE - Load React app directly -->
-    <script>
-      // Load React app directly without Vite
-      console.log('🚀 Loading React app directly...');
-      
-      // Create a simple test to see if this script runs
-      setTimeout(() => {
-        const root = document.getElementById('root');
-        if (root) {
-          root.innerHTML = `
-            <div style="padding:50px;text-align:center;background:white;color:black;border-radius:20px;margin:20px;">
-              <h1>🎉 REACT APP LOADED!</h1>
-              <p>This proves the bypass is working!</p>
-              <p>Timestamp: ${new Date().toISOString()}</p>
-            </div>
-          `;
-          console.log('✅ React app loaded successfully!');
-        }
-      }, 3000);
-    </script>
+    
+    <!-- Load React app -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
