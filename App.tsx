@@ -144,18 +144,47 @@ const MainApp = () => {
         console.log('🧪 Current URL:', window.location.href);
         console.log('🧪 Search params:', window.location.search);
         console.log('🧪 About to create test project...');
-        const testProject = {
-            id: 'test-' + Date.now(),
-            name: 'Test Project',
-            workflowStep: 3,
-            videoSize: '16:9' as const,
-            shotstackEditJson: null,
-            script: null
-        };
-        console.log('🧪 Test project created:', testProject);
-        setActiveProjectDetails(testProject);
-        console.log('🧪 About to render CreativeStudio component...');
-        return <CreativeStudio />;
+        
+        try {
+            const testProject = {
+                id: 'test-' + Date.now(),
+                name: 'Test Project',
+                workflowStep: 3,
+                videoSize: '16:9' as const,
+                shotstackEditJson: null,
+                script: null
+            };
+            console.log('🧪 Test project created:', testProject);
+            setActiveProjectDetails(testProject);
+            console.log('🧪 About to render CreativeStudio component...');
+            
+            // Wrap in error boundary
+            try {
+                return <CreativeStudio />;
+            } catch (componentError) {
+                console.error('💥 CreativeStudio component failed to render:', componentError);
+                return (
+                    <div className="bg-red-900 text-white p-8 text-center">
+                        <h1 className="text-2xl font-bold mb-4">CreativeStudio Component Failed</h1>
+                        <p className="mb-4">Error: {String(componentError)}</p>
+                        <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
+                            Reload Page
+                        </button>
+                    </div>
+                );
+            }
+        } catch (error) {
+            console.error('💥 Test mode setup failed:', error);
+            return (
+                <div className="bg-red-900 text-white p-8 text-center">
+                    <h1 className="text-2xl font-bold mb-4">Test Mode Failed</h1>
+                    <p className="mb-4">Error: {String(error)}</p>
+                    <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
+                        Reload Page
+                    </button>
+                </div>
+            );
+        }
     }
 
     useEffect(() => {
