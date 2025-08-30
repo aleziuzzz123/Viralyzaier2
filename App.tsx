@@ -20,7 +20,7 @@ import UpgradeModal from './components/UpgradeModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
-import { CreativeStudio } from './components/CreativeStudio';
+import { CreativeStudioNew as CreativeStudio } from './components/CreativeStudioNew';
 import * as supabaseService from './services/supabaseService';
 
 // Error Boundary Component - REMOVED TO ISOLATE REACT ERROR #310
