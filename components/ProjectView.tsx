@@ -18,13 +18,13 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     
     const handleProceedToLaunchpad = () => {
         handleUpdateProject(project.id, {
-            workflowStep: 5,
+            workflowStep: 6,
         });
     };
 
     const handleReturnToStudio = () => {
         handleUpdateProject(project.id, {
-            workflowStep: 3
+            workflowStep: 4
         });
     };
     
@@ -32,21 +32,21 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
         switch (project.workflowStep) {
             case 2:
                 return <ScriptGenerator project={project} />;
-            case 2.5:
+            case 3:
                 return (
                     <BlueprintReview 
                         project={project} 
-                        onApprove={() => handleUpdateProject(project.id, { workflowStep: 3 })}
+                        onApprove={() => handleUpdateProject(project.id, { workflowStep: 4 })}
                         onBack={() => handleUpdateProject(project.id, { workflowStep: 2 })}
                     />
                 );
-            case 3:
+            case 4:
                 // By keying the component on lastUpdated, we force a full remount when the project data changes,
                 // ensuring a clean state for the editor and preventing hangs from stale props.
                 return <CreativeStudio key={project.lastUpdated} />;
-            case 4:
-                return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 5:
+                return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
+            case 6:
                 return <Launchpad project={project} />;
             default:
                  // Default to the blueprint step if the project is in an early stage (e.g., step 1)
@@ -57,10 +57,10 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const steps: { nameKey: TranslationKey, step: WorkflowStep }[] = [
         { nameKey: 'project_view.stepper_spark', step: 1 },
         { nameKey: 'project_view.stepper_blueprint', step: 2 },
-        { nameKey: 'project_view.stepper_blueprint_review', step: 2.5 },
-        { nameKey: 'project_view.stepper_creative_studio', step: 3 },
-        { nameKey: 'project_view.stepper_analysis', step: 4 },
-        { nameKey: 'project_view.stepper_launchpad', step: 5 },
+        { nameKey: 'project_view.stepper_blueprint_review', step: 3 },
+        { nameKey: 'project_view.stepper_creative_studio', step: 4 },
+        { nameKey: 'project_view.stepper_analysis', step: 5 },
+        { nameKey: 'project_view.stepper_launchpad', step: 6 },
     ];
 
     return (

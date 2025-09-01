@@ -216,7 +216,7 @@ Return only the ${type} content, no explanations.`,
             await handleUpdateProject(project.id, { 
                 script: editedScript,
                 voiceoverVoiceId: selectedVoiceId,
-                workflowStep: 3 // Move to Creative Studio
+                workflowStep: 4 // Move to Creative Studio
             });
             
             addToast('Blueprint saved successfully!', 'success');
