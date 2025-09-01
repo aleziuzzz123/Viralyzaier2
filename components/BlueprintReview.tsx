@@ -166,21 +166,33 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
                     if (!scene.voiceover) return null;
 
+                    // Sanitize text content to avoid ElevenLabs issues
+                    const sanitizedText = scene.voiceover
+                        .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
+                        .replace(/\s+/g, ' ') // Normalize whitespace
+                        .trim();
+
+                    if (!sanitizedText || sanitizedText.length < 3) {
+                        console.warn(`Scene ${index} has invalid text content, skipping:`, scene.voiceover);
+                        return null;
+                    }
+
                     // Retry logic for failed voiceovers
-                    const maxRetries = 3;
+                    const maxRetries = 2; // Reduced retries to avoid long delays
                     let lastError = null;
 
                     for (let attempt = 1; attempt <= maxRetries; attempt++) {
                         try {
                             console.log(`🎤 Generating voiceover for scene ${index} (attempt ${attempt}/${maxRetries}):`, {
-                                text: scene.voiceover,
-                                textLength: scene.voiceover.length,
+                                originalText: scene.voiceover,
+                                sanitizedText: sanitizedText,
+                                textLength: sanitizedText.length,
                                 voiceId
                             });
                             
                             const response = await invokeEdgeFunction('elevenlabs-proxy', {
                                 type: 'tts',
-                                text: scene.voiceover,
+                                text: sanitizedText,
                                 voiceId
                             });
                             
@@ -204,21 +216,20 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                                 break;
                             }
                             
-                            // Wait before retrying (exponential backoff)
+                            // Wait before retrying (shorter delay)
                             if (attempt < maxRetries) {
-                                const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                                const delay = 1000; // 1 second delay
                                 console.log(`⏳ Waiting ${delay}ms before retry for scene ${index}...`);
                                 await new Promise(resolve => setTimeout(resolve, delay));
                             }
                         }
                     }
                     
-                    // If all retries failed, log the final error
+                    // If all retries failed, log the final error but don't show toast for individual scenes
                     if (lastError) {
                         const errorMessage = lastError?.message || lastError?.toString() || '';
                         if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
-                            console.error('ElevenLabs subscription issue detected');
-                            addToast('ElevenLabs subscription issue: Please check your ElevenLabs account payment status.', 'error');
+                            console.error(`Scene ${index} failed with subscription issue:`, errorMessage);
                         }
                     }
                     
@@ -227,6 +238,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
 
                 const voiceoverUrls = await Promise.all(voiceoverPromises);
                 const validUrls = voiceoverUrls.filter(url => url !== null);
+                const totalScenes = editedScript.scenes.length;
+                const successCount = validUrls.length;
                 
                 if (validUrls.length > 0) {
                     // Convert array to object with string keys
@@ -241,7 +254,12 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                         voiceoverUrls: voiceoverUrlsObject,
                         voiceoverVoiceId: voiceId
                     });
-                    addToast('Voiceover updated with new narrator!', 'success');
+                    
+                    if (successCount === totalScenes) {
+                        addToast('Voiceover updated with new narrator!', 'success');
+                    } else {
+                        addToast(`Voiceover updated! ${successCount}/${totalScenes} scenes generated successfully. You can still proceed to the editor.`, 'warning');
+                    }
                 } else {
                     // Still update the voice ID even if voiceovers failed
                     await handleUpdateProject(project.id, { 

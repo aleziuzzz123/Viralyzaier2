@@ -59,13 +59,30 @@ serve(async (req: Request) => {
       throw new Error("Request body must include 'type' and 'text'.");
     }
 
+    // Sanitize text content to avoid ElevenLabs issues
+    const sanitizedText = text
+      .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+
+    if (!sanitizedText || sanitizedText.length < 3) {
+      throw new Error("Text content is too short or invalid after sanitization.");
+    }
+
+    console.log("Text sanitization:", {
+      original: text,
+      sanitized: sanitizedText,
+      originalLength: text.length,
+      sanitizedLength: sanitizedText.length
+    });
+
     let apiUrl, requestBody, acceptHeader;
 
     if (type === 'tts') {
       if (!voiceId) throw new Error("TTS requests must include 'voiceId'.");
       apiUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
       requestBody = JSON.stringify({
-        text: text,
+        text: sanitizedText,
         model_id: 'eleven_multilingual_v2',
         voice_settings: { stability: 0.5, similarity_boost: 0.75 },
       });
@@ -73,7 +90,7 @@ serve(async (req: Request) => {
     } else if (type === 'sfx') {
       apiUrl = 'https://api.elevenlabs.io/v1/sound-generation';
       requestBody = JSON.stringify({
-        text: text,
+        text: sanitizedText,
       });
       acceptHeader = 'audio/mpeg';
     } else {
