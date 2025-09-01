@@ -37,8 +37,7 @@ const TextEngine: React.FC<TextEngineProps> = ({ studio, selection }) => {
             if (property === 'fontFamily') {
                 fontService.loadGoogleFont(value);
             }
-            const newAsset = { ...selection.clip.asset, [property]: value };
-            studio.updateClip(selection.trackIndex, selection.clipIndex, { asset: newAsset });
+            studio.updateClip(selection.trackIndex, selection.clipIndex, { [property]: value });
         }
     };
 

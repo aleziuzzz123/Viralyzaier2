@@ -34,7 +34,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             // Special handling for demo account: If login fails, attempt to sign up.
             // This ensures the demo account is created on first use.
             // This assumes Supabase email confirmation is disabled for the demo.
-            if (email === 'demo@viralyzer.app' && password === 'password123') {
+            if ((email === 'demo@viralyzer.app' || email === 'jegooalex@gmail.com') && password === 'password123') {
                 try {
                     await signUp(email, password);
                     // On successful signup, onAuthStateChange listener in AppContext will

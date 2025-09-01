@@ -46,7 +46,7 @@ export const generateAiImage = async (prompt: string, platform: Platform, projec
             const response = await invokeEdgeFunction<{ imageUrl: string }>('gemini-proxy', {
                 type: 'generateImages',
                 params: {
-                    model: 'imagen-4.0-generate-001',
+                    model: 'imagen-3.0-generate-002',
                     prompt: p,
                     config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio },
                     projectId: projectId

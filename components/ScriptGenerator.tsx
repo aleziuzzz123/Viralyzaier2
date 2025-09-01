@@ -1,131 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice, ShotstackEditJson, ShotstackTimeline, SoundDesign } from '../types';
-import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon, ScriptIcon, InfoIcon } from './Icons';
+import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice } from '../types';
+import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon, ScriptIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
-import { rewriteScriptScene, generateVideoBlueprint, generateSoundDesign } from '../services/geminiService';
-import { getErrorMessage, sanitizeShotstackJson } from '../utils';
-import { ELEVENLABS_VOICES, generateVoiceover, generateSfx } from '../services/generativeMediaService';
+import { rewriteScriptScene, generateVideoBlueprint } from '../services/geminiService';
+import { getErrorMessage } from '../utils';
+import { ELEVENLABS_VOICES, generateVoiceover } from '../services/generativeMediaService';
 import { uploadFile, dataUrlToBlob, getBrandIdentitiesForUser } from '../services/supabaseService';
-import { searchJamendoMusic } from '../services/jamendoService';
-
-const buildTimelineFromProject = (project: Project): ShotstackEditJson | null => {
-    if (!project.script) return null;
-
-    const { script, videoSize, voiceoverUrls, soundDesign } = project;
-
-    const size = videoSize === '16:9' ? { width: 1920, height: 1080 } :
-                 videoSize === '9:16' ? { width: 1080, height: 1920 } :
-                 { width: 1080, height: 1080 };
-
-    const timeline: ShotstackTimeline = {
-        background: '#000000',
-        tracks: [
-            { name: 'A-Roll', clips: [] },    // Visuals
-            { name: 'Overlays', clips: [] },  // Text
-            { name: 'Audio', clips: [] },     // Voiceover
-            { name: 'SFX', clips: [] },        // Sound Effects
-            { name: 'Music', clips: [] },      // Background Music
-        ],
-    };
-
-    let currentTime = 0;
-    let totalDuration = 0;
-
-    script.scenes.forEach((scene: Scene, index: number) => {
-        const timeParts = scene.timecode.split('-').map(parseFloat);
-        const start = timeParts.length > 0 && !isNaN(timeParts[0]) ? timeParts[0] : currentTime;
-        const end = timeParts.length > 1 && !isNaN(timeParts[1]) ? timeParts[1] : start + 5;
-        const length = Math.max(0.1, end - start);
-
-        if (scene.storyboardImageUrl) {
-            timeline.tracks[0].clips.push({
-                asset: { type: 'image', src: scene.storyboardImageUrl },
-                start: start,
-                length: length,
-                transition: { in: 'fade', out: 'fade' },
-                effect: index % 2 === 0 ? 'zoomIn' : 'zoomOut',
-            });
-        }
-        
-        if (scene.onScreenText && scene.onScreenText.trim() !== '') {
-            timeline.tracks[1].clips.push({
-                asset: { 
-                    type: 'text', 
-                    text: scene.onScreenText,
-                    color: '#FFFFFF',
-                },
-                start: start,
-                length: length,
-            });
-        }
-
-        if (voiceoverUrls && voiceoverUrls[index]) {
-            timeline.tracks[2].clips.push({
-                asset: { type: 'audio', src: voiceoverUrls[index] },
-                start: start,
-                length: length,
-            });
-        }
-        
-        currentTime = end;
-    });
-
-    if (script.scenes.length > 0) {
-        const lastScene = script.scenes[script.scenes.length - 1];
-        totalDuration = parseFloat(lastScene.timecode.split('-')[1] || '0');
-    }
-
-    if (script.cta && script.cta.trim() !== '') {
-        timeline.tracks[1].clips.push({
-            asset: { 
-                type: 'text', 
-                text: script.cta,
-                color: '#FFFFFF',
-            },
-            start: currentTime,
-            length: 5,
-        });
-        totalDuration = currentTime + 5;
-    }
-
-    if (soundDesign?.musicUrl && totalDuration > 0) {
-        timeline.tracks[4].clips.push({
-            asset: { type: 'audio', src: soundDesign.musicUrl },
-            volume: 0.3,
-            start: 0,
-            length: totalDuration,
-        });
-    }
-
-    if (soundDesign?.sfx) {
-        soundDesign.sfx.forEach(sfx => {
-            if (sfx.url) {
-                const timeParts = sfx.timecode.split('-').map(parseFloat);
-                const start = timeParts.length > 0 && !isNaN(timeParts[0]) ? timeParts[0] : 0;
-                timeline.tracks[3].clips.push({
-                    asset: { type: 'audio', src: sfx.url },
-                    volume: 0.7,
-                    start: start,
-                    length: 2,
-                });
-            }
-        });
-    }
-
-    const editJson = {
-        timeline,
-        output: { format: 'mp4', size: size },
-    };
-
-    // Return the sanitized version to ensure compatibility with the Studio SDK
-    return sanitizeShotstackJson(editJson) as ShotstackEditJson;
-};
 
 interface ScriptEditorProps {
     project: Project;
 }
 
-export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
+const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     const { t, user, consumeCredits, lockAndExecute, addToast, handleUpdateProject } = useAppContext();
     const [script, setScript] = useState<Script | null>(project.script);
     const [activeCopilot, setActiveCopilot] = useState<number | null>(null);
@@ -145,7 +31,6 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
     const [narrator, setNarrator] = useState('pNInz6obpgDQGcFmaJgB');
     const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
     const [shouldGenerateMoodboard, setShouldGenerateMoodboard] = useState(true);
-    const [creativeIntent, setCreativeIntent] = useState('');
     const selectedBrand = brandIdentities.find((b: BrandIdentity) => b.id === selectedBrandId);
     
     useEffect(() => {
@@ -189,8 +74,7 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                 videoLength,
                 selectedBrand,
                 shouldGenerateMoodboard,
-                isNarratorEnabled,
-                creativeIntent
+                isNarratorEnabled
             );
     
             const narratorVoiceId = isNarratorEnabled ? narrator : null;
@@ -217,7 +101,7 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                         return null;
                     }
                 });
-                const uploadedUrls = (await Promise.all(uploadPromises)).filter((url): url is string => url !== null);
+                const uploadedUrls = await Promise.all(uploadPromises);
                 scriptWithMergedHook.scenes.forEach((scene: Scene, index: number) => {
                     const url = uploadedUrls[index];
                     if (url) {
@@ -227,9 +111,9 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                 });
             }
             
-            const updates: Partial<Project> & { soundDesign?: SoundDesign } = {
+            const updates: Partial<Project> = {
                 script: scriptWithMergedHook,
-                moodboard: moodboardUrls.length > 0 ? moodboardUrls : [],
+                moodboard: moodboardUrls.length > 0 ? moodboardUrls : blueprint.moodboard,
                 title: blueprint.suggestedTitles[0],
                 voiceoverVoiceId: narratorVoiceId,
                 videoSize: videoSize,
@@ -243,58 +127,22 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                 const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover && scene.voiceover.trim() !== '');
                 let processedCount = 0;
     
-                for (let i = 0; i < scriptWithMergedHook.scenes.length; i++) {
-                    const scene = scriptWithMergedHook.scenes[i];
+                for (const scene of scriptWithMergedHook.scenes) {
+                    const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
                     if (scene.voiceover && scene.voiceover.trim() !== '') {
                         processedCount++;
                         setProgressMessage(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
                         const sceneBlob = await generateVoiceover(scene.voiceover, narratorVoiceId);
-                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${i}.mp3`;
-                        voiceoverUrls[i] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
+                        voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
                     }
                 }
                 if (Object.keys(voiceoverUrls).length > 0) {
                     updates.voiceoverUrls = voiceoverUrls;
                 }
             }
-            
-            // Step 4: Generate sound design
-            setProgressMessage('Crafting the soundscape...');
-            const soundDesignData = await generateSoundDesign(blueprint.script, videoStyle, project.topic);
-            updates.soundDesign = { musicQuery: soundDesignData.musicQuery, musicUrl: null, sfx: soundDesignData.sfx };
     
-            if (updates.soundDesign.musicQuery) {
-                const musicResults = await searchJamendoMusic(updates.soundDesign.musicQuery);
-                if (musicResults.length > 0) {
-                    updates.soundDesign.musicUrl = musicResults[0].downloadUrl;
-                }
-            }
-    
-            if (updates.soundDesign.sfx.length > 0) {
-                const sfxPromises = updates.soundDesign.sfx.map(async (sfx, index) => {
-                    try {
-                        setProgressMessage(`Generating sound effect ${index + 1} of ${updates.soundDesign!.sfx.length}...`);
-                        const sfxBlob = await generateSfx(sfx.description);
-                        const sfxPath = `${user.id}/${project.id}/sfx_${index}.mp3`;
-                        sfx.url = await uploadFile(sfxBlob, sfxPath, 'audio/mpeg');
-                    } catch (e) {
-                        console.error(`Failed to generate SFX for "${sfx.description}":`, e);
-                        sfx.url = undefined;
-                    }
-                    return sfx;
-                });
-                updates.soundDesign.sfx = await Promise.all(sfxPromises);
-            }
-    
-            // Step 5: Build the initial timeline for the creative studio
-            setProgressMessage('Assembling editor timeline...');
-            const tempProjectForTimeline: Project = { ...project, ...updates };
-            const editJson = buildTimelineFromProject(tempProjectForTimeline);
-            if (editJson) {
-                updates.shotstackEditJson = editJson;
-            }
-
-            // Step 6: Save all updates and transition the workflow
+            // Step 4: Save all updates and transition the workflow
             setProgressMessage('Finalizing project...');
             await handleUpdateProject(project.id, updates);
             addToast("Blueprint complete! Entering the Creative Studio...", "success");
@@ -385,6 +233,8 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
             const updates: Partial<Project> = {
                 script: scriptWithMergedHook,
                 workflowStep: 3,
+                // Reset downstream data to ensure the editor rebuilds the timeline from the new script
+                shotstackEditJson: null,
                 shotstackRenderId: null,
                 finalVideoUrl: null,
                 analysis: null,
@@ -395,14 +245,14 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                 const scenesToProcess = scriptWithMergedHook.scenes.filter((scene: Scene) => scene.voiceover);
                 let processedCount = 0;
     
-                for (let i = 0; i < scriptWithMergedHook.scenes.length; i++) {
-                    const scene = scriptWithMergedHook.scenes[i];
+                for (const scene of scriptWithMergedHook.scenes) {
+                    const sceneIndex = scriptWithMergedHook.scenes.indexOf(scene);
                     if (scene.voiceover) {
                         processedCount++;
                         setVoiceoverProgress(`Generating voiceover ${processedCount} of ${scenesToProcess.length}...`);
                         const sceneBlob = await generateVoiceover(scene.voiceover, project.voiceoverVoiceId);
-                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${i}.mp3`;
-                        voiceoverUrls[i] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
+                        const scenePath = `${user.id}/${project.id}/voiceover_scene_${sceneIndex}.mp3`;
+                        voiceoverUrls[sceneIndex] = await uploadFile(sceneBlob, scenePath, 'audio/mpeg');
                     }
                 }
                 if (Object.keys(voiceoverUrls).length > 0) {
@@ -410,15 +260,10 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                 }
             }
     
-            // Rebuild timeline with the edited script
-            const tempProjectForTimeline: Project = { ...project, script: scriptWithMergedHook, voiceoverUrls: updates.voiceoverUrls };
-            const editJson = buildTimelineFromProject(tempProjectForTimeline);
-            updates.shotstackEditJson = editJson;
-
             const success = await handleUpdateProject(project.id, updates);
     
             if (success) {
-                addToast("Script saved and timeline updated!", "success");
+                addToast("Script saved!", "success");
             }
         } catch (e) {
             addToast(`Failed to save script: ${getErrorMessage(e)}`, 'error');
@@ -443,14 +288,6 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
         { key: 'action_engaging', label: t('script_editor.copilot.action_engaging') },
         { key: 'action_visual', label: t('script_editor.copilot.action_visual') }
     ];
-
-    const intentPlaceholder = {
-        'Animation': "e.g., A friendly, flat 2D animation about a robot learning to cook.",
-        'Historical Documentary': "e.g., A Ken Burns-style documentary about the Roman Empire.",
-        'Vlog': "e.g., A casual, day-in-the-life travel vlog from Kyoto.",
-    }[videoStyle] || "e.g., A fast-paced, exciting video with quick cuts.";
-
-    const showCreativeIntent = ['Animation', 'Vlog', 'Historical Documentary', 'Whiteboard'].includes(videoStyle);
 
     if (!project.script) {
         if (isGeneratingBlueprint) {
@@ -477,12 +314,6 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
                             <div>
                                 <label className="font-semibold text-white">Video Style</label>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div>
-                                {showCreativeIntent && (
-                                    <div className="mt-4">
-                                        <label className="font-semibold text-white">Creative Intent (Optional)</label>
-                                        <textarea value={creativeIntent} onChange={e => setCreativeIntent(e.target.value)} rows={2} placeholder={intentPlaceholder} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white text-sm" />
-                                    </div>
-                                )}
                             </div>
                             <div className="space-y-6">
                                 <div>
@@ -554,16 +385,7 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
 
             <div className="bg-gray-900/40 p-8 rounded-2xl space-y-8">
                 <div>
-                    <h4 className="font-bold text-indigo-400 mb-2 flex items-center gap-2">
-                        {t('script_generator.hooks_title')}
-                        <div className="relative group">
-                           <InfoIcon className="w-4 h-4 text-gray-400 cursor-help" />
-                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-950 text-gray-300 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                Your selected hook will be automatically merged into the first scene of the script upon saving.
-                               <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-950 transform rotate-45"></div>
-                           </div>
-                        </div>
-                    </h4>
+                    <h4 className="font-bold text-indigo-400 mb-2">{t('script_generator.hooks_title')}</h4>
                      <div className="space-y-3">
                         {script?.hooks?.map((hook: string, index: number) => (
                             <div key={index} className={`flex items-center gap-3 p-1 rounded-lg border transition-all ${script.selectedHookIndex === index ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-800/50 border-gray-700'}`}>
@@ -623,3 +445,5 @@ export const ScriptGenerator: React.FC<ScriptEditorProps> = ({ project }) => {
         </div>
     );
 };
+
+export default ScriptEditor;
