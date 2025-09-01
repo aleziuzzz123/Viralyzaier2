@@ -171,8 +171,9 @@ export default function StudioPage() {
 
             // 6. Add timeline for visual editing
             console.log('📊 Creating Timeline component...');
+            // Try simpler timeline initialization
             const timeline = new Timeline(editInstance, {
-              width: template.output.size.width,
+              width: 1280,
               height: 300
             });
             await timeline.load(); // Renders to [data-shotstack-timeline] element
