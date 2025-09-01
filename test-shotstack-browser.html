@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shotstack Studio SDK Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        #canvas-container {
+            width: 640px;
+            height: 360px;
+            border: 2px dashed #ccc;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        #timeline-container {
+            width: 640px;
+            height: 200px;
+            border: 2px dashed #ccc;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Shotstack Studio SDK Browser Test</h1>
+        
+        <div id="status" class="status info">
+            Initializing test...
+        </div>
+        
+        <div id="canvas-container">
+            <div>Canvas will appear here</div>
+        </div>
+        
+        <div id="timeline-container">
+            <div>Timeline will appear here</div>
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script type="module">
+        const statusEl = document.getElementById('status');
+        const logsEl = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `status ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsEl.appendChild(logEntry);
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function updateStatus(message, type = 'info') {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        updateStatus('Loading Shotstack Studio SDK...', 'info');
+        
+        try {
+            // Test dynamic import
+            import('/node_modules/@shotstack/shotstack-studio/dist/shotstack-studio.es.js').then((module) => {
+                log('✅ Shotstack Studio SDK imported successfully', 'success');
+                log(`Available exports: ${Object.keys(module).join(', ')}`, 'info');
+                
+                // Test if key components are available
+                if (module.Canvas) log('✅ Canvas component available', 'success');
+                if (module.Controls) log('✅ Controls component available', 'success');
+                if (module.Edit) log('✅ Edit component available', 'success');
+                if (module.Timeline) log('✅ Timeline component available', 'success');
+                if (module.VideoExporter) log('✅ VideoExporter component available', 'success');
+                
+                updateStatus('Testing SDK initialization...', 'info');
+                
+                // Test basic initialization
+                try {
+                    const edit = new module.Edit();
+                    log('✅ Edit instance created successfully', 'success');
+                    
+                    const size = { width: 1280, height: 720 };
+                    const canvas = new module.Canvas(size, edit);
+                    log('✅ Canvas instance created successfully', 'success');
+                    
+                    const timeline = new module.Timeline();
+                    log('✅ Timeline instance created successfully', 'success');
+                    
+                    const controls = new module.Controls();
+                    log('✅ Controls instance created successfully', 'success');
+                    
+                    updateStatus('🎉 All Shotstack Studio SDK components initialized successfully!', 'success');
+                    log('🎉 All Shotstack Studio SDK components initialized successfully!', 'success');
+                    
+                } catch (initError) {
+                    log(`❌ Failed to initialize SDK components: ${initError.message}`, 'error');
+                    updateStatus('❌ SDK initialization failed', 'error');
+                }
+                
+            }).catch((importError) => {
+                log(`❌ Failed to import Shotstack Studio SDK: ${importError.message}`, 'error');
+                updateStatus('❌ SDK import failed', 'error');
+            });
+            
+        } catch (error) {
+            log(`❌ Error setting up import test: ${error.message}`, 'error');
+            updateStatus('❌ Test setup failed', 'error');
+        }
+    </script>
+</body>
+</html>

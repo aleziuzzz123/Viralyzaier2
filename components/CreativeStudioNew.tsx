@@ -9,10 +9,10 @@ import TimelineComponent from './Timeline';
 import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
 import HelpModal from './HelpModal';
+import { ShotstackDebugger } from './ShotstackDebugger';
 import { ShotstackClipSelection } from '../types';
 
-// Import Shotstack Studio SDK components
-import { Canvas, Controls, Edit, Timeline as ShotstackTimeline, VideoExporter } from '@shotstack/shotstack-studio';
+// Shotstack Studio SDK will be imported dynamically
 
 type SdkHandles = { edit: any; canvas: any; timeline: any; controls: any; };
 
@@ -35,6 +35,7 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
     const [isReady, setIsReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [sdkHandles, setSdkHandles] = useState<SdkHandles | null>(null);
+    const [showDebugger, setShowDebugger] = useState(false);
 
     // Initialize Shotstack Studio SDK
     const initializeShotstack = useCallback(async () => {
@@ -45,36 +46,67 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
                 throw new Error('Canvas host element not found');
             }
 
-            // Get session token from Supabase
-            const result = await invokeEdgeFunction('shotstack-studio-token', {});
-            const tokenData = result as any;
+            // Dynamically import Shotstack Studio SDK
+            console.log('📦 Loading Shotstack Studio SDK...');
+            const shotstackModule = await import('@shotstack/shotstack-studio');
+            console.log('✅ Shotstack Studio SDK loaded successfully');
             
-            if (tokenData?.error || !tokenData?.token) {
-                throw new Error('Failed to get Shotstack session token');
+            const { Canvas, Controls, Edit, Timeline: ShotstackTimeline } = shotstackModule;
+            
+            // Check if SDK components are available
+            if (!Edit || !Canvas || !ShotstackTimeline || !Controls) {
+                throw new Error('Shotstack Studio SDK components not loaded. Please check your internet connection and refresh.');
             }
 
-            console.log('✅ Got Shotstack session token');
+            // Get session token from Supabase
+            console.log('🔐 Getting Shotstack session token...');
+            try {
+                const result = await invokeEdgeFunction('shotstack-studio-token', {});
+                const tokenData = result as any;
+                
+                if (tokenData?.error || !tokenData?.token) {
+                    throw new Error(`Failed to get Shotstack session token: ${tokenData?.error || 'No token received'}`);
+                }
+
+                console.log('✅ Got Shotstack session token');
+            } catch (tokenError: any) {
+                console.error('❌ Token error details:', tokenError);
+                throw new Error(`Authentication failed: ${tokenError.message}. Please check your Supabase configuration.`);
+            }
 
             // Initialize the individual Shotstack components
-            // Using type assertions to bypass constructor signature issues
-            const edit = new (Edit as any)();
-            const size = { width: 1920, height: 1080 }; // Default HD size
-            const canvas = new (Canvas as any)(size, edit);
-            const timeline = new (ShotstackTimeline as any)();
-            const controls = new (Controls as any)();
+            console.log('🔧 Initializing Shotstack components...');
+            try {
+                const edit = new Edit();
+                console.log('✅ Edit component initialized');
+                
+                const size = { width: 1920, height: 1080 }; // Default HD size
+                const canvas = new Canvas(size, edit);
+                console.log('✅ Canvas component initialized');
+                
+                const timeline = new ShotstackTimeline();
+                console.log('✅ Timeline component initialized');
+                
+                const controls = new Controls();
+                console.log('✅ Controls component initialized');
 
-            // Set up the SDK handles
-            const handles: SdkHandles = {
-                edit,
-                canvas,
-                timeline,
-                controls
-            };
+                // Set up the SDK handles
+                const handles: SdkHandles = {
+                    edit,
+                    canvas,
+                    timeline,
+                    controls
+                };
 
-            console.log('✅ Shotstack Studio SDK components initialized!', handles);
-            setSdkHandles(handles);
-            setIsReady(true);
-            setIsLoading(false);
+                console.log('✅ Shotstack Studio SDK components initialized!', handles);
+                setSdkHandles(handles);
+                setIsReady(true);
+                setIsLoading(false);
+
+            } catch (componentError: any) {
+                console.error('❌ Component initialization error:', componentError);
+                throw new Error(`Failed to initialize Shotstack components: ${componentError.message}`);
+            }
 
         } catch (err: any) {
             console.error('❌ Failed to initialize Shotstack Studio SDK:', err);
@@ -159,6 +191,12 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
                     <p className="mb-4 text-gray-400">{error}</p>
                     <div className="flex gap-4 justify-center">
                         <button 
+                            onClick={() => setShowDebugger(true)} 
+                            className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded"
+                        >
+                            Debug Issue
+                        </button>
+                        <button 
                             onClick={() => window.location.reload()} 
                             className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded"
                         >
@@ -185,6 +223,12 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
                 <div className="text-white font-bold px-4 truncate">{projectToUse?.name}</div>
                 <div className="flex items-center gap-4">
                     <span className="text-sm text-green-400">✅ Shotstack Studio SDK Ready</span>
+                    <button 
+                        onClick={() => setShowDebugger(true)}
+                        className="px-2 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700"
+                    >
+                        Debug
+                    </button>
                 </div>
             </header>
 
@@ -229,6 +273,11 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
                 isOpen={false}
                 onClose={() => {}}
             />
+
+            {/* Debugger Modal */}
+            {showDebugger && (
+                <ShotstackDebugger />
+            )}
         </div>
     );
 };

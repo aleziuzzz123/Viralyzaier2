@@ -13,5 +13,33 @@ export default defineConfig({
         assetFileNames: `assets/[name].[ext]`
       }
     }
+  },
+  optimizeDeps: {
+    include: [
+      '@shotstack/shotstack-studio',
+      '@ffmpeg/ffmpeg',
+      'pixi.js',
+      'pixi-filters',
+      'howler',
+      'opentype.js',
+      'fast-deep-equal',
+      'zod'
+    ],
+    exclude: []
+  },
+  server: {
+    headers: {
+      // Required for FFmpeg WASM loading
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin'
+    }
+  },
+  define: {
+    // Ensure global variables are available for browser environment
+    global: 'globalThis'
+  },
+  esbuild: {
+    // Ensure proper handling of ES modules
+    target: 'es2020'
   }
 });
