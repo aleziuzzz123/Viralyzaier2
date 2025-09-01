@@ -117,8 +117,18 @@ serve(async (req: Request) => {
         throw new Error("AI audio generation failed: The returned file was empty or invalid.");
     }
     
-    return new Response(audioBlob, {
-      headers: { ...corsHeaders, 'Content-Type': 'audio/mpeg' },
+    // Convert audio blob to base64 data URL for JSON response
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;
+    
+    // Return JSON response with audio data URL
+    return new Response(JSON.stringify({ 
+      success: true, 
+      audioUrl: audioDataUrl,
+      size: audioBlob.size 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
