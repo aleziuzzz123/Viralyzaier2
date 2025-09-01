@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://viralyzaier.netlify.app/sitemap.xml
