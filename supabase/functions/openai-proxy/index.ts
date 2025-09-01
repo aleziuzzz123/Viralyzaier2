@@ -11,6 +11,18 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Health check endpoint
+  if (req.method === 'GET') {
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    return new Response(JSON.stringify({ 
+      status: 'ok', 
+      hasApiKey: !!openaiApiKey,
+      timestamp: new Date().toISOString()
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { type, params } = await req.json();
     console.log('OpenAI Proxy Request:', { type, params: { ...params, contents: typeof params?.contents === 'string' ? params.contents.substring(0, 100) + '...' : params?.contents } });
@@ -21,9 +33,11 @@ serve(async (req: Request) => {
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     console.log('OpenAI API Key found:', !!openaiApiKey);
+    console.log('Available environment variables:', Object.keys(Deno.env.toObject()).filter(key => key.includes('OPENAI') || key.includes('API')));
     
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not found in environment variables');
+      console.error('OpenAI API key not found. Available env vars:', Object.keys(Deno.env.toObject()));
+      throw new Error('OpenAI API key not found in environment variables. Please check your Supabase Edge Function secrets.');
     }
 
     let result;
