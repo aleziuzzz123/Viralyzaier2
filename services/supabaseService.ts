@@ -389,7 +389,16 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
     if (updates.shotstackEditJson !== undefined) dbUpdates.shotstack_edit_json = sanitizeJson(updates.shotstackEditJson);
     if (updates.shotstackRenderId !== undefined) dbUpdates.shotstack_render_id = updates.shotstackRenderId;
     if (updates.videoUrl !== undefined) dbUpdates.video_url = updates.videoUrl;
-    if (updates.voiceoverUrls !== undefined) dbUpdates.voiceover_urls = sanitizeJson(updates.voiceoverUrls);
+    if (updates.voiceoverUrls !== undefined) {
+        // Convert number keys to string keys for database compatibility
+        const voiceoverPayload: Record<string, string> = {};
+        for (const key in updates.voiceoverUrls) {
+            if (Object.prototype.hasOwnProperty.call(updates.voiceoverUrls, key)) {
+                voiceoverPayload[String(key)] = updates.voiceoverUrls[key];
+            }
+        }
+        dbUpdates.voiceover_urls = voiceoverPayload as unknown as Json;
+    }
 
     // Debug logging for troubleshooting
     console.log('Updating project with data:', {
