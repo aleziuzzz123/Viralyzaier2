@@ -258,11 +258,46 @@ const CreativeStudio: React.FC = () => {
                                 margin: 0, 
                                 fontSize: '12px' 
                             }}>
-                                Professional Video Editor
+                                Stage 4: Professional Video Editor
                             </p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={() => {
+                                const currentProject = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
+                                if (currentProject) {
+                                    handleUpdateProject(currentProject.id, { workflowStep: 5 }); // Move to Analysis & Report
+                                    window.close();
+                                }
+                            }}
+                            style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                border: 'none',
+                                color: 'white',
+                                padding: '10px 20px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                            }}
+                        >
+                            <span>🚀</span>
+                            Proceed to Analysis
+                        </button>
                         <button
                             onClick={() => window.close()}
                             style={{
@@ -285,6 +320,63 @@ const CreativeStudio: React.FC = () => {
                             Close
                         </button>
                     </div>
+                </div>
+
+                {/* Workflow Progress Indicator */}
+                <div style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '12px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '16px'
+                }}>
+                    {[
+                        { step: 1, label: 'Spark', completed: true },
+                        { step: 2, label: 'Blueprint', completed: true },
+                        { step: 3, label: 'Review', completed: true },
+                        { step: 4, label: 'Studio', completed: false, current: true },
+                        { step: 5, label: 'Analysis', completed: false },
+                        { step: 6, label: 'Launch', completed: false }
+                    ].map((item, index) => (
+                        <div key={item.step} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                background: item.completed 
+                                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                    : item.current 
+                                        ? 'rgba(102, 126, 234, 0.3)'
+                                        : 'rgba(255, 255, 255, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                color: item.completed || item.current ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                                border: item.current ? '2px solid #667eea' : 'none'
+                            }}>
+                                {item.completed ? '✓' : item.step}
+                            </div>
+                            <span style={{
+                                fontSize: '12px',
+                                color: item.completed || item.current ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                                fontWeight: item.current ? '600' : '400'
+                            }}>
+                                {item.label}
+                            </span>
+                            {index < 5 && (
+                                <div style={{
+                                    width: '16px',
+                                    height: '2px',
+                                    background: item.completed ? '#667eea' : 'rgba(255, 255, 255, 0.2)',
+                                    margin: '0 8px'
+                                }}></div>
+                            )}
+                        </div>
+                    ))}
                 </div>
 
                 {/* Professional Loading State with Progress */}

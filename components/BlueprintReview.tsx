@@ -245,26 +245,7 @@ Return only the ${type} content, no explanations.`,
                 <p className="text-gray-400">Review and customize your generated content before creating your video</p>
             </div>
 
-            {/* Title Section */}
-            <div className="bg-gray-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-white">Video Title</h2>
-                    <button
-                        onClick={() => regenerateContent('title')}
-                        disabled={isRegenerating === 'title'}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
-                    >
-                        {isRegenerating === 'title' ? 'Regenerating...' : '🔄 Regenerate'}
-                    </button>
-                </div>
-                <textarea
-                    value={editedScript.title || ''}
-                    onChange={(e) => handleScriptChange('title', e.target.value)}
-                    className="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    rows={2}
-                    placeholder="Enter your video title..."
-                />
-            </div>
+
 
             {/* Hooks Section */}
             <div className="bg-gray-800 rounded-xl p-6">
@@ -273,9 +254,10 @@ Return only the ${type} content, no explanations.`,
                     <button
                         onClick={() => regenerateContent('hook')}
                         disabled={isRegenerating === 'hook'}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                     >
-                        {isRegenerating === 'hook' ? 'Regenerating...' : '🔄 Regenerate All'}
+                        <span className="mr-2">🔄</span>
+                        {isRegenerating === 'hook' ? 'Regenerating...' : 'Regenerate All'}
                     </button>
                 </div>
                 <div className="space-y-3">
@@ -294,7 +276,7 @@ Return only the ${type} content, no explanations.`,
                             />
                             <button
                                 onClick={() => regenerateContent('hook')}
-                                className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+                                className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-full transition-all duration-200 ease-in-out transform hover:scale-105"
                             >
                                 🔄
                             </button>
@@ -310,9 +292,10 @@ Return only the ${type} content, no explanations.`,
                     <button
                         onClick={() => regenerateContent('moodboard')}
                         disabled={isRegenerating === 'moodboard'}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                     >
-                        {isRegenerating === 'moodboard' ? 'Regenerating...' : '🎨 Regenerate Images'}
+                        <span className="mr-2">🎨</span>
+                        {isRegenerating === 'moodboard' ? 'Regenerating...' : 'Regenerate Images'}
                     </button>
                 </div>
                 <div className="space-y-6">
@@ -323,7 +306,7 @@ Return only the ${type} content, no explanations.`,
                                 <button
                                     onClick={() => regenerateContent('scene', index)}
                                     disabled={isRegenerating === `scene_${index}`}
-                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                                    className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-medium rounded-full text-sm transition-all duration-200 ease-in-out transform hover:scale-105"
                                 >
                                     {isRegenerating === `scene_${index}` ? 'Regenerating...' : '🔄'}
                                 </button>
@@ -419,18 +402,35 @@ Return only the ${type} content, no explanations.`,
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
                 <button
                     onClick={onBack}
-                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+                    className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105"
                 >
                     ← Back to Blueprint
                 </button>
+                
+                {/* Workflow Progress Indicator */}
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <span>Stage 3 of 6</span>
+                    <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5, 6].map((step) => (
+                            <div
+                                key={step}
+                                className={`w-2 h-2 rounded-full ${
+                                    step <= 3 ? 'bg-indigo-600' : 'bg-gray-600'
+                                }`}
+                            />
+                        ))}
+                    </div>
+                </div>
+                
                 <button
                     onClick={handleSaveAndContinue}
                     disabled={isSaving}
-                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-lg transition-all font-medium"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 >
+                    <span className="mr-2">🎬</span>
                     {isSaving ? 'Saving...' : 'Save & Continue to Studio →'}
                 </button>
             </div>
