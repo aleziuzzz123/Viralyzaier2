@@ -13,12 +13,15 @@ serve(async (req: Request) => {
 
   try {
     const { type, params } = await req.json();
+    console.log('OpenAI Proxy Request:', { type, params: { ...params, contents: typeof params?.contents === 'string' ? params.contents.substring(0, 100) + '...' : params?.contents } });
 
     if (!type || !params) {
       throw new Error("Request body must include 'type' and 'params'.");
     }
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('OpenAI API Key found:', !!openaiApiKey);
+    
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not found in environment variables');
     }
@@ -55,6 +58,7 @@ serve(async (req: Request) => {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.error('OpenAI API Error:', { status: response.status, errorData, statusText: response.statusText });
           throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
         }
 
@@ -94,6 +98,7 @@ serve(async (req: Request) => {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.error('OpenAI Images API Error:', { status: response.status, errorData, statusText: response.statusText });
           throw new Error(`OpenAI Images API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
         }
 
