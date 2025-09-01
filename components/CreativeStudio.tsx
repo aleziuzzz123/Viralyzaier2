@@ -1,10 +1,10 @@
 import React from 'react';
-import MinimalShotstackStudio from './MinimalShotstackStudio';
+import WorkingShotstackStudio from './WorkingShotstackStudio';
 
 const CreativeStudio: React.FC = () => {
-    console.log('🎬 CreativeStudio component loaded - rendering MinimalShotstackStudio');
+    console.log('🎬 CreativeStudio component loaded - rendering WorkingShotstackStudio');
     
-    return <MinimalShotstackStudio />;
+    return <WorkingShotstackStudio />;
 };
 
 export default CreativeStudio;
