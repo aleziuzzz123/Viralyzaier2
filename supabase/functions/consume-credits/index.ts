@@ -47,7 +47,8 @@ serve(async (req: Request) => {
 
     if (authError || !user) {
       console.error('Auth error in consume-credits:', authError?.message);
-      return new Response(JSON.stringify({ error: 'Authentication failed.' }), {
+      console.error('User data:', user);
+      return new Response(JSON.stringify({ error: `Authentication failed: ${authError?.message || 'No user found'}` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
@@ -77,7 +78,7 @@ serve(async (req: Request) => {
     // 3. Perform the database operation using the secure admin client.
     const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
-        .select('ai_credits')
+        .select('ai_credits, subscription')
         .eq('id', user.id)
         .single();
     
@@ -99,7 +100,7 @@ serve(async (req: Request) => {
                 subscription: { planId: 'free', status: 'active', endDate: null },
                 ai_credits: freePlanCreditLimit,
             })
-            .select('ai_credits')
+            .select('ai_credits, subscription')
             .single();
         
         if (createError || !newProfile) {
@@ -108,6 +109,14 @@ serve(async (req: Request) => {
         currentCredits = newProfile.ai_credits;
     } else {
         currentCredits = profile.ai_credits;
+        
+        // Check subscription status and log for debugging
+        console.log(`User ${user.id} subscription:`, profile.subscription);
+        
+        // If subscription status is not active, but user has credits, allow them to proceed
+        if (profile.subscription && profile.subscription.status !== 'active') {
+            console.warn(`User ${user.id} has inactive subscription but proceeding with credit check`);
+        }
     }
 
 

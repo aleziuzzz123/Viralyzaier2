@@ -31,7 +31,11 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error('Authentication failed.');
+    if (authError || !user) {
+      console.error('ElevenLabs Proxy Auth Error:', authError);
+      console.error('User data:', user);
+      throw new Error(`Authentication failed: ${authError?.message || 'No user found'}`);
+    }
 
     let body;
     try {
