@@ -21,7 +21,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
-import StudioPage from './components/StudioPage';
+import StudioPageNew from './components/StudioPageNew';
 
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
@@ -184,7 +184,7 @@ const MainApp = () => {
             if (window.self !== window.top) {
                 // We're inside an iframe, render the StudioPage component directly
                 console.log('🎬 Rendering StudioPage component (inside iframe)');
-                return <StudioPage />;
+                return <StudioPageNew />;
             } else {
                 // We're in the main window, render the CreativeStudio component
                 console.log('🎬 Rendering CreativeStudio component (main window)');
