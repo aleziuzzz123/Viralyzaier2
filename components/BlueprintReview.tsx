@@ -17,6 +17,7 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [selectedVoiceId, setSelectedVoiceId] = useState<string>(project.voiceoverVoiceId || 'pNInz6obpgDQGcFmaJgB');
     const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [voiceoverProgress, setVoiceoverProgress] = useState<{ current: number; total: number } | null>(null);
 
     // Available voice options
     const voiceOptions = [
@@ -65,8 +66,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     }
                 });
 
-                if (response.text) {
-                    const newHooks = response.text.split('\n').filter(hook => hook.trim()).slice(0, 3);
+                if ((response as any).text) {
+                    const newHooks = (response as any).text.split('\n').filter((hook: string) => hook.trim()).slice(0, 3);
                     setEditedScript({ ...editedScript, hooks: newHooks });
                     addToast('Hooks regenerated successfully!', 'success');
                 }
@@ -87,8 +88,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
 
                 const imageResponses = await Promise.all(imagePromises);
                 const newMoodboardUrls = imageResponses
-                    .filter(response => response.generatedImages && response.generatedImages.length > 0)
-                    .map(response => `data:image/png;base64,${response.generatedImages[0].image.imageBytes}`);
+                    .filter((response: any) => response.generatedImages && response.generatedImages.length > 0)
+                    .map((response: any) => `data:image/png;base64,${response.generatedImages[0].image.imageBytes}`);
 
                 if (newMoodboardUrls.length > 0) {
                     // Upload images to Supabase storage and get URLs
@@ -132,9 +133,9 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     }
                 });
 
-                if (response.text) {
+                if ((response as any).text) {
                     try {
-                        const improvedScene = JSON.parse(response.text);
+                        const improvedScene = JSON.parse((response as any).text);
                         const updatedScenes = [...editedScript.scenes];
                         updatedScenes[sceneIndex] = {
                             ...updatedScenes[sceneIndex],
@@ -161,41 +162,60 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
         setSelectedVoiceId(voiceId);
         
         try {
-            // Regenerate voiceovers with new voice
+            // Regenerate voiceovers with new voice - SEQUENTIALLY to avoid rate limiting
             if (editedScript && editedScript.scenes) {
-                const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
-                    if (!scene.voiceover) return null;
+                const voiceoverUrls: (string | null)[] = [];
+                const totalScenes = editedScript.scenes.length;
+                
+                // Set initial progress
+                setVoiceoverProgress({ current: 0, total: totalScenes });
+                
+                console.log(`🎤 Starting sequential voiceover generation for ${totalScenes} scenes...`);
+                
+                for (let index = 0; index < editedScript.scenes.length; index++) {
+                    const scene = editedScript.scenes[index];
+                    
+                    // Update progress
+                    setVoiceoverProgress({ current: index + 1, total: totalScenes });
+                    
+                    if (!scene.voiceover) {
+                        console.log(`⏭️ Skipping scene ${index + 1}/${totalScenes} - no voiceover text`);
+                        voiceoverUrls.push(null);
+                        continue;
+                    }
 
-                            // Sanitize text content to avoid ElevenLabs issues
-        const sanitizedText = scene.voiceover
-            .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .trim();
+                    // Sanitize text content to avoid ElevenLabs issues
+                    const sanitizedText = scene.voiceover
+                        .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
+                        .replace(/\s+/g, ' ') // Normalize whitespace
+                        .trim();
 
-        if (!sanitizedText || sanitizedText.length < 3) {
-            console.warn(`Scene ${index} has invalid text content, skipping:`, scene.voiceover);
-            return null;
-        }
+                    if (!sanitizedText || sanitizedText.length < 3) {
+                        console.warn(`Scene ${index + 1}/${totalScenes} has invalid text content, skipping:`, scene.voiceover);
+                        voiceoverUrls.push(null);
+                        continue;
+                    }
 
-        // Additional debugging for scene 3 specifically
-        if (index === 3) {
-            console.log(`🔍 SCENE 3 DEBUG:`, {
-                originalText: scene.voiceover,
-                sanitizedText: sanitizedText,
-                originalLength: scene.voiceover.length,
-                sanitizedLength: sanitizedText.length,
-                hasSpecialChars: /[^\w\s.,!?;:'"()-]/.test(scene.voiceover),
-                voiceId
-            });
-        }
+                    // Additional debugging for scene 3 specifically
+                    if (index === 3) {
+                        console.log(`🔍 SCENE 3 DEBUG:`, {
+                            originalText: scene.voiceover,
+                            sanitizedText: sanitizedText,
+                            originalLength: scene.voiceover.length,
+                            sanitizedLength: sanitizedText.length,
+                            hasSpecialChars: /[^\w\s.,!?;:'"()-]/.test(scene.voiceover),
+                            voiceId
+                        });
+                    }
 
                     // Retry logic for failed voiceovers
-                    const maxRetries = 2; // Reduced retries to avoid long delays
+                    const maxRetries = 2;
                     let lastError = null;
+                    let success = false;
 
                     for (let attempt = 1; attempt <= maxRetries; attempt++) {
                         try {
-                            console.log(`🎤 Generating voiceover for scene ${index} (attempt ${attempt}/${maxRetries}):`, {
+                            console.log(`🎤 Generating voiceover for scene ${index + 1}/${totalScenes} (attempt ${attempt}/${maxRetries}):`, {
                                 originalText: scene.voiceover,
                                 sanitizedText: sanitizedText,
                                 textLength: sanitizedText.length,
@@ -208,49 +228,63 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                                 voiceId
                             });
                             
-                            console.log(`🎤 Voiceover response for scene ${index} (attempt ${attempt}):`, response);
+                            console.log(`🎤 Voiceover response for scene ${index + 1}/${totalScenes} (attempt ${attempt}):`, response);
 
-                            if (response && response.audioUrl) {
-                                return response.audioUrl;
+                            if (response && (response as any).audioUrl) {
+                                voiceoverUrls.push((response as any).audioUrl);
+                                success = true;
+                                console.log(`✅ Successfully generated voiceover for scene ${index + 1}/${totalScenes}`);
+                                break;
                             } else {
-                                console.error(`No audio URL returned for scene ${index} (attempt ${attempt}):`, response);
-                                lastError = new Error(`No audio URL returned for scene ${index}`);
+                                console.error(`No audio URL returned for scene ${index + 1}/${totalScenes} (attempt ${attempt}):`, response);
+                                lastError = new Error(`No audio URL returned for scene ${index + 1}`);
                             }
                         } catch (voiceError) {
-                            console.error(`Error generating voiceover for scene ${index} (attempt ${attempt}):`, voiceError);
+                            console.error(`Error generating voiceover for scene ${index + 1}/${totalScenes} (attempt ${attempt}):`, voiceError);
                             lastError = voiceError;
                             
                             // Check if it's a subscription error
                             const errorMessage = voiceError?.message || voiceError?.toString() || '';
                             if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
-                                console.error('ElevenLabs subscription issue detected for scene', index);
+                                console.error('ElevenLabs subscription issue detected for scene', index + 1);
                                 // Don't retry subscription errors
                                 break;
                             }
                             
-                            // Wait before retrying (shorter delay)
+                            // Wait before retrying
                             if (attempt < maxRetries) {
-                                const delay = 1000; // 1 second delay
-                                console.log(`⏳ Waiting ${delay}ms before retry for scene ${index}...`);
+                                const delay = 2000; // 2 second delay between retries
+                                console.log(`⏳ Waiting ${delay}ms before retry for scene ${index + 1}/${totalScenes}...`);
                                 await new Promise(resolve => setTimeout(resolve, delay));
                             }
                         }
                     }
                     
-                    // If all retries failed, log the final error but don't show toast for individual scenes
-                    if (lastError) {
-                        const errorMessage = lastError?.message || lastError?.toString() || '';
-                        if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
-                            console.error(`Scene ${index} failed with subscription issue:`, errorMessage);
+                    // If all retries failed, log the final error
+                    if (!success) {
+                        voiceoverUrls.push(null);
+                        if (lastError) {
+                            const errorMessage = lastError?.message || lastError?.toString() || '';
+                            if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
+                                console.error(`Scene ${index + 1}/${totalScenes} failed with subscription issue:`, errorMessage);
+                            }
                         }
                     }
                     
-                    return null;
-                });
-
-                const voiceoverUrls = await Promise.all(voiceoverPromises);
+                    // Add delay between scenes to avoid rate limiting (except for the last scene)
+                    if (index < editedScript.scenes.length - 1) {
+                        const delayBetweenScenes = 3000; // 3 second delay between scenes
+                        console.log(`⏳ Waiting ${delayBetweenScenes}ms before processing next scene...`);
+                        await new Promise(resolve => setTimeout(resolve, delayBetweenScenes));
+                    }
+                }
+                
+                console.log(`🎤 Completed sequential voiceover generation. Results: ${voiceoverUrls.filter(url => url !== null).length}/${totalScenes} successful`);
+                
+                // Clear progress
+                setVoiceoverProgress(null);
+                
                 const validUrls = voiceoverUrls.filter(url => url !== null);
-                const totalScenes = editedScript.scenes.length;
                 const successCount = validUrls.length;
                 
                 if (validUrls.length > 0) {
@@ -270,19 +304,20 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     if (successCount === totalScenes) {
                         addToast('Voiceover updated with new narrator!', 'success');
                     } else {
-                        addToast(`Voiceover updated! ${successCount}/${totalScenes} scenes generated successfully. You can still proceed to the editor.`, 'warning');
+                        addToast(`Voiceover updated! ${successCount}/${totalScenes} scenes generated successfully. You can still proceed to the editor.`, 'info');
                     }
                 } else {
                     // Still update the voice ID even if voiceovers failed
                     await handleUpdateProject(project.id, { 
                         voiceoverVoiceId: voiceId
                     });
-                    addToast('Voiceover generation failed, but you can still proceed to the editor. Voiceovers can be added later.', 'warning');
+                    addToast('Voiceover generation failed, but you can still proceed to the editor. Voiceovers can be added later.', 'info');
                 }
             }
         } catch (error) {
             console.error('Error updating voiceover:', error);
             addToast('Failed to update voiceover', 'error');
+            setVoiceoverProgress(null); // Clear progress on error
         }
     };
 
@@ -317,161 +352,187 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     }
 
     return (
-        <div className="text-center py-10 px-6 bg-gray-800/50 rounded-2xl max-w-6xl mx-auto space-y-8 animate-fade-in-up">
-            <h2 className="text-3xl font-bold text-white mb-3">Review Your Blueprint</h2>
-            <p className="text-gray-400 mb-6 max-w-xl mx-auto">Perfect your content before creating your video. Edit, regenerate, or customize any element below.</p>
+        <div className="text-center py-8 px-6 bg-gray-800/50 rounded-2xl max-w-5xl mx-auto space-y-6 animate-fade-in-up">
+            <h2 className="text-3xl font-bold text-white mb-2">Review Your Blueprint</h2>
+            <p className="text-gray-400 mb-4 max-w-xl mx-auto">Perfect your content before creating your video.</p>
             
-            <div className="space-y-8 text-left">
-                {/* Script Hook */}
+            <div className="space-y-6 text-left">
+                {/* Script Hooks - 3 Options */}
                 <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-3">
                         <div>
-                            <h3 className="text-xl font-bold text-white">Script Hook</h3>
-                            <p className="text-gray-400 text-sm">Cost: 1 Credit per regeneration</p>
+                            <h3 className="text-lg font-bold text-white">Choose Your Hook</h3>
+                            <p className="text-gray-400 text-sm">Select the best hook or regenerate new ones</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('hook')}
                             disabled={isRegenerating === 'hook'}
-                            className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
                         >
-                            <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'hook' ? 'Regenerating...' : 'Regenerate Hook (1 Credit)'}
+                            <SparklesIcon className="w-4 h-4 mr-2" />
+                            {isRegenerating === 'hook' ? 'Generating...' : 'New Hooks (1 Credit)'}
                         </button>
                     </div>
-                    <div className="space-y-3">
-                        {(editedScript.hooks || []).map((hook, index) => (
-                            <div key={index} className="bg-gray-700/50 p-4 rounded-lg">
-                                <textarea
-                                    value={hook}
-                                    onChange={(e) => handleScriptChange('hooks', editedScript.hooks?.map((h, i) => i === index ? e.target.value : h) || [], index)}
-                                    className="w-full bg-transparent text-white placeholder-gray-400 border-none resize-none focus:outline-none"
-                                    rows={2}
-                                    placeholder="Enter your hook here..."
-                                />
+                    <div className="grid md:grid-cols-3 gap-3">
+                        {(editedScript.hooks || []).slice(0, 3).map((hook, index) => (
+                            <div key={index} className="bg-gray-700/50 p-3 rounded-lg border border-gray-600 hover:border-indigo-500 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs text-gray-400 font-semibold">Hook {index + 1}</span>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => {
+                                                const newHooks = [...(editedScript.hooks || [])];
+                                                newHooks[index] = prompt('Edit hook:', hook) || hook;
+                                                handleScriptChange('hooks', newHooks);
+                                            }}
+                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const newHooks = [...(editedScript.hooks || [])];
+                                                newHooks.splice(index, 1);
+                                                handleScriptChange('hooks', newHooks);
+                                            }}
+                                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-white text-sm leading-relaxed">{hook}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Video Scenes */}
+                {/* Video Scenes - Compact View */}
                 <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-3">
                         <div>
-                            <h3 className="text-xl font-bold text-white">Video Scenes</h3>
-                            <p className="text-gray-400 text-sm">Cost: 1 Credit per scene regeneration</p>
+                            <h3 className="text-lg font-bold text-white">Video Scenes</h3>
+                            <p className="text-gray-400 text-sm">Edit scenes or regenerate all</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('scene')}
                             disabled={isRegenerating === 'scene'}
-                            className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
                         >
-                            <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scenes (1 Credit)'}
+                            <SparklesIcon className="w-4 h-4 mr-2" />
+                            {isRegenerating === 'scene' ? 'Regenerating...' : 'New Scenes (1 Credit)'}
                         </button>
                     </div>
-                    <div className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
                         {editedScript.scenes?.map((scene, index) => (
-                            <div key={index} className="bg-gray-700/50 p-6 rounded-lg">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                            <div key={index} className="bg-gray-700/50 p-4 rounded-lg">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center text-white font-bold text-xs">
                                         {index + 1}
                                     </div>
-                                    <h4 className="text-lg font-bold text-white">Scene {index + 1}</h4>
+                                    <h4 className="text-sm font-bold text-white">Scene {index + 1}</h4>
                                 </div>
                                 
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <div className="space-y-3">
                                     <div>
-                                        <label className="block text-gray-300 font-semibold mb-2">Visual Description</label>
+                                        <label className="block text-gray-300 text-xs font-semibold mb-1">Visual</label>
                                         <textarea
                                             value={scene.visual}
                                             onChange={(e) => handleScriptChange('visual', e.target.value, index)}
-                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded-lg p-3 focus:outline-none focus:border-indigo-500 resize-none"
-                                            rows={3}
-                                            placeholder="Describe the visual for this scene..."
+                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none text-sm"
+                                            rows={2}
+                                            placeholder="Visual description..."
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-gray-300 font-semibold mb-2">Voiceover</label>
+                                        <label className="block text-gray-300 text-xs font-semibold mb-1">Voiceover</label>
                                         <textarea
                                             value={scene.voiceover}
                                             onChange={(e) => handleScriptChange('voiceover', e.target.value, index)}
-                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded-lg p-3 focus:outline-none focus:border-indigo-500 resize-none"
-                                            rows={3}
-                                            placeholder="Enter the voiceover text..."
+                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none text-sm"
+                                            rows={2}
+                                            placeholder="Voiceover text..."
                                         />
                                     </div>
+                                    
+                                    {scene.storyboardImageUrl && (
+                                        <div>
+                                            <label className="block text-gray-300 text-xs font-semibold mb-1">Storyboard</label>
+                                            <img 
+                                                src={scene.storyboardImageUrl} 
+                                                alt={`Scene ${index + 1} storyboard`}
+                                                className="w-full h-24 object-cover rounded border border-gray-600"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                                
-                                {scene.storyboardImageUrl && (
-                                    <div className="mt-4">
-                                        <label className="block text-gray-300 font-semibold mb-2">Storyboard Image</label>
-                                        <img 
-                                            src={scene.storyboardImageUrl} 
-                                            alt={`Scene ${index + 1} storyboard`}
-                                            className="w-full max-w-md h-32 object-cover rounded-lg border border-gray-600"
-                                        />
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Voiceover Selection */}
+                {/* Voiceover Selection - Compact */}
                 <div>
-                    <h3 className="text-xl font-bold text-white mb-4">Voiceover Selection</h3>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-bold text-white">Choose Voice</h3>
+                        {voiceoverProgress && (
+                            <div className="text-sm text-indigo-400">
+                                Generating voiceover {voiceoverProgress.current}/{voiceoverProgress.total}...
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {voiceOptions.map((voice) => (
                             <div
                                 key={voice.id}
                                 onClick={() => handleVoiceChange(voice.id)}
-                                className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${
+                                className={`cursor-pointer p-3 rounded-lg border transition-all ${
                                     selectedVoiceId === voice.id 
                                         ? 'bg-indigo-600 border-indigo-500' 
                                         : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'
                                 }`}
                             >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${
                                         selectedVoiceId === voice.id 
                                             ? 'bg-indigo-500' 
                                             : 'bg-gray-600'
                                     }`}>
-                                        <span className="text-sm">🎵</span>
+                                        <span className="text-xs">🎵</span>
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-white text-sm">{voice.name}</h4>
+                                        <h4 className="font-semibold text-white text-xs">{voice.name}</h4>
                                         {selectedVoiceId === voice.id && (
-                                            <span className="text-indigo-300 text-xs">✓ Selected</span>
+                                            <span className="text-indigo-300 text-xs">✓</span>
                                         )}
                                     </div>
                                 </div>
-                                <p className="text-gray-400 text-xs">{voice.preview}</p>
+                                <p className="text-gray-400 text-xs leading-tight">{voice.preview}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Moodboard */}
+                {/* Moodboard - Compact */}
                 {project.moodboard && project.moodboard.length > 0 && (
                     <div>
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-3">
                             <div>
-                                <h3 className="text-xl font-bold text-white">Moodboard</h3>
-                                <p className="text-gray-400 text-sm">Cost: 4 Credits for 4 new images</p>
+                                <h3 className="text-lg font-bold text-white">Moodboard</h3>
+                                <p className="text-gray-400 text-sm">Visual style reference</p>
                             </div>
                             <button
                                 onClick={() => regenerateContent('moodboard')}
                                 disabled={isRegenerating === 'moodboard'}
-                                className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                                className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
                             >
-                                <SparklesIcon className="w-5 h-5 mr-2" />
-                                {isRegenerating === 'moodboard' ? 'Regenerating...' : 'Regenerate Images (4 Credits)'}
+                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                {isRegenerating === 'moodboard' ? 'Generating...' : 'New Images (4 Credits)'}
                             </button>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-4 gap-2">
                             {project.moodboard.map((imageUrl, index) => (
-                                <div key={index} className="aspect-video rounded-lg overflow-hidden border border-gray-600">
+                                <div key={index} className="aspect-square rounded-lg overflow-hidden border border-gray-600">
                                     <img 
                                         src={imageUrl} 
                                         alt={`Moodboard ${index + 1}`}
@@ -484,8 +545,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 )}
             </div>
 
-            {/* Main Action Button - Centered like Build Your Blueprint */}
-            <div className="text-center pt-8">
+            {/* Main Action Button - Compact */}
+            <div className="text-center pt-6">
                 <button 
                     onClick={handleSaveAndContinue}
                     disabled={isSaving}
@@ -496,14 +557,14 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 </button>
             </div>
 
-            {/* Footer Navigation */}
+            {/* Footer Navigation - Compact */}
             <div className="flex justify-between items-center pt-4">
                 <button 
                     onClick={onBack}
-                    className="inline-flex items-center justify-center px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
                 >
                     <span className="mr-2">←</span>
-                    Back to Blueprint
+                    Back
                 </button>
                 
                 <div className="flex items-center gap-2 text-gray-400">
