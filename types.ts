@@ -2,7 +2,7 @@
 export type PlanId = 'free' | 'pro' | 'viralyzaier';
 export type ProjectStatus = 'Autopilot' | 'Idea' | 'Scripting' | 'Rendering' | 'Scheduled' | 'Published' | 'Failed' | 'Rendered';
 export type Platform = 'youtube_long' | 'youtube_short' | 'tiktok' | 'instagram';
-export type WorkflowStep = 1 | 2 | 3 | 4 | 5;
+export type WorkflowStep = 1 | 2 | 2.5 | 3 | 4 | 5;
 export type VideoStyle = 'High-Energy Viral' | 'Cinematic Documentary' | 'Clean & Corporate' | 'Animation' | 'Historical Documentary' | 'Vlog' | 'Whiteboard';
 export type AiVideoModel = 'runwayml' | 'kling' | 'minimax' | 'seedance';
 

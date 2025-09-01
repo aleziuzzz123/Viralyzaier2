@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
+import { Project, Script, Scene } from '../types';
 
 const StudioPage: React.FC = () => {
   const [edit, setEdit] = useState<any>(null);
@@ -7,42 +8,57 @@ const StudioPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [projectData, setProjectData] = useState<Project | null>(null);
+
+  // Listen for project data from parent
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'app:load_project') {
+        console.log('📦 Received project data:', event.data.payload);
+        setProjectData(event.data.payload);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    
+    // Notify parent we're ready
+    window.parent.postMessage({ type: 'studio:ready' }, '*');
+    
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   useEffect(() => {
-    if (initialized) return; // Prevent double initialization
+    if (initialized || !projectData) return;
 
     const initializeEditor = async () => {
       try {
-        console.log('🚀 Starting StudioPage initialization...');
+        console.log('🚀 Starting StudioPage initialization with project:', projectData);
         setIsLoading(true);
         setInitialized(true);
 
         // Small delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 1. Retrieve an edit from a template
-        const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-        console.log('📄 Fetching template from:', templateUrl);
-        const response = await fetch(templateUrl);
-        const template = await response.json();
-        console.log('✅ Template loaded:', template);
+        // Create edit configuration from project data
+        const editConfig = createEditFromProject(projectData);
+        console.log('🔧 Created edit config:', editConfig);
 
-        // 2. Initialize the edit with dimensions and background color
+        // 2. Initialize the edit with project dimensions
         console.log('🔧 Creating Edit component...');
-        const editInstance = new Edit(template.output.size, template.timeline.background);
+        const editInstance = new Edit(editConfig.output.size, editConfig.timeline.background);
         await editInstance.load();
         console.log('✅ Edit component loaded');
 
         // 3. Create a canvas to display the edit
         console.log('🎨 Creating Canvas component...');
-        const canvas = new Canvas(template.output.size, editInstance);
-        await canvas.load(); // Renders to [data-shotstack-studio] element
+        const canvas = new Canvas(editConfig.output.size, editInstance);
+        await canvas.load();
         console.log('✅ Canvas component loaded');
 
-        // 4. Load the template
-        console.log('📄 Loading edit template...');
-        await editInstance.loadEdit(template);
-        console.log('✅ Edit template loaded');
+        // 4. Load the project edit
+        console.log('📄 Loading project edit...');
+        await editInstance.loadEdit(editConfig);
+        console.log('✅ Project edit loaded');
         
         // 5. Add keyboard controls
         console.log('⌨️ Creating Controls component...');
@@ -53,10 +69,10 @@ const StudioPage: React.FC = () => {
         // 6. Add timeline for visual editing
         console.log('📊 Creating Timeline component...');
         const timeline = new Timeline(editInstance, {
-          width: template.output.size.width,
+          width: editConfig.output.size.width,
           height: 300
         });
-        await timeline.load(); // Renders to [data-shotstack-timeline] element
+        await timeline.load();
         console.log('✅ Timeline component loaded');
 
         // Set up event listeners
@@ -68,7 +84,6 @@ const StudioPage: React.FC = () => {
           console.log("Clip updated:", data);
         });
 
-        // Add play/pause event listeners
         editInstance.events.on("play", () => {
           console.log("Play event");
           setIsPlaying(true);
@@ -85,13 +100,86 @@ const StudioPage: React.FC = () => {
       } catch (err) {
         console.error('Failed to initialize video editor:', err);
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
-        setInitialized(false); // Reset on error
+        setInitialized(false);
         setIsLoading(false);
       }
     };
 
     initializeEditor();
-  }, [initialized]);
+  }, [initialized, projectData]);
+
+  // Function to create edit configuration from project data
+  const createEditFromProject = (project: Project) => {
+    const videoSize = project.videoSize === '16:9' ? { width: 1920, height: 1080 } : 
+                     project.videoSize === '9:16' ? { width: 1080, height: 1920 } : 
+                     { width: 1080, height: 1080 };
+
+    const baseEdit = {
+      output: {
+        format: 'mp4',
+        size: videoSize,
+        fps: 30
+      },
+      timeline: {
+        background: '#000000',
+        tracks: []
+      }
+    };
+
+    if (project.script && project.script.scenes) {
+      // Add video tracks from script scenes
+      project.script.scenes.forEach((scene: Scene, index: number) => {
+        if (scene.storyboardImageUrl) {
+          baseEdit.timeline.tracks.push({
+            type: 'video',
+            clips: [{
+              asset: {
+                type: 'image',
+                src: scene.storyboardImageUrl
+              },
+              start: parseTimecode(scene.timecode).start,
+              length: parseTimecode(scene.timecode).duration,
+              fit: 'cover'
+            }]
+          });
+        }
+      });
+
+      // Add audio tracks from voiceovers
+      if (project.voiceoverUrls) {
+        const audioTrack = {
+          type: 'audio',
+          clips: []
+        };
+
+        Object.entries(project.voiceoverUrls).forEach(([sceneIndex, voiceoverUrl]) => {
+          const scene = project.script!.scenes[parseInt(sceneIndex)];
+          if (scene) {
+            audioTrack.clips.push({
+              asset: {
+                type: 'audio',
+                src: voiceoverUrl
+              },
+              start: parseTimecode(scene.timecode).start,
+              length: parseTimecode(scene.timecode).duration
+            });
+          }
+        });
+
+        if (audioTrack.clips.length > 0) {
+          baseEdit.timeline.tracks.push(audioTrack);
+        }
+      }
+    }
+
+    return baseEdit;
+  };
+
+  // Helper function to parse timecode
+  const parseTimecode = (timecode: string) => {
+    const [start, end] = timecode.split('-').map(Number);
+    return { start, end, duration: end - start };
+  };
 
   const addSampleClip = () => {
     if (!edit) return;
@@ -166,7 +254,7 @@ const StudioPage: React.FC = () => {
           Status: {isPlaying ? 'Playing' : 'Paused'}
         </div>
       </div>
-      
+
       {/* Video Canvas */}
       <div className="flex-grow relative min-h-0">
         <div 
@@ -175,7 +263,7 @@ const StudioPage: React.FC = () => {
           style={{ minHeight: '400px' }}
         />
       </div>
-
+      
       {/* Timeline */}
       <div className="bg-gray-800 rounded-lg p-4">
         <h3 className="text-lg font-semibold mb-2">Timeline</h3>

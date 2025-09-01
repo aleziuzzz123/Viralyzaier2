@@ -2,6 +2,7 @@ import React from 'react';
 import { Project, WorkflowStep } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 import ScriptGenerator from './ScriptGenerator';
+import BlueprintReview from './BlueprintReview';
 import CreativeStudio from './CreativeStudio';
 import Launchpad from './Launchpad';
 import TutorialCallout from './TutorialCallout';
@@ -31,6 +32,8 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
         switch (project.workflowStep) {
             case 2:
                 return <ScriptGenerator project={project} />;
+            case 2.5:
+                return <BlueprintReview project={project} />;
             case 3:
                 // By keying the component on lastUpdated, we force a full remount when the project data changes,
                 // ensuring a clean state for the editor and preventing hangs from stale props.

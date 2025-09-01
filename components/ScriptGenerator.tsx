@@ -117,7 +117,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                 title: blueprint.suggestedTitles[0],
                 voiceoverVoiceId: narratorVoiceId,
                 videoSize: videoSize,
-                workflowStep: 3,
+                workflowStep: 2.5, // Go to blueprint review instead of directly to Creative Studio
                 shotstackEditJson: null, shotstackRenderId: null, finalVideoUrl: null, analysis: null,
             };
     
@@ -145,7 +145,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
             // Step 4: Save all updates and transition the workflow
             setProgressMessage('Finalizing project...');
             await handleUpdateProject(project.id, updates);
-            addToast("Blueprint complete! Entering the Creative Studio...", "success");
+            addToast("Blueprint complete! Review your generated content...", "success");
     
         } catch (e) {
             addToast(`Blueprint generation failed: ${getErrorMessage(e)}`, 'error');

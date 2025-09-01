@@ -1,4 +1,5 @@
-# 🚀 Viralyzaier Platform - Complete Technical Reference
+bsite https://github.com/shotstack/shotstack-studio-sdknd also please read
+ # 🚀 Viralyzaier Platform - Complete Technical Reference
 
 ## 📋 **Platform Overview**
 
