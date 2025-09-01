@@ -391,6 +391,14 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
     if (updates.videoUrl !== undefined) dbUpdates.video_url = updates.videoUrl;
     if (updates.voiceoverUrls !== undefined) dbUpdates.voiceover_urls = sanitizeJson(updates.voiceoverUrls);
 
+    // Debug logging for troubleshooting
+    console.log('Updating project with data:', {
+        projectId,
+        updateKeys: Object.keys(dbUpdates),
+        scriptSize: updates.script ? JSON.stringify(updates.script).length : 0,
+        moodboardLength: updates.moodboard ? updates.moodboard.length : 0
+    });
+
     const table = supabase.from('projects');
     const { data, error } = await table
         .update(dbUpdates as any)
@@ -399,6 +407,12 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
         .single();
         
     if (error) {
+        console.error('Project update error:', {
+            projectId,
+            error,
+            updateKeys: Object.keys(dbUpdates),
+            dbUpdates: JSON.stringify(dbUpdates, null, 2)
+        });
         throw new Error(getErrorMessage(error));
     }
     if (!data) throw new Error("Failed to update project: no data returned.");
