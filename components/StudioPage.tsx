@@ -9,6 +9,7 @@ const StudioPage: React.FC = () => {
   const [initialized, setInitialized] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [projectData, setProjectData] = useState<Project | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Listen for project data from parent
   useEffect(() => {
@@ -26,6 +27,20 @@ const StudioPage: React.FC = () => {
     
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  // Handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
     if (initialized || !projectData) return;
@@ -208,6 +223,212 @@ const StudioPage: React.FC = () => {
     );
   }
 
+  // Full-screen Video Editor Modal
+  const FullscreenEditor = () => (
+    <div className="fixed inset-0 z-50 bg-gray-900 text-white flex flex-col">
+      {/* Fullscreen Header */}
+      <div className="bg-gradient-to-r from-gray-800/90 to-gray-700/90 border-b border-gray-600/30 p-3 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <h1 className="text-lg font-bold text-white">Creative Studio - Full Screen</h1>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs text-gray-400">Import:</h3>
+            <button className="flex items-center gap-1 px-2 py-1 bg-gray-800/60 hover:bg-indigo-600/20 text-gray-400 hover:text-indigo-300 text-xs rounded transition-colors border border-gray-700/50 hover:border-indigo-500/30">
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span>Video</span>
+            </button>
+            <button className="flex items-center gap-1 px-2 py-1 bg-gray-800/60 hover:bg-emerald-600/20 text-gray-400 hover:text-emerald-300 text-xs rounded transition-colors border border-gray-700/50 hover:border-emerald-500/30">
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Image</span>
+            </button>
+            <button className="flex items-center gap-1 px-2 py-1 bg-gray-800/60 hover:bg-purple-600/20 text-gray-400 hover:text-purple-300 text-xs rounded transition-colors border border-gray-700/50 hover:border-purple-500/30">
+              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+              </svg>
+              <span>Audio</span>
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-400">Press ESC to exit</div>
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-all duration-300"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Exit Full Screen</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Fullscreen Editor Content */}
+      <div className="flex-1 flex flex-col p-4 gap-4">
+        {/* Playback Controls */}
+        <div className="flex items-center justify-center gap-6 p-4 bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-xl border border-gray-600/30">
+          <button
+            onClick={() => edit?.play()}
+            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            <span>Play</span>
+          </button>
+          
+          <button
+            onClick={() => edit?.pause()}
+            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+            </svg>
+            <span>Pause</span>
+          </button>
+          
+          <button
+            onClick={() => edit?.stop()}
+            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h12v12H6z"/>
+            </svg>
+            <span>Stop</span>
+          </button>
+          
+          <div className="w-px h-8 bg-gray-600"></div>
+          
+          <button
+            onClick={addSampleClip}
+            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Add Sample Video</span>
+          </button>
+          
+          <div className="w-px h-8 bg-gray-600"></div>
+          
+          <button
+            onClick={() => edit?.undo()}
+            className="group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            <span>Undo</span>
+          </button>
+          
+          <button
+            onClick={() => edit?.redo()}
+            className="group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            disabled={!edit}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+            </svg>
+            <span>Redo</span>
+          </button>
+          
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 rounded-lg border border-gray-600/50">
+            <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className="text-sm font-medium text-gray-300">
+              {isPlaying ? 'Playing' : 'Paused'}
+            </span>
+          </div>
+        </div>
+
+        {/* Video Canvas - Full Screen */}
+        <div className="relative flex-1">
+          <div className="relative h-full">
+            <div 
+              data-shotstack-studio 
+              className="w-full h-full bg-gradient-to-br from-gray-900 to-black rounded-xl border border-indigo-500/30 shadow-lg" 
+            />
+            <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-600/50">
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span>REC</span>
+              </div>
+            </div>
+            <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-600/50">
+              <div className="text-sm text-gray-300">
+                <span className="font-mono">1920×1080</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Timeline - Full Width */}
+        <div className="bg-gradient-to-r from-gray-800/80 to-gray-700/80 rounded-xl p-4 border border-gray-600/30 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Timeline
+            </h3>
+            <div className="flex items-center gap-4 text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-indigo-500 rounded"></div>
+                <span>Video Track</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-500 rounded"></div>
+                <span>Audio Track</span>
+              </div>
+            </div>
+          </div>
+          <div 
+            data-shotstack-timeline 
+            className="w-full bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border border-indigo-500/30 shadow-lg" 
+            style={{ height: '300px', minHeight: '300px' }}
+          />
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
+            <div className="flex items-center gap-6 w-full">
+              <span>00:00</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>00:30</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>01:00</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>01:30</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>02:00</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>02:30</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>03:00</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>03:30</span>
+              <div className="flex-1 h-px bg-gray-600"></div>
+              <span>04:00</span>
+            </div>
+          </div>
+          <div className="mt-2 text-center text-xs text-gray-500">
+            Drag clips to edit • Double-click to select • Scroll horizontally for more
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show fullscreen modal if active
+  if (isFullscreen) {
+    return <FullscreenEditor />;
+  }
+
   return (
     <div className="h-full w-full flex flex-col bg-gray-900 text-white">
       {/* Top Assets & Upload Bar - Compact */}
@@ -294,6 +515,17 @@ const StudioPage: React.FC = () => {
               </button>
             </div>
           </div>
+          
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={() => setIsFullscreen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            <span>Full Screen</span>
+          </button>
         </div>
       </div>
 
