@@ -1,20 +1,19 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { analyzeTitles } from '../services/geminiService';
 import { TitleAnalysis, Platform, Project } from '../types';
-import { PlusIcon, TrashIcon, MagicWandIcon, CheckIcon } from './Icons';
+import { PlusIcon, TrashIcon, MagicWandIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import TitleAnalysisResult from './TitleAnalysisResult';
 
 interface TitleOptimizerProps {
     onTitleSelect: (title: string) => void;
     platform: Platform;
-    initialTopic?: string;
 }
 
-const TitleOptimizer: React.FC<TitleOptimizerProps> = ({ onTitleSelect, platform, initialTopic: initialTopicFromProps }) => {
+const TitleOptimizer: React.FC<TitleOptimizerProps> = ({ onTitleSelect, platform }) => {
   const { consumeCredits, activeProjectDetails, t } = useAppContext();
   const project = activeProjectDetails;
-  const initialTopic = initialTopicFromProps || project?.topic || '';
+  const initialTopic = project?.topic || '';
 
   const [topic, setTopic] = useState(initialTopic);
   const [titles, setTitles] = useState<string[]>(['']);
@@ -107,14 +106,6 @@ const TitleOptimizer: React.FC<TitleOptimizerProps> = ({ onTitleSelect, platform
                             onMouseOver={() => setHighlightedTitle(title)}
                             onMouseOut={() => setHighlightedTitle(null)}
                         />
-                        <button 
-                            onClick={() => onTitleSelect(title)} 
-                            disabled={!title.trim()}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-full hover:bg-green-500 disabled:bg-gray-600"
-                            title="Select this title and create project"
-                        >
-                            <CheckIcon className="w-4 h-4" /> Select
-                        </button>
                         {titles.length > 1 && (
                             <button onClick={() => removeTitleField(index)} className="p-1 text-gray-500 hover:text-red-400" title={t('title_optimizer.remove_title')}>
                                 <TrashIcon className="w-4 h-4" />

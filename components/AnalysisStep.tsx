@@ -27,8 +27,7 @@ const AnalysisStep: React.FC<AnalysisStepProps> = ({ project, onProceedToLaunchp
                 setIsAnalyzing(true);
                 setStatusMessage("Analyzing video concept against viral data...");
 
-                // FIX: Corrected function name from analyzeVideoConcept to analyzeScriptVirality
-                const result = await geminiService.analyzeScriptVirality(
+                const result = await geminiService.analyzeVideoConcept(
                     project.script,
                     project.title || project.topic || 'Untitled Video',
                     project.platform

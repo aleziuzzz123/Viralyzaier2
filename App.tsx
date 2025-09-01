@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast } from './types';
 import Dashboard from './components/Dashboard';
@@ -7,7 +7,7 @@ import ContentCalendar from './components/ContentCalendar';
 import PricingPage from './components/PricingPage';
 import UserMenu from './components/UserMenu';
 import { LandingPage } from './components/Homepage';
-import { DashboardIcon, CalendarIcon, GithubIcon, SparklesIcon, CheckCircleIcon, XCircleIcon, InfoIcon, ChartPieIcon, PhotoIcon, BellIcon, RocketLaunchIcon, WarningIcon, ScissorsIcon } from './components/Icons';
+import { DashboardIcon, CalendarIcon, GithubIcon, SparklesIcon, CheckCircleIcon, XCircleIcon, InfoIcon, ChartPieIcon, PhotoIcon, BellIcon, RocketLaunchIcon, WarningIcon } from './components/Icons';
 import ChannelHub from './components/ChannelHub';
 import AssetLibrary from './components/AssetLibrary';
 import { AppProvider, useAppContext } from './contexts/AppContext';
@@ -20,10 +20,7 @@ import UpgradeModal from './components/UpgradeModal';
 import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
-import { CreativeStudioNew as CreativeStudio } from './components/CreativeStudioNew';
-import * as supabaseService from './services/supabaseService';
 
-// Error Boundary Component - REMOVED TO ISOLATE REACT ERROR #310
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
 
@@ -132,88 +129,10 @@ const MainApp = () => {
         toasts, dismissToast, activeProjectId, setActiveProjectId,
         t,
         confirmation, handleConfirmation, handleCancelConfirmation,
-        activeProjectDetails, isProjectDetailsLoading, setActiveProjectDetails,
-        handleUpdateProject, addToast
+        activeProjectDetails, isProjectDetailsLoading
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
-
-    // TEMPORARY DEBUG: Force Creative Studio for testing
-    const testModeRef = useRef(false);
-    
-    if (window.location.search.includes('test=shotstack') && !testModeRef.current) {
-        testModeRef.current = true;
-        console.log('🧪 PURE HTML/JS TEST MODE: Starting...');
-        
-        // Add timeout to prevent infinite loops
-        setTimeout(() => {
-            if (testModeRef.current) {
-                console.log('🧪 Test mode timeout - preventing infinite loop');
-                testModeRef.current = false;
-            }
-        }, 5000);
-        
-        try {
-            const testProject = {
-                id: 'test-' + Date.now(),
-                name: 'Test Project',
-                workflowStep: 3,
-                videoSize: '16:9' as const,
-                shotstackEditJson: null,
-                script: null
-            };
-            console.log('🧪 PURE HTML/JS: Test project created:', testProject);
-            
-            // PURE HTML/JS VERSION - No React at all, just DOM manipulation
-            return (
-                <div className="min-h-screen bg-gray-900 text-white">
-                    <div className="p-4 bg-green-900 text-center">
-                        <h1 className="text-2xl font-bold">🧪 PURE HTML/JS TEST MODE</h1>
-                        <p>If you see this, React is working without any context!</p>
-                        <p className="text-sm mt-2">Project ID: {testProject.id}</p>
-                    </div>
-                    
-                    {/* PURE HTML/JS - No React dependencies */}
-                    <div className="p-8 text-center">
-                        <h2 className="text-xl font-bold mb-4">Pure HTML/JS Test</h2>
-                        <p className="mb-4">This bypasses ALL React rendering.</p>
-                        <div className="bg-blue-900 p-4 rounded">
-                            <p>Project: {testProject.name}</p>
-                            <p>ID: {testProject.id}</p>
-                            <p>Status: ✅ Working</p>
-                        </div>
-                        <button 
-                            onClick={() => {
-                                // Pure JavaScript alert
-                                alert('Pure JS Button works! No React involved!');
-                                console.log('🧪 Pure JS button clicked successfully');
-                            }} 
-                            className="mt-4 bg-white text-blue-900 px-4 py-2 rounded"
-                        >
-                            Test Pure JS Button
-                        </button>
-                        <div className="mt-4 p-4 bg-yellow-900 rounded">
-                            <h3 className="font-bold">Pure JavaScript Test</h3>
-                            <p>If you see this yellow box, React is rendering correctly.</p>
-                            <p>If you see errors, the issue is in React itself.</p>
-                        </div>
-                    </div>
-                </div>
-            );
-        } catch (error) {
-            console.error('💥 Pure HTML/JS test mode failed:', error);
-            return (
-                <div className="bg-red-900 text-white p-8 text-center">
-                    <h1 className="text-2xl font-bold mb-4">Pure HTML/JS Test Mode Failed</h1>
-                    <p className="mb-4">Error: {String(error)}</p>
-                    <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded">
-                        Reload Page
-                    </button>
-                </div>
-            );
-        }
-    }
 
     useEffect(() => {
         if(activeProjectId) {
@@ -242,35 +161,6 @@ const MainApp = () => {
     
     const handleNewProject = () => {
         handleSetView('kickoff');
-    };
-
-    const handleGoToStudio = async () => {
-        if (activeProjectId) {
-            // A project is already active, just switch to studio view
-            await handleUpdateProject(activeProjectId, { workflowStep: 3 });
-            // The useEffect on activeProjectId already sets the view to 'project'
-            // and the isStudioActive flag will become true.
-        } else {
-            // No active project, find the most recent one
-            if (user) {
-                addToast("Finding your most recent project...", "info");
-                try {
-                    const projects = await supabaseService.getProjectsForUser(user.id);
-                    if (projects && projects.length > 0) {
-                        const latestProject = projects[0];
-                        // Setting this will trigger the useEffect to load details and set view to 'project'
-                        setActiveProjectId(latestProject.id);
-                        // Also ensure its workflow step is set to 3
-                        await handleUpdateProject(latestProject.id, { workflowStep: 3 });
-                    } else {
-                        addToast("No projects found. Let's create one to get started!", "info");
-                        handleSetView('kickoff');
-                    }
-                } catch (error) {
-                    addToast("Failed to load your projects.", "error");
-                }
-            }
-        }
     };
 
     const renderCurrentView = () => {
@@ -313,10 +203,6 @@ const MainApp = () => {
     if (!user) {
         return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
     }
-
-    if (isStudioActive) {
-        return <CreativeStudio />;
-    }
     
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -330,7 +216,6 @@ const MainApp = () => {
                         <button onClick={() => handleSetView('dashboard')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'dashboard' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><DashboardIcon className="w-5 h-5 inline mr-2"/>{t('nav.dashboard')}</button>
                         <button onClick={() => handleSetView('autopilot')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'autopilot' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><RocketLaunchIcon className="w-5 h-5 inline mr-2"/>{t('nav.autopilot')}</button>
                         <button onClick={() => handleSetView('calendar')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'calendar' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><CalendarIcon className="w-5 h-5 inline mr-2"/>{t('nav.calendar')}</button>
-                        <button onClick={handleGoToStudio} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isStudioActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ScissorsIcon className="w-5 h-5 inline mr-2"/>{t('nav.creative_studio')}</button>
                         <button onClick={() => handleSetView('channel')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'channel' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><ChartPieIcon className="w-5 h-5 inline mr-2"/>{t('nav.my_channel')}</button>
                         <button onClick={() => handleSetView('assetLibrary')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${currentView === 'assetLibrary' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`}><PhotoIcon className="w-5 h-5 inline mr-2"/>{t('nav.asset_library')}</button>
                     </nav>
@@ -347,8 +232,8 @@ const MainApp = () => {
                 </div>
             </header>
           
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                <div className="w-full max-w-7xl mx-auto h-full">{renderCurrentView()}</div>
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
             </main>
             
             <ScheduleModal />

@@ -1,2 +1,17 @@
-// This file is deprecated. The Shotstack Studio SDK is now loaded globally from a CDN in index.html.
-// This file was causing a build error because it was trying to import a package that is no longer a dependency.
+// lib/shotstackSdk.ts
+// Single-instance loader that uses the official npm package.
+
+declare global {
+  interface Window {
+    SHOTSTACK_SDK_PROMISE?: Promise<typeof import("@shotstack/shotstack-studio")>;
+  }
+}
+
+export function getShotstackSDK() {
+  if (!window.SHOTSTACK_SDK_PROMISE) {
+    // Dynamically import the npm package and cache the promise
+    // to ensure it's only fetched and evaluated once.
+    window.SHOTSTACK_SDK_PROMISE = import("@shotstack/shotstack-studio");
+  }
+  return window.SHOTSTACK_SDK_PROMISE;
+}

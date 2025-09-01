@@ -8,7 +8,6 @@ import {
     BrandIdentity, Notification, Script
 } from '../types';
 import { createCheckoutSession } from '../services/paymentService';
-import * as shotstackService from '../services/shotstackService';
 import { PLANS } from '../services/plans';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -72,11 +71,9 @@ interface AppContextType {
     handleCreateProjectForBlueprint: (topic: string, platform: Platform, title: string, voiceId: string | null, videoSize: '16:9'|'9:16'|'1:1', blueprint: Blueprint) => Promise<string | null>;
     handleCreateProjectFromIdea: (idea: Opportunity | ContentGapSuggestion, platform: Platform) => void;
     handleCreateProjectFromInsights: (review: PerformanceReview, project: Project) => void;
-    handleRenderProject: (projectId: string, editJson: any) => Promise<void>;
     
     // User Actions
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
-    setActiveProjectDetails: React.Dispatch<React.SetStateAction<Project | null>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -97,7 +94,6 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [backendError, setBackendError] = useState<BackendError | null>(null);
     const [dismissedTutorials, setDismissedTutorials] = useState<string[]>([]);
     const [language, setLanguageState] = useState<Language>('en');
-    const initialLoadPerformed = useRef(false);
 
     const executionLock = useRef(false);
 
@@ -146,27 +142,14 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, [setIsInitialLoading, setUser, setBackendError]);
 
     useEffect(() => {
-        supabaseService.getSession().then(({ session }) => {
-            setSession(session);
-            // If there's no session on initial check, we are done loading.
-            if (!session) {
-                setIsInitialLoading(false);
-            }
-        });
-    
-        const { data: authListener } = supabaseService.onAuthStateChange((_event, session) => {
+        supabaseService.getSession().then(({ session }) => setSession(session));
+        const authListener = supabaseService.onAuthStateChange((_event, session) => {
             setSession(session);
             if (session?.user) {
-                // Only trigger the main load if it hasn't been done yet for this session.
-                if (!initialLoadPerformed.current) {
-                    initialLoadPerformed.current = true;
-                    loadInitialData(session.user.id);
-                }
+                loadInitialData(session.user.id);
             } else {
-                // User logged out, reset state.
                 setUser(null);
                 setIsInitialLoading(false);
-                initialLoadPerformed.current = false;
             }
         });
         return () => authListener.subscription.unsubscribe();
@@ -399,51 +382,6 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         openConfirmationModal(t('confirmation_modal.delete_project_title'), t('confirmation_modal.delete_project_message'), confirmDelete);
     }, [activeProjectId, t, addToast, openConfirmationModal, setActiveProjectId]);
     
-    const handleRenderProject = useCallback(async (projectId: string, editJson: any) => {
-        try {
-            // First update the project with the edit data
-            await handleUpdateProject(projectId, { shotstackEditJson: editJson });
-            
-            // Check credits before proceeding
-            if (!await consumeCredits(10)) {
-                addToast('Insufficient credits for rendering. Please upgrade your plan.', 'error');
-                return;
-            }
-
-            // Submit render
-            const { renderId } = await shotstackService.submitRender(editJson, projectId);
-            
-            // Update project status
-            await handleUpdateProject(projectId, {
-                shotstackRenderId: renderId,
-                status: 'Rendering',
-                workflowStep: 4,
-            });
-            
-            addToast('Render submitted! Your video is being created in the cloud.', 'success');
-            
-        } catch (e) {
-            console.error('Render submission failed:', e);
-            const errorMessage = e instanceof Error ? e.message : 'Unknown render error';
-            
-            // Provide specific error messages for common issues
-            let userMessage = `Render submission failed: ${errorMessage}`;
-            if (errorMessage.includes('SHOTSTACK_API_KEY')) {
-                userMessage = 'Render service configuration error. Please contact support.';
-            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-                userMessage = 'Network error. Please check your connection and try again.';
-            }
-            
-            addToast(userMessage, 'error');
-            
-            // Revert status if submission fails
-            await handleUpdateProject(projectId, { 
-                status: 'Scripting', 
-                workflowStep: 3 
-            });
-        }
-    }, [handleUpdateProject, consumeCredits, addToast]);
-    
     const openScheduleModal = (projectId: string) => { setProjectToSchedule(projectId); setIsScheduleModalOpen(true); };
     const closeScheduleModal = () => { setIsScheduleModalOpen(false); setProjectToSchedule(null); };
     const clearBackendError = () => setBackendError(null);
@@ -461,8 +399,8 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             openScheduleModal, closeScheduleModal, openConfirmationModal, handleConfirmation,
             handleCancelConfirmation, clearBackendError, dismissTutorial, lockAndExecute, handleUpdateProject,
             handleDeleteProject, handleCreateProjectForBlueprint, handleCreateProjectFromIdea,
-            handleCreateProjectFromInsights, handleRenderProject,
-            setUser, setActiveProjectDetails
+            handleCreateProjectFromInsights,
+            setUser
         }}>
             {children}
         </AppContext.Provider>

@@ -12,7 +12,6 @@ const enTranslations = {
   "app.error.message": "Error:",
   "nav.dashboard": "Dashboard",
   "nav.calendar": "Calendar",
-  "nav.creative_studio": "Creative Studio",
   "nav.my_channel": "My Channel",
   "nav.asset_library": "Asset Library",
   "nav.autopilot": "Autopilot",
