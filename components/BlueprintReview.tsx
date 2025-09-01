@@ -3,6 +3,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { Project, Script, Scene } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { supabase } from '../services/supabaseClient';
+import { SparklesIcon } from './Icons';
 
 interface BlueprintReviewProps {
     project: Project;
@@ -245,14 +246,17 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 {/* Script Hook */}
                 <div>
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-white">Script Hook</h3>
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Script Hook</h3>
+                            <p className="text-gray-400 text-sm">Cost: 1 Credit per regeneration</p>
+                        </div>
                         <button
                             onClick={() => regenerateContent('hook')}
                             disabled={isRegenerating === 'hook'}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                            className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                         >
-                            <span className="mr-2">🔄</span>
-                            {isRegenerating === 'hook' ? 'Regenerating...' : 'Regenerate Hook'}
+                            <SparklesIcon className="w-5 h-5 mr-2" />
+                            {isRegenerating === 'hook' ? 'Regenerating...' : 'Regenerate Hook (1 Credit)'}
                         </button>
                     </div>
                     <div className="space-y-3">
@@ -273,14 +277,17 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 {/* Video Scenes */}
                 <div>
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-white">Video Scenes</h3>
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Video Scenes</h3>
+                            <p className="text-gray-400 text-sm">Cost: 1 Credit per scene regeneration</p>
+                        </div>
                         <button
                             onClick={() => regenerateContent('scene')}
                             disabled={isRegenerating === 'scene'}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                            className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                         >
-                            <span className="mr-2">🔄</span>
-                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scenes'}
+                            <SparklesIcon className="w-5 h-5 mr-2" />
+                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scenes (1 Credit)'}
                         </button>
                     </div>
                     <div className="space-y-6">
@@ -370,14 +377,17 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 {project.moodboard && project.moodboard.length > 0 && (
                     <div>
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-white">Moodboard</h3>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">Moodboard</h3>
+                                <p className="text-gray-400 text-sm">Cost: 4 Credits for 4 new images</p>
+                            </div>
                             <button
                                 onClick={() => regenerateContent('moodboard')}
                                 disabled={isRegenerating === 'moodboard'}
-                                className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                                className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                             >
-                                <span className="mr-2">🔄</span>
-                                {isRegenerating === 'moodboard' ? 'Regenerating...' : 'Regenerate Images'}
+                                <SparklesIcon className="w-5 h-5 mr-2" />
+                                {isRegenerating === 'moodboard' ? 'Regenerating...' : 'Regenerate Images (4 Credits)'}
                             </button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -395,8 +405,20 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 )}
             </div>
 
+            {/* Main Action Button - Centered like Build Your Blueprint */}
+            <div className="text-center pt-8">
+                <button 
+                    onClick={handleSaveAndContinue}
+                    disabled={isSaving}
+                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                >
+                    <SparklesIcon className="w-6 h-6 mr-3" />
+                    {isSaving ? 'Saving...' : 'Save & Continue to Studio →'}
+                </button>
+            </div>
+
             {/* Footer Navigation */}
-            <div className="flex justify-between items-center pt-8">
+            <div className="flex justify-between items-center pt-4">
                 <button 
                     onClick={onBack}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
@@ -418,15 +440,6 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                         ))}
                     </div>
                 </div>
-                
-                <button 
-                    onClick={handleSaveAndContinue}
-                    disabled={isSaving}
-                    className="inline-flex items-center justify-center px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-lg transition-all duration-300"
-                >
-                    <span className="mr-2">🎬</span>
-                    {isSaving ? 'Saving...' : 'Save & Continue to Studio →'}
-                </button>
             </div>
         </div>
     );
