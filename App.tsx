@@ -137,7 +137,7 @@ const MainApp = () => {
     } = useAppContext();
     const [currentView, setCurrentView] = useState<View>('dashboard');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const isStudioActive = currentView === 'project' && activeProjectDetails?.workflowStep === 3;
+    const isStudioActive = true; // Temporarily force studio to be active for testing
 
     // TEMPORARY DEBUG: Force Creative Studio for testing
     const testModeRef = useRef(false);
@@ -315,7 +315,29 @@ const MainApp = () => {
     }
 
     if (isStudioActive) {
-        return <CreativeStudio />;
+        return <CreativeStudio testProject={{
+            id: 'test-project',
+            name: 'Test Project',
+            shotstackEdit: {
+                timeline: {
+                    tracks: [
+                        {
+                            clips: [
+                                {
+                                    asset: {
+                                        src: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/footage/cab-ride.mp4',
+                                        type: 'video'
+                                    },
+                                    start: 0,
+                                    length: 5,
+                                    fit: 'cover'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }} />;
     }
     
     return (

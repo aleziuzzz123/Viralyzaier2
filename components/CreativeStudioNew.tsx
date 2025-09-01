@@ -27,7 +27,29 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
     } = useAppContext();
 
     // Use testProject if provided, otherwise use activeProjectDetails
-    const projectToUse = testProject;
+    const projectToUse = testProject || {
+        id: 'test-project',
+        name: 'Test Project',
+        shotstackEdit: {
+            timeline: {
+                tracks: [
+                    {
+                        clips: [
+                            {
+                                asset: {
+                                    src: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/footage/cab-ride.mp4',
+                                    type: 'video'
+                                },
+                                start: 0,
+                                length: 5,
+                                fit: 'cover'
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
 
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const canvasHostRef = useRef<HTMLDivElement>(null);
