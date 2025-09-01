@@ -176,8 +176,15 @@ const StudioPage: React.FC = () => {
     };
 
     if (project.script && project.script.scenes) {
+      console.log('🎬 Processing script scenes:', project.script.scenes);
       // Add video tracks from script scenes
       project.script.scenes.forEach((scene: Scene, index: number) => {
+        console.log(`🎬 Processing scene ${index}:`, {
+          timecode: scene.timecode,
+          visual: scene.visual,
+          voiceover: scene.voiceover,
+          storyboardImageUrl: scene.storyboardImageUrl
+        });
         if (scene.storyboardImageUrl) {
           baseEdit.timeline.tracks.push({
             type: 'video',
