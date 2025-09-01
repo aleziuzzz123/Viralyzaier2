@@ -576,7 +576,7 @@ const CreativeStudio: React.FC = () => {
             <iframe
                         key={iframeKey}
                 ref={iframeRef}
-                        src={`/studio-editor.html?v=${iframeKey}`}
+                        src={`/studio-editor?v=${iframeKey}`}
                 style={{
                             flex: 1,
                     width: '100%',

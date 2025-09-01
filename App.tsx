@@ -21,6 +21,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
+import StudioPage from './components/StudioPage';
 
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
@@ -174,7 +175,14 @@ const MainApp = () => {
         
         // If we're on the studio-editor route, show the full-screen editor
         if (isStudioEditor) {
-            return <CreativeStudio />;
+            // Check if we're inside an iframe
+            if (window.self !== window.top) {
+                // We're inside an iframe, render the StudioPage component directly
+                return <StudioPage />;
+            } else {
+                // We're in the main window, render the CreativeStudio component
+                return <CreativeStudio />;
+            }
         }
         
         switch (currentView) {
