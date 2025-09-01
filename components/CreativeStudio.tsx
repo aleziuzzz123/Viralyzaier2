@@ -10,7 +10,7 @@ const StudioPageWrapper: React.FC<{
     onStudioReady: () => void; 
 }> = ({ projectData, onStudioReady }) => {
     useEffect(() => {
-        // Simulate the message that would normally come from the parent
+        // Listen for studio ready message
         const handleMessage = (event: MessageEvent) => {
             if (event.data.type === 'studio:ready') {
                 onStudioReady();
@@ -19,18 +19,10 @@ const StudioPageWrapper: React.FC<{
         
         window.addEventListener('message', handleMessage);
         
-        // Send project data to StudioPage
-        setTimeout(() => {
-            window.postMessage({
-                type: 'app:load_project',
-                payload: projectData
-            }, '*');
-        }, 100);
-        
         return () => window.removeEventListener('message', handleMessage);
-    }, [projectData, onStudioReady]);
+    }, [onStudioReady]);
     
-    return <StudioPage />;
+    return <StudioPage projectData={projectData} />;
 };
 
 const CreativeStudio: React.FC = () => {
@@ -120,6 +112,15 @@ const CreativeStudio: React.FC = () => {
                     
                     setFullScreenProjectData(project);
                     console.log('🎬 Project loaded for full-screen editor:', project);
+                    console.log('🎬 Project data validation:', {
+                        hasScript: !!project.script,
+                        hasScenes: !!project.script?.scenes,
+                        sceneCount: project.script?.scenes?.length || 0,
+                        hasMoodboard: !!project.moodboard,
+                        moodboardCount: project.moodboard?.length || 0,
+                        hasVoiceovers: !!project.voiceoverUrls,
+                        voiceoverCount: Object.keys(project.voiceoverUrls || {}).length
+                    });
                     
                     // Step 4: Validate assets
                     setLoadingProgress(70);

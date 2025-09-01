@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
 import { Project, Script, Scene } from '../types';
 
-const StudioPage: React.FC = () => {
+const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProjectData }) => {
   console.log('🎬 StudioPage component loaded!');
   console.log('🎬 Window location:', window.location.href);
   console.log('🎬 Is iframe:', window.self !== window.top);
@@ -16,46 +16,33 @@ const StudioPage: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [fullscreenMode, setFullscreenMode] = useState<'modal' | 'popup' | 'newtab'>('modal');
 
-  // Listen for project data from parent
+  // Listen for project data from parent or use prop data
   useEffect(() => {
     console.log('🎬 Setting up message listener in StudioPage');
+    console.log('🎬 Prop project data:', propProjectData);
 
     const handleMessage = (event: MessageEvent) => {
         console.log('🎬 StudioPage received message:', event.data);
         if (event.data.type === 'app:load_project') {
-        console.log('📦 Received project data:', event.data.payload);
-        console.log('📦 Project data analysis:', {
-          hasScript: !!event.data.payload?.script,
-          hasScenes: !!event.data.payload?.script?.scenes,
-          sceneCount: event.data.payload?.script?.scenes?.length || 0,
-          hasMoodboard: !!event.data.payload?.moodboard,
-          moodboardCount: event.data.payload?.moodboard?.length || 0,
-          hasVoiceovers: !!event.data.payload?.voiceoverUrls,
-          voiceoverCount: Object.keys(event.data.payload?.voiceoverUrls || {}).length,
-          scenes: event.data.payload?.script?.scenes?.map((scene: any, index: number) => ({
-            index,
-            timecode: scene.timecode,
-            hasVisual: !!scene.visual,
-            hasVoiceover: !!scene.voiceover,
-            hasStoryboardImage: !!scene.storyboardImageUrl,
-            storyboardImageUrl: scene.storyboardImageUrl
-          }))
-        });
-        
-        // Log the actual project data for debugging
-        console.log('📦 Full project data:', event.data.payload);
+        console.log('📦 Received project data via message:', event.data.payload);
         setProjectData(event.data.payload);
       }
     };
 
     window.addEventListener('message', handleMessage);
     
+    // If we have prop data, use it directly
+    if (propProjectData) {
+      console.log('📦 Using prop project data:', propProjectData);
+      setProjectData(propProjectData);
+    }
+    
     // Notify parent we're ready
     console.log('🎬 Notifying parent that studio is ready');
     window.parent.postMessage({ type: 'studio:ready' }, '*');
     
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [propProjectData]);
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
@@ -105,11 +92,24 @@ const StudioPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (initialized || !projectData) return;
+    console.log('🎬 StudioPage useEffect triggered:', { initialized, hasProjectData: !!projectData });
+    if (initialized || !projectData) {
+      console.log('🎬 Skipping initialization:', { initialized, hasProjectData: !!projectData });
+      return;
+    }
 
     const initializeEditor = async () => {
       try {
         console.log('🚀 Starting StudioPage initialization with project:', projectData);
+        console.log('🚀 Project data details:', {
+          hasScript: !!projectData?.script,
+          hasScenes: !!projectData?.script?.scenes,
+          sceneCount: projectData?.script?.scenes?.length || 0,
+          hasMoodboard: !!projectData?.moodboard,
+          moodboardCount: projectData?.moodboard?.length || 0,
+          hasVoiceovers: !!projectData?.voiceoverUrls,
+          voiceoverCount: Object.keys(projectData?.voiceoverUrls || {}).length
+        });
         setIsLoading(true);
         setInitialized(true);
 
