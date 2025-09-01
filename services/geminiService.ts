@@ -96,47 +96,65 @@ Your output MUST be a JSON object with the following structure:
     
     const systemInstruction = `You are a world-class viral video strategist and your response MUST be a valid JSON object that strictly adheres to the provided schema. Ensure all fields, especially arrays like 'scenes' and 'suggestedTitles', are populated with high-quality, relevant content and are never empty. The output must reflect the chosen video style, desired length, and brand identity.`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-        type: 'generateContent',
-        params: {
-            model: 'gemini-2.5-flash',
-            contents: textPrompt,
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        strategicSummary: { type: Type.STRING, description: "The core strategy behind why this video will be successful." },
-                        suggestedTitles: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 high-CTR title options." },
-                        script: {
-                            type: Type.OBJECT,
-                            properties: {
-                                hooks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 viral hook options based on psychological triggers." },
-                                scenes: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: { 
-                                            timecode: { type: Type.STRING, description: "A string representing the start and end time of the scene in seconds, formatted as 'start-end' (e.g., '0-5', '5-12.5'). DO NOT include units like 's' or use minute:second formats." }, 
-                                            visual: { type: Type.STRING }, 
-                                            voiceover: { type: Type.STRING }, 
-                                            onScreenText: { type: Type.STRING } 
-                                        },
-                                        required: ["timecode", "visual", "voiceover", "onScreenText"]
-                                    }
+    let response;
+    try {
+        response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+            type: 'generateContent',
+            params: {
+                model: 'gemini-2.5-flash',
+                contents: textPrompt,
+                config: {
+                    systemInstruction: systemInstruction,
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            strategicSummary: { type: Type.STRING, description: "The core strategy behind why this video will be successful." },
+                            suggestedTitles: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 high-CTR title options." },
+                            script: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    hooks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 viral hook options based on psychological triggers." },
+                                    scenes: {
+                                        type: Type.ARRAY,
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: { 
+                                                timecode: { type: Type.STRING, description: "A string representing the start and end time of the scene in seconds, formatted as 'start-end' (e.g., '0-5', '5-12.5'). DO NOT include units like 's' or use minute:second formats." }, 
+                                                visual: { type: Type.STRING }, 
+                                                voiceover: { type: Type.STRING }, 
+                                                onScreenText: { type: Type.STRING } 
+                                            },
+                                            required: ["timecode", "visual", "voiceover", "onScreenText"]
+                                        }
+                                    },
+                                    cta: { type: Type.STRING, description: "A clear and compelling call to action." }
                                 },
-                                cta: { type: Type.STRING, description: "A clear and compelling call to action." }
+                                required: ["hooks", "scenes", "cta"]
                             },
-                            required: ["hooks", "scenes", "cta"]
+                            moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of descriptive prompts for an AI image generator. There must be one prompt per scene." }
                         },
-                        moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of descriptive prompts for an AI image generator. There must be one prompt per scene." }
-                    },
-                    required: ["strategicSummary", "suggestedTitles", "script", "moodboardDescription"]
+                        required: ["strategicSummary", "suggestedTitles", "script", "moodboardDescription"]
+                    }
                 }
             }
+        });
+    } catch (error: any) {
+        console.error('Gemini API Error:', error);
+        
+        // Handle specific Gemini API errors
+        if (error?.error?.code === 503 || error?.error?.status === 'UNAVAILABLE') {
+            throw new Error('AI service is currently overloaded. Please try again in a few minutes.');
+        } else if (error?.error?.code === 429) {
+            throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+        } else if (error?.error?.code === 400) {
+            throw new Error('Invalid request to AI service. Please check your input and try again.');
+        } else if (error?.error?.message) {
+            throw new Error(`AI service error: ${error.error.message}`);
+        } else {
+            throw new Error('Failed to generate blueprint. Please try again.');
         }
-    });
+    }
 
     const blueprintContent = parseGeminiJson<{strategicSummary: string, suggestedTitles: string[], script: Script, moodboardDescription: string[]}>(response);
     
@@ -154,15 +172,21 @@ Your output MUST be a JSON object with the following structure:
         const prompt = blueprintContent.moodboardDescription[i];
         onProgress(`Generating moodboard image ${i + 1} of ${blueprintContent.moodboardDescription.length}...`);
         
-        const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
-            type: 'generateImages',
-            params: {
-                model: 'imagen-3.0-generate-002',
-                prompt: `A cinematic, visually stunning image for a YouTube video moodboard in a ${style} style: ${prompt}`,
-                config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio }
-            }
-        });
-        moodboardUrls.push(`data:image/jpeg;base64,${imageResult.generatedImages[0].image.imageBytes}`);
+        try {
+            const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
+                type: 'generateImages',
+                params: {
+                    model: 'imagen-3.0-generate-002',
+                    prompt: `A cinematic, visually stunning image for a YouTube video moodboard in a ${style} style: ${prompt}`,
+                    config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio }
+                }
+            });
+            moodboardUrls.push(`data:image/jpeg;base64,${imageResult.generatedImages[0].image.imageBytes}`);
+        } catch (error: any) {
+            console.error(`Failed to generate moodboard image ${i + 1}:`, error);
+            onProgress(`Skipping moodboard image ${i + 1} due to generation error...`);
+            // Continue with other images instead of failing completely
+        }
     }
 
     onProgress("Finalizing your blueprint...");

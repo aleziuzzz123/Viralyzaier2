@@ -64,18 +64,46 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         setProgressMessage('Kicking off the creative process...');
     
         try {
-            // Step 1: Generate the script and visual plan (blueprint)
+            // Step 1: Generate the script and visual plan (blueprint) with retry logic
             setProgressMessage('Generating script and visual plan...');
-            const blueprint = await generateVideoBlueprint(
-                project.topic,
-                videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
-                videoStyle,
-                (message) => setProgressMessage(message),
-                videoLength,
-                selectedBrand,
-                shouldGenerateMoodboard,
-                isNarratorEnabled
-            );
+            
+            let blueprint;
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    blueprint = await generateVideoBlueprint(
+                        project.topic,
+                        videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
+                        videoStyle,
+                        (message) => setProgressMessage(message),
+                        videoLength,
+                        selectedBrand,
+                        shouldGenerateMoodboard,
+                        isNarratorEnabled
+                    );
+                    break; // Success, exit retry loop
+                } catch (error: any) {
+                    retryCount++;
+                    const errorMessage = getErrorMessage(error);
+                    
+                    // Check if it's a Gemini API overload error
+                    if (errorMessage.includes('overloaded') || errorMessage.includes('503') || errorMessage.includes('UNAVAILABLE')) {
+                        if (retryCount < maxRetries) {
+                            const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+                            setProgressMessage(`AI service is busy. Retrying in ${waitTime/1000} seconds... (Attempt ${retryCount + 1}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
+                            continue;
+                        } else {
+                            throw new Error(`AI service is currently overloaded. Please try again in a few minutes. (Attempted ${maxRetries} times)`);
+                        }
+                    } else {
+                        // For other errors, don't retry
+                        throw error;
+                    }
+                }
+            }
     
             const narratorVoiceId = isNarratorEnabled ? narrator : null;
             let scriptWithMergedHook = JSON.parse(JSON.stringify(blueprint.script));
