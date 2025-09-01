@@ -4,20 +4,15 @@ import LoginModal from './LoginModal';
 import { useAppContext } from '../contexts/AppContext';
 import LanguageSwitcher from './LanguageSwitcher';
 
-// Use environment variable instead of hardcoded URL
-const supabaseAssetBase = import.meta.env.VITE_SUPABASE_URL ? 
-    `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/assets/35ec9cdd-1f44-40c1-8525-033ce1c5fa86/3f4ca1d4-e118-4828-b013-1f00b1040806` : 
-    '';
-
 const generatedImages = {
-    featureBlueprint: supabaseAssetBase ? `${supabaseAssetBase}/feature_blueprint.jpg` : '',
-    featureStudio: supabaseAssetBase ? `${supabaseAssetBase}/feature_studio.jpg` : '',
-    featureGenerative: supabaseAssetBase ? `${supabaseAssetBase}/feature_generative.jpg` : '',
-    featureAutopilot: supabaseAssetBase ? `${supabaseAssetBase}/feature_autopilot.jpg` : '',
-    promoVideo: supabaseAssetBase ? `${supabaseAssetBase}/promo_video.mp4` : '',
-    testimonial1: supabaseAssetBase ? `${supabaseAssetBase}/testimonial_01.jpg` : '',
-    testimonial2: supabaseAssetBase ? `${supabaseAssetBase}/testimonial_02.jpg` : '',
-    testimonial3: supabaseAssetBase ? `${supabaseAssetBase}/testimonial_03.jpg` : '',
+    featureBlueprint: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_blueprint.jpeg`,
+    featureStudio: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_03.jpeg`,
+    featureGenerative: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_generative.jpeg`,
+    featureAutopilot: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/feature_autopilot.jpeg`,
+    promoVideo: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/final_promo_01.mp4`,
+    testimonial1: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_01.jpeg`,
+    testimonial2: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_02.jpeg`,
+    testimonial3: `https://storage.googleapis.com/generative-ai-codelabs/Viralyzer%205.0%20App%20Dev/testimonial_03.jpeg`
 };
 
 interface FAQItemProps {

@@ -1,1 +1,29 @@
-<!-- This file has been deprecated and its contents removed to prevent build errors. -->
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Creative Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html,body,#root{height:100%;margin:0; background-color: #111827;}
+      [data-shotstack-studio]{background:#000;border-radius:8px}
+      [data-shotstack-timeline]{background:#111827;border-radius:8px;margin-top:16px}
+    </style>
+    <script>
+      // Fallback env for AI Studio preview only.
+      window.ENV = Object.assign(
+        {
+          VITE_SUPABASE_URL: 'https://wpgrfukcnpcoyruymxdd.supabase.co',
+          VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwZ3JmdWtjbnBjb3lydXlteGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3MzQ5MjgsImV4cCI6MjA2OTMxMDkyOH0.-b5KHzKWk2N3VEY_K5CzYZfszRRL6GY-MivOVUAL1Z4',
+          VITE_SUPABASE_ASSETS_BUCKET: 'assets',
+        },
+        window.ENV || {}
+      );
+    </script>
+  </head>
+  <body class="bg-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/studio-entry.tsx"></script>
+  </body>
+</html>
