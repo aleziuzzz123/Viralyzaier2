@@ -37,18 +37,24 @@ const WorkingShotstackStudio: React.FC = () => {
 
   // Callback refs that trigger when elements are ready - EXACTLY like the old working version
   const canvasRefCallback = useCallback((node: HTMLDivElement | null) => {
+    console.log('🎨 Canvas ref callback called with node:', node);
     if (node) {
       canvasHost.current = node;
       setCanvasReady(true);
-      console.log('🎨 Canvas element ready');
+      console.log('🎨 Canvas element ready, dimensions:', node.clientWidth, 'x', node.clientHeight);
+    } else {
+      console.log('🎨 Canvas ref callback called with null node');
     }
   }, []);
 
   const timelineRefCallback = useCallback((node: HTMLDivElement | null) => {
+    console.log('📊 Timeline ref callback called with node:', node);
     if (node) {
       timelineHost.current = node;
       setTimelineReady(true);
-      console.log('📊 Timeline element ready');
+      console.log('📊 Timeline element ready, dimensions:', node.clientWidth, 'x', node.clientHeight);
+    } else {
+      console.log('📊 Timeline ref callback called with null node');
     }
   }, []);
 
@@ -66,6 +72,55 @@ const WorkingShotstackStudio: React.FC = () => {
       initializeEditor();
     }
   }, [canvasReady, timelineReady, isLoading, initialized]);
+
+  // Fallback: Try to initialize after a delay if refs don't work
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (!initialized && isLoading && !canvasReady && !timelineReady) {
+        console.log('🔧 Fallback: Ref callbacks not working, trying direct DOM access...');
+        
+        // Try to find elements directly
+        const canvasElement = document.querySelector('[data-shotstack-studio]') as HTMLDivElement;
+        const timelineElement = document.querySelector('[data-shotstack-timeline]') as HTMLDivElement;
+        
+        if (canvasElement && timelineElement) {
+          console.log('🔧 Fallback: Found elements directly, setting refs...');
+          canvasHost.current = canvasElement;
+          timelineHost.current = timelineElement;
+          setCanvasReady(true);
+          setTimelineReady(true);
+        } else {
+          console.log('🔧 Fallback: Could not find elements directly');
+        }
+      }
+    }, 2000); // Wait 2 seconds for refs to work, then try fallback
+
+    return () => clearTimeout(fallbackTimer);
+  }, [initialized, isLoading, canvasReady, timelineReady]);
+
+  // Alternative approach: Initialize immediately without waiting for refs
+  useEffect(() => {
+    const immediateTimer = setTimeout(() => {
+      if (!initialized && isLoading) {
+        console.log('🔧 Alternative: Initializing without waiting for refs...');
+        
+        // Find elements directly and initialize
+        const canvasElement = document.querySelector('[data-shotstack-studio]') as HTMLDivElement;
+        const timelineElement = document.querySelector('[data-shotstack-timeline]') as HTMLDivElement;
+        
+        if (canvasElement && timelineElement) {
+          console.log('🔧 Alternative: Found elements, proceeding with initialization...');
+          canvasHost.current = canvasElement;
+          timelineHost.current = timelineElement;
+          initializeEditor();
+        } else {
+          console.log('🔧 Alternative: Elements not found yet');
+        }
+      }
+    }, 1000); // Wait 1 second then try alternative approach
+
+    return () => clearTimeout(immediateTimer);
+  }, [initialized, isLoading]);
 
   const initializeEditor = async () => {
     try {
