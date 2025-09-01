@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Edit, Canvas, Controls, Timeline, VideoExporter } from "@shotstack/shotstack-studio";
 import { Project, ShotstackClipSelection } from '../types';
 import TopInspectorPanel from './TopInspectorPanel';
-import AssetBrowserModal from './AssetBrowserModal';
 import EditorToolbar from './EditorToolbar';
 import HelpModal from './HelpModal';
-import { supabaseUrl } from '../services/supabaseClient';
 
 export default function StudioPage() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
@@ -403,13 +401,62 @@ export default function StudioPage() {
       />
 
       {isAssetModalOpen && (
-        <AssetBrowserModal
-          project={project}
-          onClose={() => setIsAssetModalOpen(false)}
-          onAddClip={addClip}
-          addToast={aic_addToast}
-          lockAndExecute={aic_lockAndExecute}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Add Media</h2>
+              <button 
+                onClick={() => setIsAssetModalOpen(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">Sample Assets</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      addClip('video', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
+                      setIsAssetModalOpen(false);
+                    }}
+                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                  >
+                    Sample Video
+                  </button>
+                  <button
+                    onClick={() => {
+                      addClip('image', 'https://picsum.photos/1280/720');
+                      setIsAssetModalOpen(false);
+                    }}
+                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm"
+                  >
+                    Sample Image
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">Upload Files</h3>
+                <input
+                  type="file"
+                  accept="image/*,video/*,audio/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const url = URL.createObjectURL(file);
+                      const type = file.type.startsWith('image/') ? 'image' : 
+                                  file.type.startsWith('video/') ? 'video' : 'audio';
+                      addClip(type, url);
+                      setIsAssetModalOpen(false);
+                    }
+                  }}
+                  className="w-full p-2 bg-gray-700 rounded text-white"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {isHelpModalOpen && (
