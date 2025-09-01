@@ -167,11 +167,18 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     if (!scene.voiceover) return null;
 
                     try {
+                        console.log(`🎤 Generating voiceover for scene ${index}:`, {
+                            text: scene.voiceover,
+                            voiceId
+                        });
+                        
                         const response = await invokeEdgeFunction('elevenlabs-proxy', {
                             type: 'tts',
                             text: scene.voiceover,
                             voiceId
                         });
+                        
+                        console.log(`🎤 Voiceover response for scene ${index}:`, response);
 
                         if (response && response.audioUrl) {
                             return response.audioUrl;
