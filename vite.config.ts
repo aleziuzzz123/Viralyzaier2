@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: './index.tsx'
+        main: './index.html'
       },
       output: {
         entryFileNames: `assets/[name].js`,
