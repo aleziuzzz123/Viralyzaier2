@@ -20,7 +20,38 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html')
-      }
+      },
+      external: [
+        '@pixi/core',
+        '@pixi/display',
+        '@pixi/graphics',
+        '@pixi/sprite',
+        '@pixi/text',
+        '@pixi/utils',
+        '@pixi/constants',
+        '@pixi/math',
+        '@pixi/events',
+        '@pixi/ticker',
+        '@pixi/app',
+        '@pixi/loaders',
+        '@pixi/filter',
+        '@pixi/particle',
+        '@pixi/sound',
+        '@pixi/interaction',
+        '@pixi/mesh',
+        '@pixi/mesh-extras',
+        '@pixi/prepare',
+        '@pixi/batch',
+        '@pixi/compressed-textures',
+        '@pixi/extract',
+        '@pixi/runner',
+        '@pixi/settings',
+        '@pixi/spritesheet',
+        '@pixi/text-bitmap',
+        '@pixi/text-html',
+        '@pixi/ticker',
+        '@pixi/utils'
+      ]
     }
   }
 });
