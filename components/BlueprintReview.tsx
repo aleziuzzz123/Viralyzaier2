@@ -166,16 +166,28 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
                     if (!scene.voiceover) return null;
 
-                    // Sanitize text content to avoid ElevenLabs issues
-                    const sanitizedText = scene.voiceover
-                        .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
-                        .replace(/\s+/g, ' ') // Normalize whitespace
-                        .trim();
+                            // Sanitize text content to avoid ElevenLabs issues
+        const sanitizedText = scene.voiceover
+            .replace(/[^\w\s.,!?;:'"()-]/g, '') // Remove special characters
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
 
-                    if (!sanitizedText || sanitizedText.length < 3) {
-                        console.warn(`Scene ${index} has invalid text content, skipping:`, scene.voiceover);
-                        return null;
-                    }
+        if (!sanitizedText || sanitizedText.length < 3) {
+            console.warn(`Scene ${index} has invalid text content, skipping:`, scene.voiceover);
+            return null;
+        }
+
+        // Additional debugging for scene 3 specifically
+        if (index === 3) {
+            console.log(`🔍 SCENE 3 DEBUG:`, {
+                originalText: scene.voiceover,
+                sanitizedText: sanitizedText,
+                originalLength: scene.voiceover.length,
+                sanitizedLength: sanitizedText.length,
+                hasSpecialChars: /[^\w\s.,!?;:'"()-]/.test(scene.voiceover),
+                voiceId
+            });
+        }
 
                     // Retry logic for failed voiceovers
                     const maxRetries = 2; // Reduced retries to avoid long delays

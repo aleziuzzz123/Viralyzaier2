@@ -219,7 +219,7 @@ const StudioPage: React.FC = () => {
             type: 'video',
             clips: [{
               asset: {
-                type: 'image',
+                type: 'generateImages',
                 src: scene.storyboardImageUrl
               },
               start: parseTimecode(scene.timecode).start,
