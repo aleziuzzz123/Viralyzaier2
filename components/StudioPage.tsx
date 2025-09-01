@@ -30,9 +30,13 @@ const StudioPage: React.FC = () => {
             timecode: scene.timecode,
             hasVisual: !!scene.visual,
             hasVoiceover: !!scene.voiceover,
-            hasStoryboardImage: !!scene.storyboardImageUrl
+            hasStoryboardImage: !!scene.storyboardImageUrl,
+            storyboardImageUrl: scene.storyboardImageUrl
           }))
         });
+        
+        // Log the actual project data for debugging
+        console.log('📦 Full project data:', event.data.payload);
         setProjectData(event.data.payload);
       }
     };
@@ -202,6 +206,7 @@ const StudioPage: React.FC = () => {
           storyboardImageUrl: scene.storyboardImageUrl
         });
         if (scene.storyboardImageUrl) {
+          console.log(`🎬 Adding video track for scene ${index} with image:`, scene.storyboardImageUrl);
           baseEdit.timeline.tracks.push({
             type: 'video',
             clips: [{
@@ -214,11 +219,14 @@ const StudioPage: React.FC = () => {
               fit: 'cover'
             }]
           });
+        } else {
+          console.log(`🎬 Scene ${index} has no storyboard image URL`);
         }
       });
 
       // Add audio tracks from voiceovers
       if (project.voiceoverUrls) {
+        console.log('🎬 Processing voiceover URLs:', project.voiceoverUrls);
         const audioTrack = {
           type: 'audio',
           clips: []
@@ -227,6 +235,7 @@ const StudioPage: React.FC = () => {
         Object.entries(project.voiceoverUrls).forEach(([sceneIndex, voiceoverUrl]) => {
           const scene = project.script!.scenes[parseInt(sceneIndex)];
           if (scene) {
+            console.log(`🎬 Adding audio clip for scene ${sceneIndex}:`, voiceoverUrl);
             audioTrack.clips.push({
               asset: {
                 type: 'audio',
@@ -239,10 +248,21 @@ const StudioPage: React.FC = () => {
         });
 
         if (audioTrack.clips.length > 0) {
+          console.log('🎬 Adding audio track with clips:', audioTrack.clips);
           baseEdit.timeline.tracks.push(audioTrack);
+        } else {
+          console.log('🎬 No audio clips to add');
         }
+      } else {
+        console.log('🎬 No voiceover URLs found');
       }
     }
+
+    console.log('🎬 Final edit configuration:', baseEdit);
+    console.log('🎬 Timeline tracks count:', baseEdit.timeline.tracks.length);
+    baseEdit.timeline.tracks.forEach((track, index) => {
+      console.log(`🎬 Track ${index}:`, track);
+    });
 
     return baseEdit;
   };

@@ -180,13 +180,22 @@ const CreativeStudio: React.FC = () => {
                             hasMoodboard: !!projectData?.moodboard,
                             moodboardCount: projectData?.moodboard?.length || 0,
                             hasVoiceovers: !!projectData?.voiceoverUrls,
-                            voiceoverCount: Object.keys(projectData?.voiceoverUrls || {}).length
+                            voiceoverCount: Object.keys(projectData?.voiceoverUrls || {}).length,
+                            isFullScreenRoute,
+                            hasFullScreenData: !!fullScreenProjectData,
+                            hasActiveProject: !!activeProjectDetails
                         });
-                        if (projectData) {
-                        iframeRef.current.contentWindow?.postMessage({
-                            type: 'app:load_project',
+                        
+                        // If we're in full-screen mode but don't have project data yet, wait for it
+                        if (isFullScreenRoute && !fullScreenProjectData) {
+                            console.log('🎬 Full-screen mode but no project data yet, waiting...');
+                            // The project data will be sent when it's loaded
+                        } else if (projectData) {
+                            console.log('🎬 Sending project data to studio...');
+                            iframeRef.current.contentWindow?.postMessage({
+                                type: 'app:load_project',
                                 payload: projectData,
-                        }, '*');
+                            }, '*');
                         } else {
                             console.warn('🎬 No project data available to send to studio');
                         }
@@ -213,6 +222,17 @@ const CreativeStudio: React.FC = () => {
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, [activeProjectDetails, handleUpdateProject, addToast]);
+
+    // Send project data to iframe when it becomes available in full-screen mode
+    useEffect(() => {
+        if (isFullScreenRoute && fullScreenProjectData && isStudioReady && iframeRef.current) {
+            console.log('🎬 Project data loaded, sending to studio...');
+            iframeRef.current.contentWindow?.postMessage({
+                type: 'app:load_project',
+                payload: fullScreenProjectData,
+            }, '*');
+        }
+    }, [isFullScreenRoute, fullScreenProjectData, isStudioReady]);
     
     console.log('🎬 CreativeStudio rendering with project:', activeProjectDetails);
     
