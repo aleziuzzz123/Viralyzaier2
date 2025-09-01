@@ -10,10 +10,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
-    preserveSymlinks: false
+    preserveSymlinks: false,
+    alias: {
+      'pixi.js': path.resolve(__dirname, 'node_modules/pixi.js/dist/esm/pixi.mjs')
+    }
   },
   optimizeDeps: {
-    include: ["@shotstack/shotstack-studio", "pixi.js"]
+    include: ["@shotstack/shotstack-studio", "pixi.js"],
+    exclude: ["@pixi/core", "@pixi/display", "@pixi/graphics", "@pixi/sprite", "@pixi/text", "@pixi/utils"]
   },
   build: {
     rollupOptions: {
@@ -53,5 +57,8 @@ export default defineConfig({
         '@pixi/utils'
       ]
     }
+  },
+  define: {
+    'process.env.NODE_ENV': '"production"'
   }
 });
