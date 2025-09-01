@@ -9,53 +9,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ["@shotstack/shotstack-studio", "pixi.js", "@pixi/core", "@pixi/*"],
+    dedupe: ["@shotstack/shotstack-studio", "pixi.js"],
     preserveSymlinks: false,
     alias: {
-      'pixi.js': path.resolve(__dirname, 'node_modules/pixi.js/dist/esm/pixi.mjs')
+      'pixi.js': path.resolve(__dirname, 'node_modules/pixi.js/dist/pixi.mjs')
     }
   },
   optimizeDeps: {
-    include: ["@shotstack/shotstack-studio", "pixi.js"],
-    exclude: ["@pixi/core", "@pixi/display", "@pixi/graphics", "@pixi/sprite", "@pixi/text", "@pixi/utils"]
+    include: ["@shotstack/shotstack-studio", "pixi.js"]
   },
   build: {
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
         studio: path.resolve(__dirname, 'studio.html')
-      },
-      external: [
-        '@pixi/core',
-        '@pixi/display',
-        '@pixi/graphics',
-        '@pixi/sprite',
-        '@pixi/text',
-        '@pixi/utils',
-        '@pixi/constants',
-        '@pixi/math',
-        '@pixi/events',
-        '@pixi/ticker',
-        '@pixi/app',
-        '@pixi/loaders',
-        '@pixi/filter',
-        '@pixi/particle',
-        '@pixi/sound',
-        '@pixi/interaction',
-        '@pixi/mesh',
-        '@pixi/mesh-extras',
-        '@pixi/prepare',
-        '@pixi/batch',
-        '@pixi/compressed-textures',
-        '@pixi/extract',
-        '@pixi/runner',
-        '@pixi/settings',
-        '@pixi/spritesheet',
-        '@pixi/text-bitmap',
-        '@pixi/text-html',
-        '@pixi/ticker',
-        '@pixi/utils'
-      ]
+      }
     }
   },
   define: {

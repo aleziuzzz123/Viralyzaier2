@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getShotstackSDK } from '../lib/shotstackSdk';
+import { Edit, Canvas, Controls } from "@shotstack/shotstack-studio";
 import { Project, ShotstackClipSelection } from '../types';
 import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
@@ -7,18 +7,17 @@ import EditorToolbar from './EditorToolbar';
 import HelpModal from './HelpModal';
 import { supabaseUrl } from '../services/supabaseClient';
 
-type SDK = typeof import("@shotstack/shotstack-studio");
-
 export default function StudioPage() {
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const timelineHostRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<any>(null); // Actually VideoEditorHandles, but type is in that file
+  const editorRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
   const executionLock = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [initialized, setInitialized] = useState(false);
   
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -79,98 +78,103 @@ export default function StudioPage() {
       if (!editorRef.current) return;
       const finalJson = editorRef.current.getEdit();
       postToParent('studio:save_project', finalJson);
-      // aic_addToast('Project saved! Starting render...', 'info');
-      // In a real app, you would now call your backend to start the render
   }
 
   // --- Editor Initialization and Communication ---
   useEffect(() => {
-    let disposed = false;
-    let canvas: any, timeline: any, controls: any;
+    if (initialized) return; // Prevent double initialization
 
-    const handleMessage = (event: MessageEvent) => {
-        if (event.data.type === 'app:load_project') {
+    const initializeEditor = async () => {
+      try {
+        setIsLoading(true);
+        setInitialized(true);
+
+        // Small delay to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Wait for project data from parent
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.type === 'app:load_project') {
             const projectData: Project = event.data.payload;
             if (projectData) {
-                setProject(projectData);
-                boot(projectData);
+              setProject(projectData);
+              boot(projectData);
             } else {
-                setErr("No project data received from the main application.");
+              setErr("No project data received from the main application.");
             }
-        }
-    };
-    window.addEventListener('message', handleMessage);
-    postToParent('studio:ready');
-
-    const boot = async (projectData: Project) => {
-      try {
-        for (let i = 0; i < 120; i++) {
-          const c = canvasHostRef.current;
-          const t = timelineHostRef.current;
-          if (c && t && c.clientWidth >= 1) break;
-          await new Promise(r => requestAnimationFrame(r));
-        }
-        if (disposed) return;
-
-        const { Edit, Canvas, Controls, Timeline } = await getShotstackSDK();
-        if (disposed) return;
-
-        const initialState = projectData.shotstackEditJson || {
-            timeline: { background: "#000000", tracks: [ { clips: [] }, { clips: [] }, { clips: [] } ]},
-            output: { format: 'mp4', size: { width: 1280, height: 720 }}
+          }
         };
-        const size = initialState.output.size;
 
-        const assetProxyUrl = `${supabaseUrl}/functions/v1/asset-proxy/`;
-        const edit = new Edit(size, assetProxyUrl);
-        await edit.load();
-        editorRef.current = edit;
-        if (disposed) return;
+        window.addEventListener('message', handleMessage);
+        postToParent('studio:ready');
 
-        canvas = new Canvas(size, edit);
-        await canvas.load(canvasHostRef.current!);
-        if (disposed) return;
+        const boot = async (projectData: Project) => {
+          try {
+            // Wait for DOM elements to be ready
+            for (let i = 0; i < 120; i++) {
+              const c = canvasHostRef.current;
+              if (c && c.clientWidth >= 1) break;
+              await new Promise(r => requestAnimationFrame(r));
+            }
 
-        await edit.loadEdit(initialState);
-        
-        controls = new Controls(edit);
-        await controls.load();
-        controlsRef.current = controls;
-        if (disposed) return;
+            const initialState = projectData.shotstackEditJson || {
+              timeline: { background: "#000000", tracks: [ { clips: [] }, { clips: [] }, { clips: [] } ]},
+              output: { format: 'mp4', size: { width: 1280, height: 720 }}
+            };
+            const size = initialState.output.size;
 
-        const tlWidth = timelineHostRef.current?.clientWidth || size.width;
-        timeline = new Timeline(edit, { width: tlWidth, height: 300 });
-        await timeline.load(timelineHostRef.current!);
-        if (disposed) return;
+            const assetProxyUrl = `${supabaseUrl}/functions/v1/asset-proxy/`;
+            
+            // 1. Initialize the edit with dimensions and background color
+            const edit = new Edit(size, assetProxyUrl);
+            await edit.load();
+            editorRef.current = edit;
 
-        // Setup event listeners
-        if (edit?.events?.on) {
-          edit.events.on("clip:selected", (sel: ShotstackClipSelection) => !disposed && setSelection(sel));
-          edit.events.on("clip:deselected", () => !disposed && setSelection(null));
-          controls.events.on('play', () => !disposed && setIsPlaying(true));
-          controls.events.on('pause', () => !disposed && setIsPlaying(false));
-          controls.events.on('stop', () => !disposed && setIsPlaying(false));
-          // Auto-save on change
-          edit.events.on('edit:updated', () => {
-              if (!disposed) {
-                  postToParent('studio:save_project', edit.getEdit());
-              }
-          });
-        }
+            // 2. Create a canvas to display the edit
+            const canvas = new Canvas(size, edit);
+            await canvas.load(canvasHostRef.current!);
 
-        if (!disposed) setIsLoading(false);
-      } catch (e: any) {
-        if (!disposed) { setErr(e?.message ?? String(e)); setIsLoading(false); }
+            // 3. Load the template
+            await edit.loadEdit(initialState);
+            
+            // 4. Add keyboard controls
+            const controls = new Controls(edit);
+            await controls.load();
+            controlsRef.current = controls;
+
+            // Setup event listeners
+            if (edit?.events?.on) {
+              edit.events.on("clip:selected", (sel: ShotstackClipSelection) => setSelection(sel));
+              edit.events.on("clip:deselected", () => setSelection(null));
+              controls.events.on('play', () => setIsPlaying(true));
+              controls.events.on('pause', () => setIsPlaying(false));
+              controls.events.on('stop', () => setIsPlaying(false));
+              // Auto-save on change
+              edit.events.on('edit:updated', () => {
+                postToParent('studio:save_project', edit.getEdit());
+              });
+            }
+
+            setIsLoading(false);
+          } catch (e: any) {
+            setErr(e?.message ?? String(e));
+            setIsLoading(false);
+          }
+        };
+
+        return () => {
+          window.removeEventListener('message', handleMessage);
+        };
+      } catch (err) {
+        console.error('Failed to initialize video editor:', err);
+        setErr(err instanceof Error ? err.message : 'Unknown error occurred');
+        setInitialized(false); // Reset on error
+        setIsLoading(false);
       }
     };
 
-    return () => {
-      disposed = true;
-      window.removeEventListener('message', handleMessage);
-      try { timeline?.dispose?.(); } catch {}
-      try { canvas?.dispose?.(); } catch {}
-    };
-  }, []);
+    initializeEditor();
+  }, [initialized]);
 
   if (err) {
     return (
@@ -198,30 +202,24 @@ export default function StudioPage() {
         <div ref={canvasHostRef} data-shotstack-studio className="w-full h-full bg-black rounded-lg" />
       </div>
 
-      <div className="flex-shrink-0">
-        <EditorToolbar
-            isPlaying={isPlaying}
-            onPlayPause={() => {
-                if (isPlaying) {
-                    controlsRef.current?.pause();
-                } else {
-                    controlsRef.current?.play();
-                }
-            }}
-            onStop={() => controlsRef.current?.stop()}
-            onUndo={() => editorRef.current?.undo()}
-            onRedo={() => editorRef.current?.redo()}
-            onAddMedia={() => setIsAssetModalOpen(true)}
-            onAiPolish={() => aic_addToast('AI Polish coming soon!', 'info')}
-            onRender={handleRender}
-            onOpenHelp={() => setIsHelpModalOpen(true)}
-        />
-      </div>
-      
-      <div className="flex-shrink-0 h-72">
-        <div ref={timelineHostRef} data-shotstack-timeline className="w-full h-full bg-gray-800/50 rounded-lg" />
-      </div>
-      
+      <EditorToolbar 
+        isPlaying={isPlaying}
+        onPlayPause={() => {
+          if (isPlaying) {
+            controlsRef.current?.pause();
+          } else {
+            controlsRef.current?.play();
+          }
+        }}
+        onStop={() => controlsRef.current?.stop()}
+        onUndo={() => editorRef.current?.undo()}
+        onRedo={() => editorRef.current?.redo()}
+        onAddMedia={() => setIsAssetModalOpen(true)}
+        onAiPolish={() => aic_addToast('AI Polish coming soon!', 'info')}
+        onRender={handleRender}
+        onOpenHelp={() => setIsHelpModalOpen(true)}
+      />
+
       {isAssetModalOpen && (
         <AssetBrowserModal
           project={project}
@@ -231,8 +229,13 @@ export default function StudioPage() {
           lockAndExecute={aic_lockAndExecute}
         />
       )}
-      
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+
+      {isHelpModalOpen && (
+        <HelpModal
+          isOpen={isHelpModalOpen}
+          onClose={() => setIsHelpModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
