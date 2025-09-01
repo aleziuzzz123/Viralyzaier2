@@ -19,7 +19,7 @@ const StudioPage: React.FC = () => {
   // Listen for project data from parent
   useEffect(() => {
     console.log('🎬 Setting up message listener in StudioPage');
-    
+
     const handleMessage = (event: MessageEvent) => {
         console.log('🎬 StudioPage received message:', event.data);
         if (event.data.type === 'app:load_project') {
@@ -333,6 +333,8 @@ const StudioPage: React.FC = () => {
         document.body.style.overflow = 'unset';
       };
     }, []);
+
+  console.log('🎬 StudioPage about to render main component');
 
   return (
       <div 
@@ -707,6 +709,8 @@ const StudioPage: React.FC = () => {
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mb-4"></div>
             <h1 className="text-2xl font-bold mb-4">Starting Creative Studio...</h1>
             <p className="text-gray-400">Loading template...</p>
+            <p className="text-green-400 text-sm mt-2">✅ StudioPage component loaded successfully!</p>
+            <p className="text-blue-400 text-sm">📍 Iframe detected: {window.self !== window.top ? 'Yes' : 'No'}</p>
           </div>
       </div>
       )}
