@@ -93,6 +93,33 @@ export default function StudioPage() {
         setInitialized(true);
         setDebugInfo('Initializing...');
 
+        // Test Shotstack SDK import first
+        console.log('🧪 Testing Shotstack SDK import...');
+        try {
+          console.log('📦 Edit component:', typeof Edit);
+          console.log('📦 Canvas component:', typeof Canvas);
+          console.log('📦 Controls component:', typeof Controls);
+          console.log('📦 Timeline component:', typeof Timeline);
+          console.log('📦 VideoExporter component:', typeof VideoExporter);
+          
+          if (typeof Edit !== 'function') {
+            throw new Error('Edit component not available');
+          }
+          if (typeof Canvas !== 'function') {
+            throw new Error('Canvas component not available');
+          }
+          if (typeof Controls !== 'function') {
+            throw new Error('Controls component not available');
+          }
+          if (typeof Timeline !== 'function') {
+            throw new Error('Timeline component not available');
+          }
+          console.log('✅ Shotstack SDK components loaded successfully');
+        } catch (sdkError) {
+          console.error('❌ Shotstack SDK import failed:', sdkError);
+          throw new Error(`Shotstack SDK not available: ${sdkError.message}`);
+        }
+
         // Small delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 100));
 
