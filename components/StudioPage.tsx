@@ -3,6 +3,10 @@ import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
 import { Project, Script, Scene } from '../types';
 
 const StudioPage: React.FC = () => {
+  console.log('🎬 StudioPage component loaded!');
+  console.log('🎬 Window location:', window.location.href);
+  console.log('🎬 Is iframe:', window.self !== window.top);
+  
   const [edit, setEdit] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +18,10 @@ const StudioPage: React.FC = () => {
 
   // Listen for project data from parent
   useEffect(() => {
+    console.log('🎬 Setting up message listener in StudioPage');
+    
     const handleMessage = (event: MessageEvent) => {
+        console.log('🎬 StudioPage received message:', event.data);
         if (event.data.type === 'app:load_project') {
         console.log('📦 Received project data:', event.data.payload);
         console.log('📦 Project data analysis:', {
@@ -44,6 +51,7 @@ const StudioPage: React.FC = () => {
     window.addEventListener('message', handleMessage);
     
     // Notify parent we're ready
+    console.log('🎬 Notifying parent that studio is ready');
     window.parent.postMessage({ type: 'studio:ready' }, '*');
     
     return () => window.removeEventListener('message', handleMessage);

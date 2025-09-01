@@ -176,11 +176,18 @@ const MainApp = () => {
         // If we're on the studio-editor route, show the full-screen editor
         if (isStudioEditor) {
             // Check if we're inside an iframe
+            console.log('🎬 Studio editor route detected');
+            console.log('🎬 Window self:', window.self);
+            console.log('🎬 Window top:', window.top);
+            console.log('🎬 Is iframe:', window.self !== window.top);
+            
             if (window.self !== window.top) {
                 // We're inside an iframe, render the StudioPage component directly
+                console.log('🎬 Rendering StudioPage component (inside iframe)');
                 return <StudioPage />;
             } else {
                 // We're in the main window, render the CreativeStudio component
+                console.log('🎬 Rendering CreativeStudio component (main window)');
                 return <CreativeStudio />;
             }
         }
