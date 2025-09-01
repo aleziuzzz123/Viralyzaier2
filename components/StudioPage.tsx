@@ -225,7 +225,11 @@ const StudioPage: React.FC = () => {
   };
 
   // Helper function to parse timecode
-  const parseTimecode = (timecode: string) => {
+  const parseTimecode = (timecode: string | undefined) => {
+    if (!timecode) {
+      console.warn('Timecode is undefined, using default values');
+      return { start: 0, end: 5, duration: 5 };
+    }
     const [start, end] = timecode.split('-').map(Number);
     return { start, end, duration: end - start };
   };
