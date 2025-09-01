@@ -125,10 +125,12 @@ export default function StudioPage() {
         // Small delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Wait for project data from parent
+        // Wait for project data from parent with timeout
+        let messageReceived = false;
         const handleMessage = (event: MessageEvent) => {
           console.log('📨 Received message:', event.data);
           if (event.data.type === 'app:load_project') {
+            messageReceived = true;
             const projectData: Project = event.data.payload;
             console.log('📦 Project data received:', projectData);
             if (projectData) {
@@ -145,6 +147,55 @@ export default function StudioPage() {
         window.addEventListener('message', handleMessage);
         console.log('📤 Sending studio:ready message');
         postToParent('studio:ready');
+
+        // Fallback: if no message received within 5 seconds, create a test project
+        setTimeout(() => {
+          if (!messageReceived) {
+            console.log('⏰ No project data received, creating test project...');
+            const testProject: Project = {
+              id: 'test-project',
+              name: 'Test Project',
+              userId: 'test-user',
+              created_at: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              workflowStep: 3,
+              shotstackEditJson: {
+                timeline: { 
+                  background: "#000000", 
+                  tracks: [ 
+                    { clips: [] }, 
+                    { clips: [] }, 
+                    { clips: [] } 
+                  ]
+                },
+                output: { 
+                  format: 'mp4', 
+                  size: { width: 1280, height: 720 }
+                }
+              },
+              script: null,
+              title: 'Test Video',
+              topic: 'Test video for debugging',
+              platform: 'youtube_long',
+              videoSize: '16:9',
+              status: 'Idea',
+              analysis: null,
+              competitorAnalysis: null,
+              moodboard: null,
+              assets: {},
+              soundDesign: null,
+              launchPlan: null,
+              performance: null,
+              scheduledDate: null,
+              publishedUrl: null,
+              voiceoverVoiceId: null,
+              lastPerformanceCheck: null
+            };
+            setProject(testProject);
+            setDebugInfo('Test project created, booting editor...');
+            boot(testProject);
+          }
+        }, 5000);
 
         const boot = async (projectData: Project) => {
           try {
@@ -167,6 +218,10 @@ export default function StudioPage() {
             }
 
             console.log('✅ DOM elements ready, initializing Shotstack...');
+            console.log('🔍 Canvas element:', c);
+            console.log('🔍 Timeline element:', t);
+            console.log('🔍 Canvas data attributes:', c.getAttribute('data-shotstack-studio'));
+            console.log('🔍 Timeline data attributes:', t.getAttribute('data-shotstack-timeline'));
             setDebugInfo('Initializing Shotstack SDK...');
 
             const initialState = projectData.shotstackEditJson || {
@@ -226,10 +281,11 @@ export default function StudioPage() {
             // Add a test clip to make the canvas visible
             console.log('🎬 Adding test clip to make canvas visible...');
             try {
+              // Use a different test asset that should be accessible
               edit.addClip(0, {
                 asset: {
                   type: 'video',
-                  src: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/footage/cab-ride.mp4'
+                  src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
                 },
                 start: 0,
                 length: 5,
@@ -238,6 +294,21 @@ export default function StudioPage() {
               console.log('✅ Test clip added successfully');
             } catch (clipError) {
               console.warn('⚠️ Could not add test clip:', clipError);
+              // Try with a simple color background instead
+              try {
+                edit.addClip(0, {
+                  asset: {
+                    type: 'image',
+                    src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4MCIgaGVpZ2h0PSI3MjAiIHZpZXdCb3g9IjAgMCAxMjgwIDcyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEyODAiIGhlaWdodD0iNzIwIiBmaWxsPSIjMzM2NkZGIi8+Cjx0ZXh0IHg9IjY0MCIgeT0iMzYwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VmlkZW8gRWRpdG9yPC90ZXh0Pgo8L3N2Zz4K'
+                  },
+                  start: 0,
+                  length: 10,
+                  fit: 'cover'
+                });
+                console.log('✅ Test color background added successfully');
+              } catch (colorError) {
+                console.warn('⚠️ Could not add color background:', colorError);
+              }
             }
 
             console.log('🎉 Studio initialization complete!');
