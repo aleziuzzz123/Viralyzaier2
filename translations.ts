@@ -144,6 +144,7 @@ const enTranslations = {
   "kanban.project_moved": "Project moved to \"{status}\"",
   "project_view.stepper_spark": "Stage 1: The Spark",
   "project_view.stepper_blueprint": "Stage 2: The Blueprint",
+  "project_view.stepper_blueprint_review": "Stage 2.5: Review & Edit",
   "project_view.stepper_creative_studio": "Stage 3: The Creative Studio",
   "project_view.stepper_analysis": "Stage 4: Analysis & Report",
   "project_view.stepper_launchpad": "Stage 5: The Launchpad",

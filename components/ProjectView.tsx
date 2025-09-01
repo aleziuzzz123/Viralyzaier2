@@ -33,7 +33,13 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
             case 2:
                 return <ScriptGenerator project={project} />;
             case 2.5:
-                return <BlueprintReview project={project} />;
+                return (
+                    <BlueprintReview 
+                        project={project} 
+                        onApprove={() => handleUpdateProject(project.id, { workflowStep: 3 })}
+                        onBack={() => handleUpdateProject(project.id, { workflowStep: 2 })}
+                    />
+                );
             case 3:
                 // By keying the component on lastUpdated, we force a full remount when the project data changes,
                 // ensuring a clean state for the editor and preventing hangs from stale props.
@@ -51,6 +57,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
     const steps: { nameKey: TranslationKey, step: WorkflowStep }[] = [
         { nameKey: 'project_view.stepper_spark', step: 1 },
         { nameKey: 'project_view.stepper_blueprint', step: 2 },
+        { nameKey: 'project_view.stepper_blueprint_review', step: 2.5 },
         { nameKey: 'project_view.stepper_creative_studio', step: 3 },
         { nameKey: 'project_view.stepper_analysis', step: 4 },
         { nameKey: 'project_view.stepper_launchpad', step: 5 },
