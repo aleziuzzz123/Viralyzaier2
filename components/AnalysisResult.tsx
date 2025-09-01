@@ -267,10 +267,25 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onReset, videoP
         </div>
       </div>
       <div className="mt-8 text-center animate-fade-in-up flex flex-col items-center justify-center gap-4" style={{animationDelay: '0.6s'}}>
+          {/* Workflow Progress Indicator */}
+          <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+              <span>Stage 5 of 6</span>
+              <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5, 6].map((step) => (
+                      <div
+                          key={step}
+                          className={`w-2 h-2 rounded-full ${
+                              step <= 5 ? 'bg-indigo-600' : 'bg-gray-600'
+                          }`}
+                      />
+                  ))}
+              </div>
+          </div>
+          
           <div className="flex flex-col items-center">
             <button
                 onClick={onProceedToLaunchpad}
-                className="w-full max-w-xs inline-flex items-center justify-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                className="w-full max-w-xs inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
             >
                 <RocketLaunchIcon className="w-5 h-5 mr-2" />
                 {showProceedWarning ? t('analysis_result.proceed_anyway_button') : t('analysis_result.proceed_button')}

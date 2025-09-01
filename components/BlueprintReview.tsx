@@ -182,10 +182,9 @@ Return only the ${type} content, no explanations.`,
                     if (!scene.voiceover) return null;
 
                     const response = await invokeEdgeFunction('elevenlabs-proxy', {
-                        voiceId,
+                        type: 'generate',
                         text: scene.voiceover,
-                        projectId: project.id,
-                        sceneIndex: index
+                        voiceId
                     });
 
                     return response.audioUrl;

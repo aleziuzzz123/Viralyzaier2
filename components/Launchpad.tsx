@@ -143,6 +143,21 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
             <header className="text-center">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">{t('launchpad.title')}</h1>
                 <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">{t('launchpad.subtitle')}</p>
+                
+                {/* Workflow Progress Indicator */}
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mt-6">
+                    <span>Stage 6 of 6 - Final Stage</span>
+                    <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5, 6].map((step) => (
+                            <div
+                                key={step}
+                                className={`w-2 h-2 rounded-full ${
+                                    step <= 6 ? 'bg-indigo-600' : 'bg-gray-600'
+                                }`}
+                            />
+                        ))}
+                    </div>
+                </div>
             </header>
 
             {error && <p className="text-red-400 text-center">{error}</p>}
