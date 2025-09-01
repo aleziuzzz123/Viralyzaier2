@@ -28,7 +28,9 @@ export default function StudioPage() {
   // --- Parent Window Communication ---
   const postToParent = (type: string, payload?: any) => {
     console.log('📤 Posting to parent:', type, payload);
-    window.parent.postMessage({ type, payload }, '*');
+    if (window.parent !== window) {
+      window.parent.postMessage({ type, payload }, '*');
+    }
   };
 
   const aic_addToast = (message: string, type: 'success' | 'error' | 'info') => {
@@ -219,6 +221,23 @@ export default function StudioPage() {
                 console.log('🎯 Clip deselected');
                 setSelection(null);
               });
+            }
+
+            // Add a test clip to make the canvas visible
+            console.log('🎬 Adding test clip to make canvas visible...');
+            try {
+              edit.addClip(0, {
+                asset: {
+                  type: 'video',
+                  src: 'https://shotstack-assets.s3-ap-southeast-2.amazonaws.com/footage/cab-ride.mp4'
+                },
+                start: 0,
+                length: 5,
+                fit: 'cover'
+              });
+              console.log('✅ Test clip added successfully');
+            } catch (clipError) {
+              console.warn('⚠️ Could not add test clip:', clipError);
             }
 
             console.log('🎉 Studio initialization complete!');
