@@ -1,9 +1,10 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 
 const CreativeStudio: React.FC = () => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const { activeProjectDetails, handleUpdateProject, addToast } = useAppContext();
+    const [iframeKey, setIframeKey] = useState(Date.now());
 
     useEffect(() => {
         console.log('🎬 CreativeStudio component mounted');
@@ -49,8 +50,9 @@ const CreativeStudio: React.FC = () => {
     return (
         <div style={{ height: 'calc(100vh - 10rem)', width: '100%' }}>
             <iframe
+                key={iframeKey}
                 ref={iframeRef}
-                src={`/studio.html?v=${Date.now()}`}
+                src={`/studio.html?v=${iframeKey}`}
                 style={{
                     width: '100%',
                     height: '100%',

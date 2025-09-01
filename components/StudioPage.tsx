@@ -62,6 +62,90 @@ export default function StudioPage() {
   }
 
   // --- Editor Initialization ---
+  const boot = async (projectData: Project) => {
+    try {
+      console.log('🔧 Booting editor with project:', projectData);
+      setDebugInfo('Loading template...');
+
+      // 1. Retrieve an edit from a template (following official docs)
+      const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
+      console.log('📄 Fetching template from:', templateUrl);
+      const response = await fetch(templateUrl);
+      const template = await response.json();
+      console.log('✅ Template loaded:', template);
+
+      // 2. Initialize the edit with dimensions and background color
+      console.log('🔧 Creating Edit component...');
+      const editInstance = new Edit(template.output.size, template.timeline.background);
+      await editInstance.load();
+      console.log('✅ Edit component loaded');
+
+      // 3. Create a canvas to display the edit
+      console.log('🎨 Creating Canvas component...');
+      const canvas = new Canvas(template.output.size, editInstance);
+      await canvas.load(); // Renders to [data-shotstack-studio] element
+      console.log('✅ Canvas component loaded');
+
+      // 4. Load the template
+      console.log('📄 Loading edit template...');
+      await editInstance.loadEdit(template);
+      console.log('✅ Edit template loaded');
+      
+      // 5. Add keyboard controls
+      console.log('⌨️ Creating Controls component...');
+      const controls = new Controls(editInstance);
+      await controls.load();
+      console.log('✅ Controls component loaded');
+
+      // 6. Add timeline for visual editing
+      console.log('📊 Creating Timeline component...');
+      const timeline = new Timeline(editInstance, {
+        width: 1280,
+        height: 300
+      });
+      await timeline.load(); // Renders to [data-shotstack-timeline] element
+      console.log('✅ Timeline component loaded');
+
+      // Set up event listeners
+      editInstance.events.on("clip:selected", (data: any) => {
+        console.log("Clip selected:", data);
+        setSelection(data);
+      });
+
+      editInstance.events.on("clip:updated", (data: any) => {
+        console.log("Clip updated:", data);
+      });
+
+      setEdit(editInstance);
+      console.log('🎉 Studio initialization complete!');
+      setDebugInfo('Studio ready!');
+      setIsLoading(false);
+      
+      // Force a re-render to ensure canvas and timeline are visible
+      setTimeout(() => {
+        console.log('🔄 Forcing re-render...');
+        const canvasEl = document.querySelector('[data-shotstack-studio]');
+        const timelineEl = document.querySelector('[data-shotstack-timeline]');
+        console.log('🔍 Final check - Canvas element:', !!canvasEl, 'Timeline element:', !!timelineEl);
+        
+        if (canvasEl) {
+          console.log('🎨 Canvas element dimensions:', canvasEl.clientWidth, 'x', canvasEl.clientHeight);
+          console.log('🎨 Canvas element children:', canvasEl.children.length);
+        }
+        
+        if (timelineEl) {
+          console.log('📊 Timeline element dimensions:', timelineEl.clientWidth, 'x', timelineEl.clientHeight);
+          console.log('📊 Timeline element children:', timelineEl.children.length);
+        }
+      }, 1000);
+    } catch (e: any) {
+      console.error('❌ Boot error:', e);
+      setError(e?.message ?? String(e));
+      setDebugInfo(`Error: ${e?.message ?? String(e)}`);
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (initialized) return; // Prevent double initialization
 
@@ -133,91 +217,6 @@ export default function StudioPage() {
             boot(testProject);
           }
         }, 5000);
-
-        const boot = async (projectData: Project) => {
-          try {
-            console.log('🔧 Booting editor with project:', projectData);
-            setDebugInfo('Loading template...');
-
-            // 1. Retrieve an edit from a template (following official docs)
-            const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-            console.log('📄 Fetching template from:', templateUrl);
-            const response = await fetch(templateUrl);
-            const template = await response.json();
-            console.log('✅ Template loaded:', template);
-
-            // 2. Initialize the edit with dimensions and background color
-            console.log('🔧 Creating Edit component...');
-            const editInstance = new Edit(template.output.size, template.timeline.background);
-            await editInstance.load();
-            console.log('✅ Edit component loaded');
-
-            // 3. Create a canvas to display the edit
-            console.log('🎨 Creating Canvas component...');
-            const canvas = new Canvas(template.output.size, editInstance);
-            await canvas.load(); // Renders to [data-shotstack-studio] element
-            console.log('✅ Canvas component loaded');
-
-            // 4. Load the template
-            console.log('📄 Loading edit template...');
-            await editInstance.loadEdit(template);
-            console.log('✅ Edit template loaded');
-            
-            // 5. Add keyboard controls
-            console.log('⌨️ Creating Controls component...');
-            const controls = new Controls(editInstance);
-            await controls.load();
-            console.log('✅ Controls component loaded');
-
-            // 6. Add timeline for visual editing
-            console.log('📊 Creating Timeline component...');
-            // Try simpler timeline initialization
-            const timeline = new Timeline(editInstance, {
-              width: 1280,
-              height: 300
-            });
-            await timeline.load(); // Renders to [data-shotstack-timeline] element
-            console.log('✅ Timeline component loaded');
-
-            // Set up event listeners
-            editInstance.events.on("clip:selected", (data: any) => {
-              console.log("Clip selected:", data);
-              setSelection(data);
-            });
-
-            editInstance.events.on("clip:updated", (data: any) => {
-              console.log("Clip updated:", data);
-            });
-
-            setEdit(editInstance);
-            console.log('🎉 Studio initialization complete!');
-            setDebugInfo('Studio ready!');
-            setIsLoading(false);
-            
-            // Force a re-render to ensure canvas and timeline are visible
-            setTimeout(() => {
-              console.log('🔄 Forcing re-render...');
-              const canvasEl = document.querySelector('[data-shotstack-studio]');
-              const timelineEl = document.querySelector('[data-shotstack-timeline]');
-              console.log('🔍 Final check - Canvas element:', !!canvasEl, 'Timeline element:', !!timelineEl);
-              
-              if (canvasEl) {
-                console.log('🎨 Canvas element dimensions:', canvasEl.clientWidth, 'x', canvasEl.clientHeight);
-                console.log('🎨 Canvas element children:', canvasEl.children.length);
-              }
-              
-              if (timelineEl) {
-                console.log('📊 Timeline element dimensions:', timelineEl.clientWidth, 'x', timelineEl.clientHeight);
-                console.log('📊 Timeline element children:', timelineEl.children.length);
-              }
-            }, 1000);
-          } catch (e: any) {
-            console.error('❌ Boot error:', e);
-            setError(e?.message ?? String(e));
-            setDebugInfo(`Error: ${e?.message ?? String(e)}`);
-            setIsLoading(false);
-          }
-        };
 
         return () => {
           window.removeEventListener('message', handleMessage);
