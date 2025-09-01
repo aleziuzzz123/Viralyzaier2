@@ -119,8 +119,8 @@ serve(async (req: Request) => {
           body: JSON.stringify({
             prompt: prompt,
             n: config?.numberOfImages || 1,
-            size: config?.aspectRatio === '16:9' ? '1792x1024' : 
-                  config?.aspectRatio === '9:16' ? '1024x1792' : 
+            size: config?.aspectRatio === '16:9' ? '1024x1024' : 
+                  config?.aspectRatio === '9:16' ? '1024x1024' : 
                   config?.aspectRatio === '1:1' ? '1024x1024' : '1024x1024',
             response_format: 'b64_json'
           })
