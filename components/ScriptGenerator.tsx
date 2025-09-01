@@ -176,7 +176,16 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
             addToast("Blueprint complete! Review your generated content...", "success");
     
         } catch (e) {
-            addToast(`Blueprint generation failed: ${getErrorMessage(e)}`, 'error');
+            console.error('Blueprint generation error:', e);
+            const errorMessage = getErrorMessage(e);
+            console.error('Error message:', errorMessage);
+            
+            // Check if it's a subscription/payment error
+            if (errorMessage.includes('subscription') || errorMessage.includes('payment') || errorMessage.includes('invoice')) {
+                addToast(`Subscription issue detected. Please check your account status or contact support. Error: ${errorMessage}`, 'error');
+            } else {
+                addToast(`Blueprint generation failed: ${errorMessage}`, 'error');
+            }
         } finally {
             setIsLoadingBlueprint(false);
             setProgressMessage('');
