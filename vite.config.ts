@@ -4,20 +4,20 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   root: '.',
-  build: {
-    rollupOptions: {
-      input: {
-        main: './index.html'
-      },
-      output: {
-        entryFileNames: `assets/[name].js`,
-        chunkFileNames: `assets/[name].js`,
-        assetFileNames: `assets/[name].[ext]`
-      }
-    },
-    commonjsOptions: { transformMixedEsModules: true },
-    sourcemap: false
-  },
+            build: {
+            rollupOptions: {
+              input: {
+                main: './index.html'
+              },
+              output: {
+                entryFileNames: `assets/[name].[hash].js`,
+                chunkFileNames: `assets/[name].[hash].js`,
+                assetFileNames: `assets/[name].[hash].[ext]`
+              }
+            },
+            commonjsOptions: { transformMixedEsModules: true },
+            sourcemap: false
+          },
             optimizeDeps: {
             include: [
               // '@shotstack/shotstack-studio', // Temporarily disabled
