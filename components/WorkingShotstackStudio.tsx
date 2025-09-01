@@ -71,28 +71,89 @@ const WorkingShotstackStudio: React.FC = () => {
     try {
       console.log('🚀 Starting WorkingShotstackStudio initialization');
       console.log('🚀 Shotstack SDK available:', { Edit, Canvas, Controls, Timeline });
+      
+      // Check if Shotstack SDK is properly loaded
+      if (!Edit || !Canvas || !Controls || !Timeline) {
+        throw new Error('Shotstack SDK not properly loaded. Missing components:', { Edit, Canvas, Controls, Timeline });
+      }
+      
       setIsLoading(true);
       setInitialized(true);
+      
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        throw new Error('Shotstack Studio initialization timeout after 30 seconds');
+      }, 30000);
 
       // Wait for DOM elements to be ready - EXACTLY like the old working version
       console.log('🔧 Waiting for DOM elements to be ready...');
       await waitForHosts();
       console.log('✅ DOM elements ready');
 
-      // 1. Load template - EXACTLY like the old working version
+      // 1. Load template with better error handling
       console.log('🔧 Loading base template...');
       const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-      const response = await fetch(templateUrl);
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch template: ${response.status}`);
+      let template;
+      try {
+        const response = await fetch(templateUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch template: ${response.status} - ${response.statusText}`);
+        }
+        
+        // Check if response is actually JSON
+        const contentType = response.headers.get('content-type');
+        console.log('🔧 Template response content-type:', contentType);
+        
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error(`Template response is not JSON, got: ${contentType}`);
+        }
+        
+        const text = await response.text();
+        console.log('🔧 Template response text (first 200 chars):', text.substring(0, 200));
+        
+        template = JSON.parse(text);
+        console.log('✅ Base template loaded:', template);
+      } catch (templateError) {
+        console.error('❌ Failed to load remote template:', templateError);
+        console.log('🔧 Creating fallback template...');
+        
+        // Create a simple fallback template
+        template = {
+          output: {
+            size: { width: 1920, height: 1080 },
+            format: 'mp4',
+            fps: 30
+          },
+          timeline: {
+            background: '#000000',
+            tracks: [
+              {
+                type: 'video',
+                clips: [
+                  {
+                    asset: {
+                      type: 'video',
+                      src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                    },
+                    start: 0,
+                    length: 10,
+                    fit: 'cover'
+                  }
+                ]
+              }
+            ]
+          }
+        };
+        console.log('✅ Fallback template created:', template);
       }
-      
-      const template = await response.json();
-      console.log('✅ Base template loaded:', template);
 
       // 2. Initialize the edit with template dimensions and background - EXACTLY like the old working version
       console.log('🔧 Creating Edit component...');
+      console.log('🔧 Template output size:', template.output.size);
+      console.log('🔧 Template background:', template.timeline.background);
+      
       const editInstance = new Edit(template.output.size, template.timeline.background);
       await editInstance.load();
       console.log('✅ Edit component loaded');
@@ -151,11 +212,17 @@ const WorkingShotstackStudio: React.FC = () => {
       setEdit(editInstance);
       console.log('🎉 WorkingShotstackStudio initialization complete!');
       setIsLoading(false);
+      
+      // Clear timeout on success
+      clearTimeout(timeoutId);
     } catch (err) {
       console.error('❌ Failed to initialize video editor:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setInitialized(false);
       setIsLoading(false);
+      
+      // Clear timeout on error
+      clearTimeout(timeoutId);
     }
   };
 
