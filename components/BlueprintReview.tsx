@@ -173,9 +173,22 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                             voiceId
                         });
 
-                        return response.audioUrl;
+                        if (response && response.audioUrl) {
+                            return response.audioUrl;
+                        } else {
+                            console.error(`No audio URL returned for scene ${index}:`, response);
+                            return null;
+                        }
                     } catch (voiceError) {
                         console.error(`Error generating voiceover for scene ${index}:`, voiceError);
+                        
+                        // Check if it's a subscription error
+                        const errorMessage = voiceError?.message || voiceError?.toString() || '';
+                        if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
+                            console.error('ElevenLabs subscription issue detected');
+                            addToast('ElevenLabs subscription issue: Please check your ElevenLabs account payment status.', 'error');
+                        }
+                        
                         return null;
                     }
                 });
@@ -198,7 +211,11 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     });
                     addToast('Voiceover updated with new narrator!', 'success');
                 } else {
-                    addToast('No voiceovers were generated. Please try again.', 'error');
+                    // Still update the voice ID even if voiceovers failed
+                    await handleUpdateProject(project.id, { 
+                        voiceoverVoiceId: voiceId
+                    });
+                    addToast('Voiceover generation failed, but you can still proceed to the editor. Voiceovers can be added later.', 'warning');
                 }
             }
         } catch (error) {

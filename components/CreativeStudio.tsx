@@ -235,6 +235,9 @@ const CreativeStudio: React.FC = () => {
     }, [isFullScreenRoute, fullScreenProjectData, isStudioReady]);
     
     console.log('🎬 CreativeStudio rendering with project:', activeProjectDetails);
+    console.log('🎬 Full-screen route:', isFullScreenRoute);
+    console.log('🎬 Full-screen project data:', fullScreenProjectData);
+    console.log('🎬 Studio ready:', isStudioReady);
     
     // If we're on the full-screen route, render the full-screen editor
     if (isFullScreenRoute) {
@@ -573,7 +576,7 @@ const CreativeStudio: React.FC = () => {
             <iframe
                         key={iframeKey}
                 ref={iframeRef}
-                        src={`/studio.html?v=${iframeKey}`}
+                        src={`/studio-editor.html?v=${iframeKey}`}
                 style={{
                             flex: 1,
                     width: '100%',
@@ -584,6 +587,7 @@ const CreativeStudio: React.FC = () => {
                         title="Creative Studio Editor - Full Screen"
                         onLoad={() => {
                             console.log('🎬 Studio iframe loaded (full screen)');
+                            console.log('🎬 Iframe src:', `/studio-editor.html?v=${iframeKey}`);
                             // Mark studio as ready when iframe loads
                             setIsStudioReady(true);
                         }}
