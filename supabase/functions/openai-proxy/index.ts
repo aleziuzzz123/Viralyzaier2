@@ -7,6 +7,8 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
+  console.log('OpenAI Proxy received request:', req.method, req.url);
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -120,8 +122,7 @@ serve(async (req: Request) => {
             size: config?.aspectRatio === '16:9' ? '1792x1024' : 
                   config?.aspectRatio === '9:16' ? '1024x1792' : 
                   config?.aspectRatio === '1:1' ? '1024x1024' : '1024x1024',
-            response_format: 'b64_json',
-            quality: 'standard'
+            response_format: 'b64_json'
           })
         });
 
