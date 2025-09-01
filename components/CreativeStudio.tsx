@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Project } from '../types';
 import { supabase } from '../services/supabaseClient';
-import StudioPageNew from './StudioPageNew';
+import MinimalShotstackStudio from './MinimalShotstackStudio';
 
 // Wrapper component to handle project data passing to StudioPage
 const StudioPageWrapper: React.FC<{ 
@@ -22,7 +22,7 @@ const StudioPageWrapper: React.FC<{
         return () => window.removeEventListener('message', handleMessage);
     }, [onStudioReady]);
     
-    return <StudioPageNew projectData={projectData} />;
+    return <MinimalShotstackStudio />;
 };
 
 const CreativeStudio: React.FC = () => {
