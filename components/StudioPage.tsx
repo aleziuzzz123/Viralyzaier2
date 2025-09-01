@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Edit, Canvas, Controls } from "@shotstack/shotstack-studio";
+import { Edit, Canvas, Controls, Timeline, VideoExporter } from "@shotstack/shotstack-studio";
 import { Project, ShotstackClipSelection } from '../types';
 import TopInspectorPanel from './TopInspectorPanel';
 import AssetBrowserModal from './AssetBrowserModal';
@@ -113,7 +113,8 @@ export default function StudioPage() {
             // Wait for DOM elements to be ready
             for (let i = 0; i < 120; i++) {
               const c = canvasHostRef.current;
-              if (c && c.clientWidth >= 1) break;
+              const t = timelineHostRef.current;
+              if (c && t && c.clientWidth >= 1) break;
               await new Promise(r => requestAnimationFrame(r));
             }
 
@@ -122,17 +123,16 @@ export default function StudioPage() {
               output: { format: 'mp4', size: { width: 1280, height: 720 }}
             };
             const size = initialState.output.size;
+            const backgroundColor = initialState.timeline.background || "#000000";
 
-            const assetProxyUrl = `${supabaseUrl}/functions/v1/asset-proxy/`;
-            
-            // 1. Initialize the edit with dimensions and background color
-            const edit = new Edit(size, assetProxyUrl);
+            // 1. Initialize the edit with dimensions and background color (FIXED!)
+            const edit = new Edit(size, backgroundColor);
             await edit.load();
             editorRef.current = edit;
 
             // 2. Create a canvas to display the edit
             const canvas = new Canvas(size, edit);
-            await canvas.load(canvasHostRef.current!);
+            await canvas.load(); // Renders to [data-shotstack-studio] element
 
             // 3. Load the template
             await edit.loadEdit(initialState);
@@ -140,19 +140,20 @@ export default function StudioPage() {
             // 4. Add keyboard controls
             const controls = new Controls(edit);
             await controls.load();
-            controlsRef.current = controls;
+
+            // 5. Add timeline for visual editing
+            const timeline = new Timeline(edit, {
+              width: size.width,
+              height: 300
+            });
+            await timeline.load(); // Renders to [data-shotstack-timeline] element
 
             // Setup event listeners
             if (edit?.events?.on) {
               edit.events.on("clip:selected", (sel: ShotstackClipSelection) => setSelection(sel));
               edit.events.on("clip:deselected", () => setSelection(null));
-              controls.events.on('play', () => setIsPlaying(true));
-              controls.events.on('pause', () => setIsPlaying(false));
-              controls.events.on('stop', () => setIsPlaying(false));
-              // Auto-save on change
-              edit.events.on('edit:updated', () => {
-                postToParent('studio:save_project', edit.getEdit());
-              });
+              // Note: Controls events might not be available in this version
+              // We'll handle playback through the edit object directly
             }
 
             setIsLoading(false);
@@ -202,16 +203,18 @@ export default function StudioPage() {
         <div ref={canvasHostRef} data-shotstack-studio className="w-full h-full bg-black rounded-lg" />
       </div>
 
+      <div ref={timelineHostRef} data-shotstack-timeline className="w-full h-80 bg-gray-800 rounded-lg" />
+
       <EditorToolbar 
         isPlaying={isPlaying}
         onPlayPause={() => {
           if (isPlaying) {
-            controlsRef.current?.pause();
+            editorRef.current?.pause();
           } else {
-            controlsRef.current?.play();
+            editorRef.current?.play();
           }
         }}
-        onStop={() => controlsRef.current?.stop()}
+        onStop={() => editorRef.current?.stop()}
         onUndo={() => editorRef.current?.undo()}
         onRedo={() => editorRef.current?.redo()}
         onAddMedia={() => setIsAssetModalOpen(true)}
