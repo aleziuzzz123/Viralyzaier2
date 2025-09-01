@@ -145,7 +145,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                 title: blueprint.suggestedTitles[0],
                 voiceoverVoiceId: narratorVoiceId,
                 videoSize: videoSize,
-                workflowStep: 3, // Go to Creative Studio after blueprint generation
+                workflowStep: 2.5, // Go to blueprint review instead of directly to Creative Studio
                 shotstackEditJson: null, shotstackRenderId: null, finalVideoUrl: null, analysis: null,
             };
     

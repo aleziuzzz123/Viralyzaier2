@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Project } from '../types';
-import { supabase } from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 
 const CreativeStudio: React.FC = () => {
     const iframeRef = useRef<HTMLIFrameElement>(null);

@@ -1,252 +1,437 @@
-import React, { useState } from 'react';
-import { Project, Script, Scene } from '../types';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../contexts/AppContext';
-import { CheckBadgeIcon, ChevronDownIcon, PlayIcon, PauseIcon, SpeakerWaveIcon, PhotoIcon, FilmIcon, SparklesIcon } from './Icons';
+import { Project, Script, Scene } from '../types';
+import { invokeEdgeFunction } from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 
 interface BlueprintReviewProps {
     project: Project;
+    onApprove: () => void;
+    onBack: () => void;
 }
 
-const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project }) => {
-    const { t, handleUpdateProject, addToast } = useAppContext();
-    const [isProceeding, setIsProceeding] = useState(false);
-    const [playingAudio, setPlayingAudio] = useState<number | null>(null);
+const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, onBack }) => {
+    const { addToast, handleUpdateProject } = useAppContext();
+    const [editedScript, setEditedScript] = useState<Script | null>(null);
+    const [selectedVoiceId, setSelectedVoiceId] = useState<string>(project.voiceoverVoiceId || 'pNInz6obpgDQGcFmaJgB');
+    const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
-    const script = project.script;
-    const moodboard = project.moodboard || [];
-    const voiceoverUrls = project.voiceoverUrls || {};
+    // Available voice options
+    const voiceOptions = [
+        { id: 'pNInz6obpgDQGcFmaJgB', name: 'Sarah (Professional Female)', preview: 'A clear, professional female voice perfect for business content.' },
+        { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Josh (Friendly Male)', preview: 'A warm, friendly male voice great for casual content.' },
+        { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold (Deep Male)', preview: 'A deep, authoritative male voice perfect for dramatic content.' },
+        { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi (Energetic Female)', preview: 'An energetic, upbeat female voice great for dynamic content.' },
+        { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni (Smooth Male)', preview: 'A smooth, charismatic male voice perfect for lifestyle content.' }
+    ];
 
-    const handleProceedToStudio = async () => {
-        setIsProceeding(true);
-        try {
-            await handleUpdateProject(project.id, { workflowStep: 3 });
-            addToast("Proceeding to Creative Studio...", "success");
-        } catch (error) {
-            addToast("Failed to proceed to Creative Studio", "error");
-        } finally {
-            setIsProceeding(false);
+    useEffect(() => {
+        if (project.script) {
+            setEditedScript(project.script);
         }
-    };
+    }, [project.script]);
 
-    const handleGoBack = async () => {
-        try {
-            await handleUpdateProject(project.id, { workflowStep: 2 });
-        } catch (error) {
-            addToast("Failed to go back", "error");
-        }
-    };
+    const handleScriptChange = (field: string, value: any, sceneIndex?: number) => {
+        if (!editedScript) return;
 
-    const toggleAudio = (sceneIndex: number) => {
-        if (playingAudio === sceneIndex) {
-            setPlayingAudio(null);
+        if (sceneIndex !== undefined) {
+            // Editing a specific scene
+            const updatedScenes = [...editedScript.scenes];
+            updatedScenes[sceneIndex] = { ...updatedScenes[sceneIndex], [field]: value };
+            setEditedScript({ ...editedScript, scenes: updatedScenes });
         } else {
-            setPlayingAudio(sceneIndex);
+            // Editing script-level fields
+            setEditedScript({ ...editedScript, [field]: value });
         }
     };
 
-    if (!script) {
+    const regenerateContent = async (type: 'title' | 'hook' | 'scene' | 'moodboard', sceneIndex?: number) => {
+        if (!editedScript) return;
+
+        setIsRegenerating(type + (sceneIndex !== undefined ? `_${sceneIndex}` : ''));
+        
+        try {
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: `You are a viral video content expert. Based on this project context:
+                    
+Project Topic: ${project.topic}
+Platform: ${project.platform}
+Video Size: ${project.videoSize}
+
+Current Script:
+${JSON.stringify(editedScript, null, 2)}
+
+Please regenerate the ${type}${sceneIndex !== undefined ? ` for scene ${sceneIndex + 1}` : ''}. Make it more engaging, viral-worthy, and optimized for ${project.platform}.
+
+Requirements:
+- Keep it concise and punchy
+- Make it highly engaging
+- Optimize for viral potential
+- Match the platform's style (${project.platform})
+- Maintain consistency with the overall script
+
+Return only the ${type} content, no explanations.`,
+                    config: {
+                        systemInstruction: 'You are a viral video content expert specializing in creating engaging, shareable content optimized for different social media platforms.',
+                        responseMimeType: 'application/json'
+                    }
+                }
+            });
+
+            if (response.text) {
+                const newContent = JSON.parse(response.text);
+                
+                if (type === 'title') {
+                    handleScriptChange('title', newContent.title || newContent);
+                } else if (type === 'hook') {
+                    handleScriptChange('hooks', newContent.hooks || [newContent]);
+                } else if (type === 'scene' && sceneIndex !== undefined) {
+                    handleScriptChange('visual', newContent.visual || newContent, sceneIndex);
+                } else if (type === 'moodboard') {
+                    // Regenerate moodboard images
+                    await regenerateMoodboardImages();
+                }
+                
+                addToast(`${type.charAt(0).toUpperCase() + type.slice(1)} regenerated successfully!`, 'success');
+            }
+        } catch (error) {
+            console.error(`Error regenerating ${type}:`, error);
+            addToast(`Failed to regenerate ${type}`, 'error');
+        } finally {
+            setIsRegenerating(null);
+        }
+    };
+
+    const regenerateMoodboardImages = async () => {
+        if (!editedScript) return;
+
+        try {
+            const moodboardPrompts = editedScript.scenes.map((scene, index) => 
+                `Create a vibrant, engaging visual for: "${scene.visual}". Style: modern, dynamic, social media optimized, high contrast, eye-catching colors.`
+            );
+
+            const imagePromises = moodboardPrompts.map(async (prompt, index) => {
+                const response = await invokeEdgeFunction('openai-proxy', {
+                    type: 'generateImages',
+                    params: {
+                        prompt,
+                        config: {
+                            numberOfImages: 1,
+                            aspectRatio: project.videoSize === '16:9' ? '16:9' : 
+                                        project.videoSize === '9:16' ? '9:16' : '1:1'
+                        }
+                    }
+                });
+
+                if (response.generatedImages && response.generatedImages[0]) {
+                    return {
+                        index,
+                        imageData: response.generatedImages[0].image.imageBytes
+                    };
+                }
+                return null;
+            });
+
+            const results = await Promise.all(imagePromises);
+            
+            // Upload new images to Supabase storage
+            const newMoodboardUrls = await Promise.all(
+                results.map(async (result) => {
+                    if (!result) return null;
+                    
+                    const { data, error } = await supabase.storage
+                        .from('assets')
+                        .upload(
+                            `${project.userId}/${project.id}/moodboard_${result.index}_new.jpg`,
+                            new Blob([Uint8Array.from(atob(result.imageData))], { type: 'image/jpeg' }),
+                            { upsert: true }
+                        );
+
+                    if (error) {
+                        console.error('Error uploading new moodboard image:', error);
+                        return null;
+                    }
+
+                    return supabase.storage.from('assets').getPublicUrl(data.path).data.publicUrl;
+                })
+            );
+
+            // Update project with new moodboard URLs
+            const validUrls = newMoodboardUrls.filter(url => url !== null);
+            if (validUrls.length > 0) {
+                await handleUpdateProject(project.id, { moodboard: validUrls });
+                addToast('Moodboard images regenerated successfully!', 'success');
+            }
+        } catch (error) {
+            console.error('Error regenerating moodboard:', error);
+            addToast('Failed to regenerate moodboard images', 'error');
+        }
+    };
+
+    const handleVoiceChange = async (voiceId: string) => {
+        setSelectedVoiceId(voiceId);
+        
+        try {
+            // Regenerate voiceovers with new voice
+            if (editedScript && editedScript.scenes) {
+                const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
+                    if (!scene.voiceover) return null;
+
+                    const response = await invokeEdgeFunction('elevenlabs-proxy', {
+                        voiceId,
+                        text: scene.voiceover,
+                        projectId: project.id,
+                        sceneIndex: index
+                    });
+
+                    return response.audioUrl;
+                });
+
+                const voiceoverUrls = await Promise.all(voiceoverPromises);
+                const validUrls = voiceoverUrls.filter(url => url !== null);
+                
+                if (validUrls.length > 0) {
+                    await handleUpdateProject(project.id, { 
+                        voiceoverUrls: validUrls,
+                        voiceoverVoiceId: voiceId
+                    });
+                    addToast('Voiceover updated with new narrator!', 'success');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating voiceover:', error);
+            addToast('Failed to update voiceover', 'error');
+        }
+    };
+
+    const handleSaveAndContinue = async () => {
+        if (!editedScript) return;
+
+        setIsSaving(true);
+        try {
+            await handleUpdateProject(project.id, { 
+                script: editedScript,
+                voiceoverVoiceId: selectedVoiceId,
+                workflowStep: 3 // Move to Creative Studio
+            });
+            
+            addToast('Blueprint saved successfully!', 'success');
+            onApprove();
+        } catch (error) {
+            console.error('Error saving blueprint:', error);
+            addToast('Failed to save blueprint', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!editedScript) {
         return (
-            <div className="text-center py-20">
-                <h2 className="text-2xl font-bold text-white mb-4">No Blueprint Found</h2>
-                <p className="text-gray-400">Please generate a blueprint first.</p>
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
         );
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8 animate-fade-in-up">
+        <div className="max-w-6xl mx-auto p-6 space-y-8">
             {/* Header */}
             <div className="text-center">
-                <h1 className="text-4xl font-bold text-white mb-4">Review Your Blueprint</h1>
-                <p className="text-lg text-gray-400 mb-6">
-                    Review your AI-generated script, moodboard, and voiceovers before proceeding to the Creative Studio.
-                </p>
-                <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span>Script Generated</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span>Moodboard Created</span>
-                    </div>
-                    {Object.keys(voiceoverUrls).length > 0 && (
-                        <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span>Voiceovers Ready</span>
-                        </div>
-                    )}
-                </div>
+                <h1 className="text-3xl font-bold text-white mb-2">Review Your Blueprint</h1>
+                <p className="text-gray-400">Review and customize your generated content before creating your video</p>
             </div>
 
-            {/* Project Overview */}
-            <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 rounded-2xl p-6 border border-indigo-500/20">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white mb-2">{project.title}</h2>
-                        <p className="text-gray-300 mb-4">{project.topic}</p>
-                        <div className="flex items-center space-x-6 text-sm text-gray-400">
-                            <div className="flex items-center space-x-2">
-                                <FilmIcon className="w-4 h-4" />
-                                <span>{script.scenes.length} Scenes</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <PhotoIcon className="w-4 h-4" />
-                                <span>{moodboard.length} Visual Assets</span>
-                            </div>
-                            {Object.keys(voiceoverUrls).length > 0 && (
-                                <div className="flex items-center space-x-2">
-                                    <SpeakerWaveIcon className="w-4 h-4" />
-                                    <span>{Object.keys(voiceoverUrls).length} Voiceovers</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-3xl font-bold text-indigo-400 mb-1">
-                            {script.scenes.reduce((total, scene) => total + (scene.timecode ? parseInt(scene.timecode) : 0), 0)}s
-                        </div>
-                        <div className="text-sm text-gray-400">Total Duration</div>
-                    </div>
+            {/* Title Section */}
+            <div className="bg-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-white">Video Title</h2>
+                    <button
+                        onClick={() => regenerateContent('title')}
+                        disabled={isRegenerating === 'title'}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                        {isRegenerating === 'title' ? 'Regenerating...' : '🔄 Regenerate'}
+                    </button>
                 </div>
+                <textarea
+                    value={editedScript.title || ''}
+                    onChange={(e) => handleScriptChange('title', e.target.value)}
+                    className="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter your video title..."
+                />
             </div>
 
-            {/* Script Review */}
-            <div className="bg-gray-900/40 rounded-2xl p-6">
-                <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
-                    <SparklesIcon className="w-6 h-6 mr-3 text-indigo-400" />
-                    Script Review
-                </h3>
-                
-                {/* Hook */}
-                {script.hooks && script.hooks.length > 0 && (
-                    <div className="mb-6">
-                        <h4 className="text-lg font-semibold text-indigo-400 mb-3">Opening Hook</h4>
-                        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-4">
-                            <p className="text-white font-medium">{script.hooks[script.selectedHookIndex || 0]}</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Scenes */}
-                <div className="space-y-6">
-                    <h4 className="text-lg font-semibold text-indigo-400">Scenes</h4>
-                    {script.scenes.map((scene: Scene, index: number) => (
-                        <div key={index} className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
-                            <div className="flex items-center justify-between mb-4">
-                                <h5 className="text-lg font-semibold text-white">
-                                    Scene {index + 1} - {scene.timecode}s
-                                </h5>
-                                {voiceoverUrls[index] && (
-                                    <button
-                                        onClick={() => toggleAudio(index)}
-                                        className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                                    >
-                                        {playingAudio === index ? (
-                                            <PauseIcon className="w-4 h-4" />
-                                        ) : (
-                                            <PlayIcon className="w-4 h-4" />
-                                        )}
-                                        <span className="text-sm">Preview Voice</span>
-                                    </button>
-                                )}
-                            </div>
-                            
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Visual Description */}
-                                <div>
-                                    <h6 className="text-sm font-semibold text-gray-400 mb-2">Visual Description</h6>
-                                    <p className="text-gray-300 text-sm leading-relaxed">{scene.visual}</p>
-                                    
-                                    {/* Storyboard Image */}
-                                    {scene.storyboardImageUrl && (
-                                        <div className="mt-4">
-                                            <img 
-                                                src={scene.storyboardImageUrl} 
-                                                alt={`Storyboard for scene ${index + 1}`}
-                                                className="w-full h-32 object-cover rounded-lg border border-gray-600"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Voiceover */}
-                                <div>
-                                    <h6 className="text-sm font-semibold text-gray-400 mb-2">Voiceover</h6>
-                                    <p className="text-gray-300 text-sm leading-relaxed">{scene.voiceover}</p>
-                                    
-                                    {/* Audio Player */}
-                                    {voiceoverUrls[index] && (
-                                        <div className="mt-4">
-                                            <audio 
-                                                src={voiceoverUrls[index]} 
-                                                controls 
-                                                className="w-full"
-                                                onPlay={() => setPlayingAudio(index)}
-                                                onPause={() => setPlayingAudio(null)}
-                                                onEnded={() => setPlayingAudio(null)}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+            {/* Hooks Section */}
+            <div className="bg-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-white">Hook Options</h2>
+                    <button
+                        onClick={() => regenerateContent('hook')}
+                        disabled={isRegenerating === 'hook'}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                        {isRegenerating === 'hook' ? 'Regenerating...' : '🔄 Regenerate All'}
+                    </button>
+                </div>
+                <div className="space-y-3">
+                    {(editedScript.hooks || []).map((hook, index) => (
+                        <div key={index} className="flex gap-3">
+                            <textarea
+                                value={hook}
+                                onChange={(e) => {
+                                    const newHooks = [...(editedScript.hooks || [])];
+                                    newHooks[index] = e.target.value;
+                                    handleScriptChange('hooks', newHooks);
+                                }}
+                                className="flex-1 p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                rows={2}
+                                placeholder={`Hook ${index + 1}...`}
+                            />
+                            <button
+                                onClick={() => regenerateContent('hook')}
+                                className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+                            >
+                                🔄
+                            </button>
                         </div>
                     ))}
                 </div>
-
-                {/* CTA */}
-                {script.cta && (
-                    <div className="mt-6">
-                        <h4 className="text-lg font-semibold text-indigo-400 mb-3">Call to Action</h4>
-                        <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                            <p className="text-white font-medium">{script.cta}</p>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* Moodboard Gallery */}
-            {moodboard.length > 0 && (
-                <div className="bg-gray-900/40 rounded-2xl p-6">
-                    <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
-                        <PhotoIcon className="w-6 h-6 mr-3 text-indigo-400" />
-                        Visual Moodboard
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {moodboard.map((imageUrl: string, index: number) => (
-                            <div key={index} className="relative group">
-                                <img 
-                                    src={imageUrl} 
-                                    alt={`Moodboard image ${index + 1}`}
-                                    className="w-full h-32 object-cover rounded-lg border border-gray-600 group-hover:border-indigo-500 transition-colors"
-                                />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                    <span className="text-white text-sm font-medium">Scene {index + 1}</span>
+            {/* Scenes Section */}
+            <div className="bg-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold text-white">Video Scenes</h2>
+                    <button
+                        onClick={() => regenerateContent('moodboard')}
+                        disabled={isRegenerating === 'moodboard'}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                        {isRegenerating === 'moodboard' ? 'Regenerating...' : '🎨 Regenerate Images'}
+                    </button>
+                </div>
+                <div className="space-y-6">
+                    {editedScript.scenes.map((scene, index) => (
+                        <div key={index} className="bg-gray-700 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-lg font-medium text-white">Scene {index + 1}</h3>
+                                <button
+                                    onClick={() => regenerateContent('scene', index)}
+                                    disabled={isRegenerating === `scene_${index}`}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                                >
+                                    {isRegenerating === `scene_${index}` ? 'Regenerating...' : '🔄'}
+                                </button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* Visual Description */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Visual Description</label>
+                                    <textarea
+                                        value={scene.visual}
+                                        onChange={(e) => handleScriptChange('visual', e.target.value, index)}
+                                        className="w-full p-3 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        rows={3}
+                                        placeholder="Describe the visual elements..."
+                                    />
+                                </div>
+
+                                {/* Voiceover */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Voiceover Script</label>
+                                    <textarea
+                                        value={scene.voiceover || ''}
+                                        onChange={(e) => handleScriptChange('voiceover', e.target.value, index)}
+                                        className="w-full p-3 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        rows={3}
+                                        placeholder="Enter the voiceover text..."
+                                    />
                                 </div>
                             </div>
-                        ))}
-                    </div>
+
+                            {/* Moodboard Image */}
+                            {project.moodboard && project.moodboard[index] && (
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Visual Preview</label>
+                                    <img
+                                        src={project.moodboard[index]}
+                                        alt={`Scene ${index + 1} visual`}
+                                        className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-600"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Voiceover Preview */}
+                            {project.voiceoverUrls && project.voiceoverUrls[index] && (
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Voiceover Preview</label>
+                                    <audio
+                                        controls
+                                        className="w-full max-w-md"
+                                        src={project.voiceoverUrls[index]}
+                                    >
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
-            )}
+            </div>
+
+            {/* Voiceover Settings */}
+            <div className="bg-gray-800 rounded-xl p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Voiceover Settings</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {voiceOptions.map((voice) => (
+                        <div
+                            key={voice.id}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedVoiceId === voice.id
+                                    ? 'border-blue-500 bg-blue-500/10'
+                                    : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                            }`}
+                            onClick={() => handleVoiceChange(voice.id)}
+                        >
+                            <h3 className="font-medium text-white mb-2">{voice.name}</h3>
+                            <p className="text-sm text-gray-400">{voice.preview}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* CTA Section */}
+            <div className="bg-gray-800 rounded-xl p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Call to Action</h2>
+                <textarea
+                    value={editedScript.cta || ''}
+                    onChange={(e) => handleScriptChange('cta', e.target.value)}
+                    className="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Enter your call to action..."
+                />
+            </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-6">
+            <div className="flex justify-between">
                 <button
-                    onClick={handleGoBack}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    onClick={onBack}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
                 >
-                    <span>←</span>
-                    <span>Back to Blueprint</span>
+                    ← Back to Blueprint
                 </button>
-                
                 <button
-                    onClick={handleProceedToStudio}
-                    disabled={isProceeding}
-                    className="flex items-center space-x-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSaveAndContinue}
+                    disabled={isSaving}
+                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-lg transition-all font-medium"
                 >
-                    <CheckBadgeIcon className="w-6 h-6" />
-                    <span>{isProceeding ? 'Proceeding...' : 'Proceed to Creative Studio'}</span>
-                    <span>→</span>
+                    {isSaving ? 'Saving...' : 'Save & Continue to Studio →'}
                 </button>
             </div>
         </div>
