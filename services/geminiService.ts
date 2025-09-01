@@ -98,54 +98,24 @@ Your output MUST be a JSON object with the following structure:
 
     let response;
     try {
-        response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
-            type: 'generateContent',
-            params: {
-                model: 'gemini-2.5-flash',
-                contents: textPrompt,
-                config: {
-                    systemInstruction: systemInstruction,
-                    responseMimeType: 'application/json',
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            strategicSummary: { type: Type.STRING, description: "The core strategy behind why this video will be successful." },
-                            suggestedTitles: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 high-CTR title options." },
-                            script: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    hooks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 viral hook options based on psychological triggers." },
-                                    scenes: {
-                                        type: Type.ARRAY,
-                                        items: {
-                                            type: Type.OBJECT,
-                                            properties: { 
-                                                timecode: { type: Type.STRING, description: "A string representing the start and end time of the scene in seconds, formatted as 'start-end' (e.g., '0-5', '5-12.5'). DO NOT include units like 's' or use minute:second formats." }, 
-                                                visual: { type: Type.STRING }, 
-                                                voiceover: { type: Type.STRING }, 
-                                                onScreenText: { type: Type.STRING } 
-                                            },
-                                            required: ["timecode", "visual", "voiceover", "onScreenText"]
-                                        }
-                                    },
-                                    cta: { type: Type.STRING, description: "A clear and compelling call to action." }
-                                },
-                                required: ["hooks", "scenes", "cta"]
-                            },
-                            moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING }, description: "An array of descriptive prompts for an AI image generator. There must be one prompt per scene." }
-                        },
-                        required: ["strategicSummary", "suggestedTitles", "script", "moodboardDescription"]
-                    }
+        response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
+        type: 'generateContent',
+        params: {
+                model: 'gpt-4o',
+            contents: textPrompt,
+            config: {
+                systemInstruction: systemInstruction,
+                    responseMimeType: 'application/json'
                 }
             }
         });
     } catch (error: any) {
-        console.error('Gemini API Error:', error);
+        console.error('OpenAI API Error:', error);
         
-        // Handle specific Gemini API errors
-        if (error?.error?.code === 503 || error?.error?.status === 'UNAVAILABLE') {
+        // Handle specific OpenAI API errors
+        if (error?.error?.code === 503 || error?.error?.message?.includes('overloaded')) {
             throw new Error('AI service is currently overloaded. Please try again in a few minutes.');
-        } else if (error?.error?.code === 429) {
+        } else if (error?.error?.code === 429 || error?.error?.message?.includes('rate limit')) {
             throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
         } else if (error?.error?.code === 400) {
             throw new Error('Invalid request to AI service. Please check your input and try again.');
@@ -173,15 +143,14 @@ Your output MUST be a JSON object with the following structure:
         onProgress(`Generating moodboard image ${i + 1} of ${blueprintContent.moodboardDescription.length}...`);
         
         try {
-            const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
-                type: 'generateImages',
-                params: {
-                    model: 'imagen-3.0-generate-002',
-                    prompt: `A cinematic, visually stunning image for a YouTube video moodboard in a ${style} style: ${prompt}`,
-                    config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio }
-                }
-            });
-            moodboardUrls.push(`data:image/jpeg;base64,${imageResult.generatedImages[0].image.imageBytes}`);
+            const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('openai-proxy', {
+            type: 'generateImages',
+            params: {
+                prompt: `A cinematic, visually stunning image for a YouTube video moodboard in a ${style} style: ${prompt}`,
+                    config: { numberOfImages: 1, aspectRatio }
+            }
+        });
+        moodboardUrls.push(`data:image/jpeg;base64,${imageResult.generatedImages[0].image.imageBytes}`);
         } catch (error: any) {
             console.error(`Failed to generate moodboard image ${i + 1}:`, error);
             onProgress(`Skipping moodboard image ${i + 1} due to generation error...`);
@@ -230,41 +199,13 @@ Your response **MUST** be a JSON array containing exactly 3 blueprint objects. E
   "moodboardDescription": ["An array of 3 descriptive prompts for an AI image generator to create a visual moodboard."]
 }`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            strategicSummary: { type: Type.STRING },
-                            suggestedTitles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            script: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    scenes: {
-                                        type: Type.ARRAY,
-                                        items: {
-                                            type: Type.OBJECT,
-                                            properties: { timecode: { type: Type.STRING }, visual: { type: Type.STRING }, voiceover: { type: Type.STRING }, onScreenText: { type: Type.STRING } },
-                                            required: ["timecode", "visual", "voiceover", "onScreenText"]
-                                        }
-                                    },
-                                    cta: { type: Type.STRING }
-                                },
-                                required: ["hooks", "scenes", "cta"]
-                            },
-                            moodboardDescription: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        },
-                        required: ["strategicSummary", "suggestedTitles", "script", "moodboardDescription"]
-                    }
-                }
+                responseMimeType: 'application/json'
             }
         }
     });
@@ -274,12 +215,11 @@ Your response **MUST** be a JSON array containing exactly 3 blueprint objects. E
 
     const allMoodboardPrompts = blueprintContents.flatMap(b => b.moodboardDescription);
     const allImagePromises = allMoodboardPrompts.map(prompt =>
-        supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
+        supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('openai-proxy', {
             type: 'generateImages',
             params: {
-                model: 'imagen-3.0-generate-002',
                 prompt: `A cinematic, visually stunning image for a YouTube video moodboard: ${prompt}`,
-                config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio }
+                config: { numberOfImages: 1, aspectRatio }
             }
         })
     );
@@ -334,53 +274,13 @@ Your output must be a single JSON object with the following structure.
     - "scenes": An array of scene objects, each with "timecode", "visual", "voiceover", and "onScreenText". The total duration should respect the desiredLengthInSeconds.
     - "cta": A strong, clear call to action tailored to the primary goal.`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        initialScore: { type: Type.INTEGER },
-                        finalScore: { type: Type.INTEGER },
-                        analysisLog: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    step: { type: Type.STRING },
-                                    target: { type: Type.STRING }
-                                },
-                                required: ["step", "target"]
-                            }
-                        },
-                        finalScript: {
-                            type: Type.OBJECT,
-                            properties: {
-                                hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                scenes: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            timecode: { type: Type.STRING },
-                                            visual: { type: Type.STRING },
-                                            voiceover: { type: Type.STRING },
-                                            onScreenText: { type: Type.STRING }
-                                        },
-                                        required: ["timecode", "visual", "voiceover", "onScreenText"]
-                                    }
-                                },
-                                cta: { type: Type.STRING }
-                            },
-                            required: ["hooks", "scenes", "cta"]
-                        }
-                    },
-                    required: ["initialScore", "finalScore", "analysisLog", "finalScript"]
-                }
+                responseMimeType: 'application/json'
             }
         }
     });
@@ -404,14 +304,14 @@ Your output must be a JSON object with:
 - strengths: 3 things the script does well.
 - improvements: 3 actionable script improvements with clear reasons explaining WHY they matter.`;
     
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: { parts: [{ text: textPrompt }] },
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         scores: { 
@@ -458,14 +358,14 @@ Your output MUST be a JSON object with:
 1. "analysis": An array of analysis objects, one for each title. Each object must have a "score" (1-100), an array of string "pros", and an array of string "cons".
 2. "suggestions": An array of 5 new, S-tier title suggestions that are significantly better and follow proven viral formulas.`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash', 
+            model: 'gpt-4o', 
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         analysis: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, pros: { type: Type.ARRAY, items: { type: Type.STRING } }, cons: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["score", "pros", "cons"] } },
@@ -512,10 +412,10 @@ export const analyzeCompetitorVideo = async (url: string): Promise<CompetitorAna
   ]
 }`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string, candidates?: any[] }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string, candidates?: any[] }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash', 
+            model: 'gpt-4o', 
             contents: prompt,
             config: {
                 tools: [{googleSearch: {}}],
@@ -567,14 +467,14 @@ ${videoDataSummary}
     ]
 }`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash', 
+            model: 'gpt-4o', 
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         contentPillars: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -613,14 +513,14 @@ Your output MUST be a JSON object with this structure:
 1. "music": A detailed description of the suggested background music track. Describe its genre, tempo, mood, and instrumentation (e.g., "Uplifting, driving synth-pop with a strong beat and optimistic synth melodies.").
 2. "sfx": An array of SFX objects. Each object needs a "timecode" matching the script and a "description" of the sound effect (e.g., "whoosh", "camera shutter", "gentle notification ping"). Only include SFX for key moments.`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         music: { type: Type.STRING },
@@ -651,14 +551,14 @@ export const rewriteScriptScene = async (scene: Scene, action: string): Promise<
     Visual: ${scene.visual}
     Voiceover: ${scene.voiceover}`;
 
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         visual: { type: Type.STRING },
@@ -675,7 +575,7 @@ export const rewriteScriptScene = async (scene: Scene, action: string): Promise<
 export const generateStoryboardImage = async (visualDescription: string): Promise<string> => {
     const prompt = `Create a cinematic, visually stunning storyboard image for a video scene with the following description: "${visualDescription}". The style should be slightly painterly and evocative, focusing on composition and mood.`;
 
-    const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
+    const imageResult = await supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('openai-proxy', {
         type: 'generateImages',
         params: {
             model: 'imagen-3.0-generate-002',
@@ -692,14 +592,14 @@ export const generateStoryboardImage = async (visualDescription: string): Promis
 
 export const reviewVideoPerformance = async (performance: VideoPerformance, videoTitle: string): Promise<PerformanceReview> => {
     const prompt = `Analyze the performance of a YouTube video titled "${videoTitle}" with the following stats: ${JSON.stringify(performance)}. Provide a concise summary, 3 bullet points on what worked well, and 3 on what to improve. Output a JSON object.`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         summary: { type: Type.STRING },
@@ -716,14 +616,14 @@ export const reviewVideoPerformance = async (performance: VideoPerformance, vide
 
 export const suggestContentGaps = async (successfulTopics: string[], channelTopic: string): Promise<ContentGapSuggestion[]> => {
     const prompt = `Based on these successful video topics for a channel about "${channelTopic}": ${successfulTopics.join(', ')}. Suggest 3 new, related video ideas that fill a content gap. For each idea, provide a reason why it would work and 3 potential titles. Output a JSON array.`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.ARRAY,
                     items: {
                         type: Type.OBJECT,
@@ -743,9 +643,9 @@ export const suggestContentGaps = async (successfulTopics: string[], channelTopi
 
 export const getSchedulingSuggestion = async (topic: string): Promise<string> => {
     const prompt = `For a video about "${topic}", what is the absolute best day and time to post for maximum engagement? Provide a short, direct answer with a brief justification. Example: "Post on **Saturday at 11:00 AM EST**. This timing catches the weekend audience...".`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
-        params: { model: 'gemini-2.5-flash', contents: prompt }
+        params: { model: 'gpt-4o', contents: prompt }
     });
     return response.text || "Could not determine a suggestion.";
 };
@@ -753,14 +653,14 @@ export const getSchedulingSuggestion = async (topic: string): Promise<string> =>
 export const generateSeo = async (title: string, script: Script, platform: Platform): Promise<LaunchPlan['seo']> => {
     const scriptSummary = script.scenes.map(s => s.voiceover).join(' ').substring(0, 1000);
     const prompt = `Generate an optimized YouTube description and relevant tags for a video on ${platform}. Title: "${title}". Summary: "${scriptSummary}". The description should be engaging and include relevant keywords. Provide 15-20 relevant tags. Respond with a JSON object.`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         description: { type: Type.STRING },
@@ -776,14 +676,14 @@ export const generateSeo = async (title: string, script: Script, platform: Platf
 
 export const analyzeAndGenerateThumbnails = async (title: string, platform: Platform): Promise<string[]> => {
     const prompt = `Based on the video title "${title}", generate 2 distinct, high-CTR thumbnail concepts. For each, provide a detailed prompt for an AI image generator. The style should be vibrant, high-contrast, and eye-catching. Respond with a JSON object containing a "prompts" array.`;
-    const promptResponse = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const promptResponse = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         prompts: { type: Type.ARRAY, items: { type: Type.STRING } }
@@ -796,7 +696,7 @@ export const analyzeAndGenerateThumbnails = async (title: string, platform: Plat
     const { prompts } = parseGeminiJson<{ prompts: string[] }>(promptResponse);
     const aspectRatio = platform === 'youtube_long' ? '16:9' : '16:9';
     const imagePromises = prompts.slice(0, 2).map(p =>
-        supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('gemini-proxy', {
+        supabase.invokeEdgeFunction<{ generatedImages: { image: { imageBytes: string } }[] }>('openai-proxy', {
             type: 'generateImages',
             params: {
                 model: 'imagen-3.0-generate-002',
@@ -811,14 +711,14 @@ export const analyzeAndGenerateThumbnails = async (title: string, platform: Plat
 
 export const repurposeProject = async (script: Script, title: string, fromPlatform: Platform, toPlatform: Platform): Promise<Script> => {
     const prompt = `Adapt the following script for a "${title}" video from ${fromPlatform} to ${toPlatform}. Adjust pacing, tone, and structure. The new script should be concise and engaging for the new platform. Respond with a JSON object of the new script. Original script: ${JSON.stringify(script)}`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -842,14 +742,14 @@ export const repurposeProject = async (script: Script, title: string, fromPlatfo
 
 export const emphasizeSubtitleText = async (text: string): Promise<Partial<SubtitleWord>[]> => {
     const prompt = `For the subtitle text "${text}", identify 1-3 key words to emphasize for virality. Respond with a JSON array where each object has a "word" (the word to change) and a "style" object (with "fontWeight": 900 and "color": "#facc15").`;
-    const response = await supabase.invokeEdgeFunction<{ text: string }>('gemini-proxy', {
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
         params: {
-            model: 'gemini-2.5-flash',
+            model: 'gpt-4o',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                responseSchema: {
+                // responseSchema: {
                     type: Type.ARRAY,
                     items: {
                         type: Type.OBJECT,

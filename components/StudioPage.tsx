@@ -224,8 +224,28 @@ const StudioPage: React.FC = () => {
   }
 
   // Full-screen Video Editor Modal
-  const FullscreenEditor = () => (
-    <div className="fixed inset-0 z-50 bg-gray-900 text-white flex flex-col">
+  const FullscreenEditor = () => {
+    // Prevent body scroll when in fullscreen
+    React.useEffect(() => {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }, []);
+
+  return (
+      <div 
+        className="fixed inset-0 z-[9999] bg-gray-900 text-white flex flex-col" 
+        style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          top: 0, 
+          left: 0, 
+          position: 'fixed',
+          margin: 0,
+          padding: 0
+        }}
+      >
       {/* Fullscreen Header */}
       <div className="bg-gradient-to-r from-gray-800/90 to-gray-700/90 border-b border-gray-600/30 p-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
@@ -268,12 +288,12 @@ const StudioPage: React.FC = () => {
       </div>
 
       {/* Fullscreen Editor Content */}
-      <div className="flex-1 flex flex-col p-4 gap-4">
-        {/* Playback Controls */}
-        <div className="flex items-center justify-center gap-6 p-4 bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-xl border border-gray-600/30">
+      <div className="flex-1 flex flex-col p-2 gap-2" style={{ height: 'calc(100vh - 80px)' }}>
+        {/* Playback Controls - Compact */}
+        <div className="flex items-center justify-center gap-3 p-2 bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-lg border border-gray-600/30">
           <button
             onClick={() => edit?.play()}
-            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -284,7 +304,7 @@ const StudioPage: React.FC = () => {
           
           <button
             onClick={() => edit?.pause()}
-            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -295,7 +315,7 @@ const StudioPage: React.FC = () => {
           
           <button
             onClick={() => edit?.stop()}
-            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -308,7 +328,7 @@ const StudioPage: React.FC = () => {
           
           <button
             onClick={addSampleClip}
-            className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,7 +341,7 @@ const StudioPage: React.FC = () => {
           
           <button
             onClick={() => edit?.undo()}
-            className="group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,7 +352,7 @@ const StudioPage: React.FC = () => {
           
           <button
             onClick={() => edit?.redo()}
-            className="group flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             disabled={!edit}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,7 +391,7 @@ const StudioPage: React.FC = () => {
         </div>
         
         {/* Timeline - Full Width */}
-        <div className="bg-gradient-to-r from-gray-800/80 to-gray-700/80 rounded-xl p-4 border border-gray-600/30 backdrop-blur-sm">
+        <div className="bg-gradient-to-r from-gray-800/80 to-gray-700/80 rounded-lg p-3 border border-gray-600/30 backdrop-blur-sm" style={{ height: '200px' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -393,7 +413,7 @@ const StudioPage: React.FC = () => {
           <div 
             data-shotstack-timeline 
             className="w-full bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border border-indigo-500/30 shadow-lg" 
-            style={{ height: '300px', minHeight: '300px' }}
+            style={{ height: '120px', minHeight: '120px' }}
           />
           <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
             <div className="flex items-center gap-6 w-full">
@@ -422,7 +442,8 @@ const StudioPage: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // Show fullscreen modal if active
   if (isFullscreen) {
