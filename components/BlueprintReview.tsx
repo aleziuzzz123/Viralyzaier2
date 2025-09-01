@@ -51,8 +51,103 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
 
         setIsRegenerating(type);
         try {
-            // Implementation for regenerating content
-            addToast(`${type} regenerated successfully!`, 'success');
+            if (type === 'hook') {
+                // Regenerate hooks using OpenAI
+                const response = await invokeEdgeFunction('openai-proxy', {
+                    type: 'generateContent',
+                    params: {
+                        model: 'gpt-4o',
+                        contents: `Generate 3 engaging hooks for a video about "${project.topic}". Each hook should be 1-2 sentences and designed to capture attention immediately. Make them diverse and compelling.`,
+                        config: {
+                            systemInstruction: 'You are a viral video expert. Generate hooks that are attention-grabbing, emotional, and designed to make viewers want to watch more. Return only the hooks, one per line.'
+                        }
+                    }
+                });
+
+                if (response.text) {
+                    const newHooks = response.text.split('\n').filter(hook => hook.trim()).slice(0, 3);
+                    setEditedScript({ ...editedScript, hooks: newHooks });
+                    addToast('Hooks regenerated successfully!', 'success');
+                }
+            } else if (type === 'moodboard') {
+                // Regenerate moodboard images
+                const imagePromises = Array.from({ length: 4 }, (_, index) => 
+                    invokeEdgeFunction('openai-proxy', {
+                        type: 'generateImages',
+                        params: {
+                            prompt: `Create a vibrant, engaging visual for a video about "${project.topic}". Style: modern, colorful, dynamic. Aspect ratio: 16:9.`,
+                            config: {
+                                numberOfImages: 1,
+                                aspectRatio: '16:9'
+                            }
+                        }
+                    })
+                );
+
+                const imageResponses = await Promise.all(imagePromises);
+                const newMoodboardUrls = imageResponses
+                    .filter(response => response.generatedImages && response.generatedImages.length > 0)
+                    .map(response => `data:image/png;base64,${response.generatedImages[0].image.imageBytes}`);
+
+                if (newMoodboardUrls.length > 0) {
+                    // Upload images to Supabase storage and get URLs
+                    const uploadedUrls = [];
+                    for (let i = 0; i < newMoodboardUrls.length; i++) {
+                        const base64Data = newMoodboardUrls[i].split(',')[1];
+                        const fileName = `moodboard_${i}_${Date.now()}.png`;
+                        const filePath = `${project.userId}/${project.id}/${fileName}`;
+                        
+                        const { data, error } = await supabase.storage
+                            .from('assets')
+                            .upload(filePath, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
+                                contentType: 'image/png',
+                                upsert: true
+                            });
+                        
+                        if (!error && data) {
+                            const { data: urlData } = supabase.storage
+                                .from('assets')
+                                .getPublicUrl(filePath);
+                            uploadedUrls.push(urlData.publicUrl);
+                        }
+                    }
+                    
+                    if (uploadedUrls.length > 0) {
+                        await handleUpdateProject(project.id, { moodboard: uploadedUrls });
+                        addToast('Moodboard regenerated successfully!', 'success');
+                    }
+                }
+            } else if (type === 'scene' && sceneIndex !== undefined) {
+                // Regenerate specific scene
+                const scene = editedScript.scenes[sceneIndex];
+                const response = await invokeEdgeFunction('openai-proxy', {
+                    type: 'generateContent',
+                    params: {
+                        model: 'gpt-4o',
+                        contents: `Improve this video scene for "${project.topic}": Visual: "${scene.visual}", Voiceover: "${scene.voiceover}". Make it more engaging and viral-worthy.`,
+                        config: {
+                            systemInstruction: 'You are a viral video expert. Improve the visual description and voiceover to make them more engaging, emotional, and likely to go viral. Return as JSON with "visual" and "voiceover" fields.'
+                        }
+                    }
+                });
+
+                if (response.text) {
+                    try {
+                        const improvedScene = JSON.parse(response.text);
+                        const updatedScenes = [...editedScript.scenes];
+                        updatedScenes[sceneIndex] = {
+                            ...updatedScenes[sceneIndex],
+                            visual: improvedScene.visual || scene.visual,
+                            voiceover: improvedScene.voiceover || scene.voiceover
+                        };
+                        setEditedScript({ ...editedScript, scenes: updatedScenes });
+                        addToast('Scene regenerated successfully!', 'success');
+                    } catch (parseError) {
+                        console.error('Error parsing scene response:', parseError);
+                        addToast('Failed to parse regenerated scene', 'error');
+                    }
+                }
+            }
         } catch (error) {
             console.error(`Error regenerating ${type}:`, error);
             addToast(`Failed to regenerate ${type}`, 'error');
@@ -70,24 +165,39 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
                     if (!scene.voiceover) return null;
 
-                    const response = await invokeEdgeFunction('elevenlabs-proxy', {
-                        type: 'generate',
-                        text: scene.voiceover,
-                        voiceId
-                    });
+                    try {
+                        const response = await invokeEdgeFunction('elevenlabs-proxy', {
+                            type: 'generate',
+                            text: scene.voiceover,
+                            voiceId
+                        });
 
-                    return response.audioUrl;
+                        return response.audioUrl;
+                    } catch (voiceError) {
+                        console.error(`Error generating voiceover for scene ${index}:`, voiceError);
+                        return null;
+                    }
                 });
 
                 const voiceoverUrls = await Promise.all(voiceoverPromises);
                 const validUrls = voiceoverUrls.filter(url => url !== null);
                 
                 if (validUrls.length > 0) {
+                    // Convert array to object with string keys
+                    const voiceoverUrlsObject: { [key: string]: string } = {};
+                    validUrls.forEach((url, index) => {
+                        if (url) {
+                            voiceoverUrlsObject[index.toString()] = url;
+                        }
+                    });
+                    
                     await handleUpdateProject(project.id, { 
-                        voiceoverUrls: validUrls,
+                        voiceoverUrls: voiceoverUrlsObject,
                         voiceoverVoiceId: voiceId
                     });
                     addToast('Voiceover updated with new narrator!', 'success');
+                } else {
+                    addToast('No voiceovers were generated. Please try again.', 'error');
                 }
             }
         } catch (error) {
