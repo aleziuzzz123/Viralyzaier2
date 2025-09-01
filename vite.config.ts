@@ -18,19 +18,19 @@ export default defineConfig({
     commonjsOptions: { transformMixedEsModules: true },
     sourcemap: false
   },
-  optimizeDeps: {
-    include: [
-      '@shotstack/shotstack-studio',
-      '@ffmpeg/ffmpeg',
-      'pixi.js',
-      'pixi-filters',
-      'howler',
-      'opentype.js',
-      'fast-deep-equal',
-      'zod'
-    ],
-    exclude: []
-  },
+            optimizeDeps: {
+            include: [
+              // '@shotstack/shotstack-studio', // Temporarily disabled
+              // '@ffmpeg/ffmpeg', // Temporarily disabled
+              // 'pixi.js', // Temporarily disabled
+              // 'pixi-filters', // Temporarily disabled
+              'howler',
+              'opentype.js',
+              'fast-deep-equal',
+              'zod'
+            ],
+            exclude: []
+          },
   server: {
     headers: {
       // Required for FFmpeg WASM loading
