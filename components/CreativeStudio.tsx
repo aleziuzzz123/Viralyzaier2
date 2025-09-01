@@ -2,6 +2,36 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Project } from '../types';
 import { supabase } from '../services/supabaseClient';
+import StudioPage from './StudioPage';
+
+// Wrapper component to handle project data passing to StudioPage
+const StudioPageWrapper: React.FC<{ 
+    projectData: Project; 
+    onStudioReady: () => void; 
+}> = ({ projectData, onStudioReady }) => {
+    useEffect(() => {
+        // Simulate the message that would normally come from the parent
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data.type === 'studio:ready') {
+                onStudioReady();
+            }
+        };
+        
+        window.addEventListener('message', handleMessage);
+        
+        // Send project data to StudioPage
+        setTimeout(() => {
+            window.postMessage({
+                type: 'app:load_project',
+                payload: projectData
+            }, '*');
+        }, 100);
+        
+        return () => window.removeEventListener('message', handleMessage);
+    }, [projectData, onStudioReady]);
+    
+    return <StudioPage />;
+};
 
 const CreativeStudio: React.FC = () => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -64,7 +94,7 @@ const CreativeStudio: React.FC = () => {
                         name: data.name,
                         topic: data.topic,
                         platform: data.platform,
-                        videoSize: data.video_size || '16:9',
+                        videoSize: (data.video_size as '16:9' | '9:16' | '1:1') || '16:9',
                         status: data.status,
                         title: data.title,
                         script: data.script,
@@ -78,7 +108,7 @@ const CreativeStudio: React.FC = () => {
                         scheduledDate: data.scheduled_date,
                         publishedUrl: data.published_url,
                         lastUpdated: data.last_updated,
-                        workflowStep: data.workflow_step,
+                        workflowStep: data.workflow_step as any,
                         voiceoverVoiceId: data.voiceover_voice_id,
                         lastPerformanceCheck: data.last_performance_check,
                         finalVideoUrl: data.final_video_url,
@@ -163,59 +193,29 @@ const CreativeStudio: React.FC = () => {
         
         const handleMessage = (event: MessageEvent) => {
             console.log('🎬 CreativeStudio received message:', event.data);
-            if (iframeRef.current && event.source === iframeRef.current.contentWindow) {
-                const { type, payload } = event.data;
-                switch (type) {
-                    // The editor is ready and requesting project data
-                    case 'studio:ready':
-                        setIsStudioReady(true);
-                        setAssetsLoaded(prev => ({ ...prev, studio: true }));
-                        
-                        const projectData = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
-                        console.log('🎬 Studio ready, sending project data:', projectData);
-                        console.log('🎬 Project data details:', {
-                            hasScript: !!projectData?.script,
-                            hasScenes: !!projectData?.script?.scenes,
-                            sceneCount: projectData?.script?.scenes?.length || 0,
-                            hasMoodboard: !!projectData?.moodboard,
-                            moodboardCount: projectData?.moodboard?.length || 0,
-                            hasVoiceovers: !!projectData?.voiceoverUrls,
-                            voiceoverCount: Object.keys(projectData?.voiceoverUrls || {}).length,
-                            isFullScreenRoute,
-                            hasFullScreenData: !!fullScreenProjectData,
-                            hasActiveProject: !!activeProjectDetails
-                        });
-                        
-                        // If we're in full-screen mode but don't have project data yet, wait for it
-                        if (isFullScreenRoute && !fullScreenProjectData) {
-                            console.log('🎬 Full-screen mode but no project data yet, waiting...');
-                            // The project data will be sent when it's loaded
-                        } else if (projectData) {
-                            console.log('🎬 Sending project data to studio...');
-                            iframeRef.current.contentWindow?.postMessage({
-                                type: 'app:load_project',
-                                payload: projectData,
-                            }, '*');
-                        } else {
-                            console.warn('🎬 No project data available to send to studio');
-                        }
-                        break;
-                    // The editor is sending an updated timeline to be saved
-                    case 'studio:save_project':
-                        console.log('🎬 Saving project:', payload);
-                        const currentProject = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
-                        if (currentProject && payload) {
-                            handleUpdateProject(currentProject.id, { shotstackEditJson: payload });
-                        }
-                        break;
-                    // The editor is requesting a toast notification
-                    case 'studio:addToast':
-                        console.log('🎬 Studio toast:', payload);
-                         if (payload) {
-                            addToast(payload.message, payload.type);
-                        }
-                        break;
-                }
+            const { type, payload } = event.data;
+            switch (type) {
+                // The editor is ready and requesting project data
+                case 'studio:ready':
+                    setIsStudioReady(true);
+                    setAssetsLoaded(prev => ({ ...prev, studio: true }));
+                    console.log('🎬 Studio ready!');
+                    break;
+                // The editor is sending an updated timeline to be saved
+                case 'studio:save_project':
+                    console.log('🎬 Saving project:', payload);
+                    const currentProject = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
+                    if (currentProject && payload) {
+                        handleUpdateProject(currentProject.id, { shotstackEditJson: payload });
+                    }
+                    break;
+                // The editor is requesting a toast notification
+                case 'studio:addToast':
+                    console.log('🎬 Studio toast:', payload);
+                     if (payload) {
+                        addToast(payload.message, payload.type);
+                    }
+                    break;
             }
         };
 
@@ -223,16 +223,7 @@ const CreativeStudio: React.FC = () => {
         return () => window.removeEventListener('message', handleMessage);
     }, [activeProjectDetails, handleUpdateProject, addToast]);
 
-    // Send project data to iframe when it becomes available in full-screen mode
-    useEffect(() => {
-        if (isFullScreenRoute && fullScreenProjectData && isStudioReady && iframeRef.current) {
-            console.log('🎬 Project data loaded, sending to studio...');
-            iframeRef.current.contentWindow?.postMessage({
-                type: 'app:load_project',
-                payload: fullScreenProjectData,
-            }, '*');
-        }
-    }, [isFullScreenRoute, fullScreenProjectData, isStudioReady]);
+    // Project data is now handled by the StudioPageWrapper component
     
     console.log('🎬 CreativeStudio rendering with project:', activeProjectDetails);
     console.log('🎬 Full-screen route:', isFullScreenRoute);
@@ -573,26 +564,12 @@ const CreativeStudio: React.FC = () => {
                         )}
                     </div>
                                 ) : fullScreenProjectData ? (
-            <iframe
-                        key={iframeKey}
-                ref={iframeRef}
-                        src={`/studio-editor?v=${iframeKey}`}
-                style={{
-                            flex: 1,
-                    width: '100%',
-                    border: 0,
-                    background: '#0b1220'
-                }}
-                allow="clipboard-write"
-                        title="Creative Studio Editor - Full Screen"
-                        onLoad={() => {
-                            console.log('🎬 Studio iframe loaded (full screen)');
-                            console.log('🎬 Iframe src:', `/studio-editor.html?v=${iframeKey}`);
-                            // Mark studio as ready when iframe loads
-                            setIsStudioReady(true);
-                        }}
-                        onError={(e) => console.error('🎬 Studio iframe error:', e)}
-                    />
+                    <div style={{ flex: 1, width: '100%', height: '100%' }}>
+                        <StudioPageWrapper 
+                            projectData={fullScreenProjectData}
+                            onStudioReady={() => setIsStudioReady(true)}
+                        />
+                    </div>
                 ) : (
                     <div style={{
                         flex: 1,
