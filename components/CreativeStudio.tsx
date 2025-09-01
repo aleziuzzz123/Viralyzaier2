@@ -6,6 +6,9 @@ const CreativeStudio: React.FC = () => {
     const { activeProjectDetails, handleUpdateProject, addToast } = useAppContext();
 
     useEffect(() => {
+        console.log('🎬 CreativeStudio component mounted');
+        console.log('🎬 Active project details:', activeProjectDetails);
+        
         const handleMessage = (event: MessageEvent) => {
             console.log('🎬 CreativeStudio received message:', event.data);
             if (iframeRef.current && event.source === iframeRef.current.contentWindow) {
@@ -47,7 +50,7 @@ const CreativeStudio: React.FC = () => {
         <div style={{ height: 'calc(100vh - 10rem)', width: '100%' }}>
             <iframe
                 ref={iframeRef}
-                src="/studio.html"
+                src={`/studio.html?v=${Date.now()}`}
                 style={{
                     width: '100%',
                     height: '100%',
@@ -57,6 +60,8 @@ const CreativeStudio: React.FC = () => {
                 }}
                 allow="clipboard-write"
                 title="Creative Studio Editor"
+                onLoad={() => console.log('🎬 Studio iframe loaded')}
+                onError={(e) => console.error('🎬 Studio iframe error:', e)}
             />
         </div>
     );
