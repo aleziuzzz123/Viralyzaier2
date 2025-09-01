@@ -234,7 +234,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
 
 export const createProfileForUser = async (userId: string, email: string | null | undefined): Promise<User> => {
     const freePlan = PLANS.find(p => p.id === 'free')!;
-    const fallbackEmail = email || `user_${userId.split('-')[0]}@viralyzer.app`;
+    const fallbackEmail = email || `user_${userId.split('-')[0]}@viralyzaier.app`;
     const newUserProfile: ProfileInsert = {
         id: userId,
         email: fallbackEmail,

@@ -95,7 +95,7 @@ serve(async (req: Request) => {
             .from('profiles')
             .upsert({
                 id: user.id,
-                email: user.email || `user_${user.id.split('-')[0]}@viralyzer.app`, // Use a fallback email to prevent crash
+                email: user.email || `user_${user.id.split('-')[0]}@viralyzaier.app`, // Use a fallback email to prevent crash
                 subscription: { planId: 'free', status: 'active', endDate: null },
                 ai_credits: freePlanCreditLimit,
             })

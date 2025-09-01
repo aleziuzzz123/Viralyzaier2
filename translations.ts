@@ -84,7 +84,7 @@ const enTranslations = {
   "homepage.cta_title": "Ready to supercharge your content?",
   "homepage.cta_subtitle": "Join thousands of creators who are using Viralyzaier to build their audience and create content that drives real growth.",
   "homepage.cta_button": "Start Your Free Trial",
-  "homepage.footer_text": "© {year} Viralyzer. All rights reserved.",
+  "homepage.footer_text": "© {year} Viralyzaier. All rights reserved.",
   "user_menu.welcome": "Welcome back!",
   "user_menu.plan": "Plan",
   "user_menu.credits": "AI Credits",

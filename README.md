@@ -1,4 +1,4 @@
-# Viralyzer 5.0 - Setup Guide (Shotstack Studio)
+# Viralyzaier - Setup Guide (Shotstack Studio)
 
 This guide walks you through setting up the application, which is now powered by the **Shotstack Studio SDK** for a rich, interactive editing experience and the Shotstack API for backend rendering.
 

@@ -97,7 +97,7 @@ export const normalizeUrl = (u: string | null | undefined): string => {
 
 // --- IndexedDB Cache Utilities ---
 
-const DB_NAME = 'ViralyzerDB';
+const DB_NAME = 'ViralyzaierDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'timelineCache';
 
