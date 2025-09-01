@@ -56,4 +56,4 @@ The frontend application does not require any public API keys. The Shotstack Stu
 -   **Rendering Fails with a 4xx/5xx Error:**
     -   This is likely an issue with the `shotstack-render` function. Check its logs in the Supabase dashboard. Ensure the `SHOTSTACK_API_KEY` and `SUPABASE_URL` secrets are set correctly and that you have redeployed the function after setting them.
 -   **Video Stays in "Rendering" State Forever:**
-    -   This indicates the `shotstack-webhook` function may not have been called or has an error. Check its logs in the Supabase dashboard. Ensure the function has been deployed and its secrets are set.
+    -   This indicates the `shotstack-webhook` function may not have been called or has an error. Check its logs in the Supabase dashboard. Ensure the function has been deployed and its secrets are set.# Force deployment Sun Aug 31 20:01:56 EST 2025
