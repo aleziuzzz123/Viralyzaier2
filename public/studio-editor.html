@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viralyzaier - Creative Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #111827;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #studio-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .studio-header {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            border-bottom: 1px solid #4b5563;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .studio-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .studio-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .control-button {
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 6px;
+            color: #a5b4fc;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .control-button:hover {
+            background: rgba(99, 102, 241, 0.3);
+            color: white;
+        }
+        
+        .close-button {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+        
+        .close-button:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+        }
+        
+        .studio-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            gap: 8px;
+            min-height: 0;
+        }
+        
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px;
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(75, 85, 99, 0.3);
+        }
+        
+        .play-button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .play-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .pause-button {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .pause-button:hover {
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        
+        .stop-button {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .stop-button:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .video-canvas {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+        
+        .video-placeholder {
+            text-align: center;
+            color: #6b7280;
+        }
+        
+        .video-placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+            opacity: 0.5;
+        }
+        
+        .video-placeholder h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .video-placeholder p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .rec-indicator {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        
+        .rec-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .resolution-indicator {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .timeline-container {
+            height: 200px;
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(75, 85, 99, 0.3);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .timeline-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .timeline-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .timeline-tracks {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+        }
+        
+        .track-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .track-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+        
+        .video-track { background: #8b5cf6; }
+        .audio-track { background: #10b981; }
+        
+        .timeline-area {
+            flex: 1;
+            background: rgba(17, 24, 39, 0.5);
+            border-radius: 4px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .time-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px;
+            color: #6b7280;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6b7280;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            border-top: 2px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="studio-container">
+        <div class="studio-header">
+            <div class="studio-title">🎬 Creative Studio - Full Screen</div>
+            <div class="studio-controls">
+                <button class="control-button" onclick="window.focus()">Focus Window</button>
+                <button class="control-button close-button" onclick="window.close()">Close</button>
+            </div>
+        </div>
+        
+        <div class="studio-content">
+            <div class="playback-controls">
+                <button class="play-button">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Play
+                </button>
+                <button class="play-button pause-button">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                    </svg>
+                    Pause
+                </button>
+                <button class="play-button stop-button">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 6h12v12H6z"/>
+                    </svg>
+                    Stop
+                </button>
+                <button class="play-button" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Add Sample Video
+                </button>
+            </div>
+            
+            <div class="video-canvas">
+                <div class="rec-indicator">
+                    <div class="rec-dot"></div>
+                    REC
+                </div>
+                <div class="resolution-indicator">1920×1080</div>
+                <div class="video-placeholder">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    <h3>Video Preview</h3>
+                    <p>Your video will appear here</p>
+                </div>
+            </div>
+            
+            <div class="timeline-container">
+                <div class="timeline-header">
+                    <div class="timeline-title">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Timeline
+                    </div>
+                    <div class="timeline-tracks">
+                        <div class="track-indicator">
+                            <div class="track-dot video-track"></div>
+                            <span>Video Track</span>
+                        </div>
+                        <div class="track-indicator">
+                            <div class="track-dot audio-track"></div>
+                            <span>Audio Track</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-area">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading Shotstack Studio...
+                    </div>
+                </div>
+                <div class="time-markers">
+                    <span>00:00</span>
+                    <span>00:30</span>
+                    <span>01:00</span>
+                    <span>01:30</span>
+                    <span>02:00</span>
+                    <span>02:30</span>
+                    <span>03:00</span>
+                    <span>03:30</span>
+                    <span>04:00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Listen for project data from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'app:load_project') {
+                console.log('📦 Received project data in popup:', event.data.project);
+                // Here you would initialize the Shotstack Studio with the project data
+                // For now, we'll just show that we received the data
+                document.querySelector('.loading').innerHTML = `
+                    <div class="spinner"></div>
+                    Initializing editor with project data...
+                `;
+                
+                setTimeout(() => {
+                    document.querySelector('.loading').innerHTML = `
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span>Timeline ready - Drag clips to edit</span>
+                    `;
+                }, 2000);
+            }
+        });
+
+        // Notify parent that popup is ready
+        if (window.opener) {
+            window.opener.postMessage({ type: 'popup:ready' }, '*');
+        }
+    </script>
+</body>
+</html>

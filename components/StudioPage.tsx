@@ -10,6 +10,7 @@ const StudioPage: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [projectData, setProjectData] = useState<Project | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [fullscreenMode, setFullscreenMode] = useState<'modal' | 'popup' | 'newtab'>('modal');
 
   // Listen for project data from parent
   useEffect(() => {
@@ -41,6 +42,39 @@ const StudioPage: React.FC = () => {
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
   }, [isFullscreen]);
+
+  // Functions for different fullscreen modes
+  const openPopupEditor = () => {
+    const popup = window.open(
+      '/studio-editor',
+      'StudioEditor',
+      'width=1920,height=1080,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+    );
+    
+    if (popup) {
+      // Send project data to popup
+      popup.addEventListener('load', () => {
+        popup.postMessage({
+          type: 'app:load_project',
+          project: projectData
+        }, '*');
+      });
+    }
+  };
+
+  const openNewTabEditor = () => {
+    const newTab = window.open('/studio-editor', '_blank');
+    
+    if (newTab) {
+      // Send project data to new tab
+      newTab.addEventListener('load', () => {
+        newTab.postMessage({
+          type: 'app:load_project',
+          project: projectData
+        }, '*');
+      });
+    }
+  };
 
   useEffect(() => {
     if (initialized || !projectData) return;
@@ -288,7 +322,7 @@ const StudioPage: React.FC = () => {
       </div>
 
       {/* Fullscreen Editor Content */}
-      <div className="flex-1 flex flex-col p-2 gap-2" style={{ height: 'calc(100vh - 80px)' }}>
+      <div className="flex-1 flex flex-col p-1 gap-1" style={{ height: 'calc(100vh - 60px)' }}>
         {/* Playback Controls - Compact */}
         <div className="flex items-center justify-center gap-3 p-2 bg-gradient-to-r from-gray-800/50 to-gray-700/50 rounded-lg border border-gray-600/30">
           <button
@@ -391,7 +425,7 @@ const StudioPage: React.FC = () => {
         </div>
         
         {/* Timeline - Full Width */}
-        <div className="bg-gradient-to-r from-gray-800/80 to-gray-700/80 rounded-lg p-3 border border-gray-600/30 backdrop-blur-sm" style={{ height: '200px' }}>
+        <div className="bg-gradient-to-r from-gray-800/80 to-gray-700/80 rounded-lg p-2 border border-gray-600/30 backdrop-blur-sm" style={{ height: '150px' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,7 +447,7 @@ const StudioPage: React.FC = () => {
           <div 
             data-shotstack-timeline 
             className="w-full bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border border-indigo-500/30 shadow-lg" 
-            style={{ height: '120px', minHeight: '120px' }}
+            style={{ height: '80px', minHeight: '80px' }}
           />
           <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
             <div className="flex items-center gap-6 w-full">
@@ -537,16 +571,64 @@ const StudioPage: React.FC = () => {
             </div>
           </div>
           
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={() => setIsFullscreen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-            <span>Full Screen</span>
-          </button>
+          {/* Fullscreen Options */}
+          <div className="relative group">
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              <span>Full Screen</span>
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {/* Dropdown Menu */}
+            <div className="absolute top-full right-0 mt-1 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="py-2">
+                <div className="px-3 py-1 text-xs text-gray-400 font-medium">Choose Fullscreen Mode:</div>
+                <button 
+                  onClick={() => { setFullscreenMode('modal'); setIsFullscreen(true); }}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  <div>
+                    <div className="font-medium">Modal Fullscreen</div>
+                    <div className="text-xs text-gray-500">Overlay on current page</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => openPopupEditor()}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <div>
+                    <div className="font-medium">Popup Window</div>
+                    <div className="text-xs text-gray-500">New browser window</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => openNewTabEditor()}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <div>
+                    <div className="font-medium">New Tab</div>
+                    <div className="text-xs text-gray-500">New browser tab</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
