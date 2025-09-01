@@ -6,6 +6,7 @@ const StudioPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   useEffect(() => {
     if (initialized) return; // Prevent double initialization
@@ -67,6 +68,17 @@ const StudioPage: React.FC = () => {
           console.log("Clip updated:", data);
         });
 
+        // Add play/pause event listeners
+        editInstance.events.on("play", () => {
+          console.log("Play event");
+          setIsPlaying(true);
+        });
+
+        editInstance.events.on("pause", () => {
+          console.log("Pause event");
+          setIsPlaying(false);
+        });
+
         setEdit(editInstance);
         console.log('🎉 Studio initialization complete!');
         setIsLoading(false);
@@ -80,6 +92,25 @@ const StudioPage: React.FC = () => {
 
     initializeEditor();
   }, [initialized]);
+
+  const addSampleClip = () => {
+    if (!edit) return;
+    
+    try {
+      edit.addClip(0, {
+        asset: {
+          type: 'video',
+          src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+        },
+        start: 0,
+        length: 10,
+        fit: 'cover'
+      });
+      console.log('✅ Sample clip added');
+    } catch (error) {
+      console.error('❌ Failed to add sample clip:', error);
+    }
+  };
 
   if (error) {
     return (
@@ -101,19 +132,59 @@ const StudioPage: React.FC = () => {
         </div>
       )}
       
+      {/* Playback Controls */}
+      <div className="flex items-center justify-center gap-4 p-4 bg-gray-800 rounded-lg">
+        <button
+          onClick={() => edit?.play()}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
+          disabled={!edit}
+        >
+          ▶️ Play
+        </button>
+        <button
+          onClick={() => edit?.pause()}
+          className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-white"
+          disabled={!edit}
+        >
+          ⏸️ Pause
+        </button>
+        <button
+          onClick={() => edit?.stop()}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white"
+          disabled={!edit}
+        >
+          ⏹️ Stop
+        </button>
+        <button
+          onClick={addSampleClip}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white"
+          disabled={!edit}
+        >
+          ➕ Add Sample Video
+        </button>
+        <div className="text-sm text-gray-400">
+          Status: {isPlaying ? 'Playing' : 'Paused'}
+        </div>
+      </div>
+      
+      {/* Video Canvas */}
       <div className="flex-grow relative min-h-0">
         <div 
           data-shotstack-studio 
-          className="w-full h-full bg-black rounded-lg" 
+          className="w-full h-full bg-black rounded-lg border-2 border-gray-600" 
           style={{ minHeight: '400px' }}
         />
       </div>
 
-      <div 
-        data-shotstack-timeline 
-        className="w-full h-80 bg-gray-800 rounded-lg" 
-        style={{ minHeight: '300px' }}
-      />
+      {/* Timeline */}
+      <div className="bg-gray-800 rounded-lg p-4">
+        <h3 className="text-lg font-semibold mb-2">Timeline</h3>
+        <div 
+          data-shotstack-timeline 
+          className="w-full bg-gray-900 rounded border-2 border-gray-600" 
+          style={{ height: '200px', minHeight: '200px' }}
+        />
+      </div>
     </div>
   );
 };
