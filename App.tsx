@@ -306,9 +306,10 @@ const MainApp = () => {
         }
     };
     
-    if (!session) {
-        return <LandingPage />;
-    }
+    // Temporarily disable session check for testing
+    // if (!session) {
+    //     return <LandingPage />;
+    // }
 
     if (!user) {
         return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading')}</div>;
