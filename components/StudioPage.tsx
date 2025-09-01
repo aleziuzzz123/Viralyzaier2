@@ -18,6 +18,7 @@ export default function StudioPage() {
   const [err, setErr] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function StudioPage() {
 
   // --- Parent Window Communication ---
   const postToParent = (type: string, payload?: any) => {
+    console.log('📤 Posting to parent:', type, payload);
     window.parent.postMessage({ type, payload }, '*');
   };
 
@@ -86,37 +88,57 @@ export default function StudioPage() {
 
     const initializeEditor = async () => {
       try {
+        console.log('🚀 Starting StudioPage initialization...');
         setIsLoading(true);
         setInitialized(true);
+        setDebugInfo('Initializing...');
 
         // Small delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Wait for project data from parent
         const handleMessage = (event: MessageEvent) => {
+          console.log('📨 Received message:', event.data);
           if (event.data.type === 'app:load_project') {
             const projectData: Project = event.data.payload;
+            console.log('📦 Project data received:', projectData);
             if (projectData) {
               setProject(projectData);
+              setDebugInfo('Project loaded, booting editor...');
               boot(projectData);
             } else {
               setErr("No project data received from the main application.");
+              setDebugInfo('No project data');
             }
           }
         };
 
         window.addEventListener('message', handleMessage);
+        console.log('📤 Sending studio:ready message');
         postToParent('studio:ready');
 
         const boot = async (projectData: Project) => {
           try {
+            console.log('🔧 Booting editor with project:', projectData);
+            setDebugInfo('Waiting for DOM elements...');
+            
             // Wait for DOM elements to be ready
             for (let i = 0; i < 120; i++) {
               const c = canvasHostRef.current;
               const t = timelineHostRef.current;
+              console.log(`🔍 DOM check ${i}: canvas=${!!c}, timeline=${!!t}, canvasWidth=${c?.clientWidth}`);
               if (c && t && c.clientWidth >= 1) break;
               await new Promise(r => requestAnimationFrame(r));
             }
+
+            const c = canvasHostRef.current;
+            const t = timelineHostRef.current;
+            if (!c || !t) {
+              throw new Error(`DOM elements not ready: canvas=${!!c}, timeline=${!!t}`);
+            }
+
+            console.log('✅ DOM elements ready, initializing Shotstack...');
+            setDebugInfo('Initializing Shotstack SDK...');
 
             const initialState = projectData.shotstackEditJson || {
               timeline: { background: "#000000", tracks: [ { clips: [] }, { clips: [] }, { clips: [] } ]},
@@ -125,40 +147,60 @@ export default function StudioPage() {
             const size = initialState.output.size;
             const backgroundColor = initialState.timeline.background || "#000000";
 
-            // 1. Initialize the edit with dimensions and background color (FIXED!)
+            console.log('📐 Size:', size, 'Background:', backgroundColor);
+
+            // 1. Initialize the edit with dimensions and background color
+            console.log('🔧 Creating Edit component...');
             const edit = new Edit(size, backgroundColor);
             await edit.load();
             editorRef.current = edit;
+            console.log('✅ Edit component loaded');
 
             // 2. Create a canvas to display the edit
+            console.log('🎨 Creating Canvas component...');
             const canvas = new Canvas(size, edit);
             await canvas.load(); // Renders to [data-shotstack-studio] element
+            console.log('✅ Canvas component loaded');
 
             // 3. Load the template
+            console.log('📄 Loading edit template...');
             await edit.loadEdit(initialState);
+            console.log('✅ Edit template loaded');
             
             // 4. Add keyboard controls
+            console.log('⌨️ Creating Controls component...');
             const controls = new Controls(edit);
             await controls.load();
+            console.log('✅ Controls component loaded');
 
             // 5. Add timeline for visual editing
+            console.log('📊 Creating Timeline component...');
             const timeline = new Timeline(edit, {
               width: size.width,
               height: 300
             });
             await timeline.load(); // Renders to [data-shotstack-timeline] element
+            console.log('✅ Timeline component loaded');
 
             // Setup event listeners
             if (edit?.events?.on) {
-              edit.events.on("clip:selected", (sel: ShotstackClipSelection) => setSelection(sel));
-              edit.events.on("clip:deselected", () => setSelection(null));
-              // Note: Controls events might not be available in this version
-              // We'll handle playback through the edit object directly
+              edit.events.on("clip:selected", (sel: ShotstackClipSelection) => {
+                console.log('🎯 Clip selected:', sel);
+                setSelection(sel);
+              });
+              edit.events.on("clip:deselected", () => {
+                console.log('🎯 Clip deselected');
+                setSelection(null);
+              });
             }
 
+            console.log('🎉 Studio initialization complete!');
+            setDebugInfo('Studio ready!');
             setIsLoading(false);
           } catch (e: any) {
+            console.error('❌ Boot error:', e);
             setErr(e?.message ?? String(e));
+            setDebugInfo(`Error: ${e?.message ?? String(e)}`);
             setIsLoading(false);
           }
         };
@@ -169,6 +211,7 @@ export default function StudioPage() {
       } catch (err) {
         console.error('Failed to initialize video editor:', err);
         setErr(err instanceof Error ? err.message : 'Unknown error occurred');
+        setDebugInfo(`Init error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setInitialized(false); // Reset on error
         setIsLoading(false);
       }
@@ -181,13 +224,22 @@ export default function StudioPage() {
     return (
       <div className="p-4 rounded-lg bg-red-900/50 border border-red-500/50 text-red-300">
         <strong>Creative Studio failed:</strong> {err}
+        {debugInfo && <div className="mt-2 text-sm text-red-400">Debug: {debugInfo}</div>}
       </div>
     );
   }
 
   return (
     <div className="h-full w-full flex flex-col bg-gray-900 text-white p-4 gap-4">
-      {isLoading && <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-50 text-white">Starting Creative Studio...</div>}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gray-900/80 flex items-center justify-center z-50 text-white">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mb-4"></div>
+            <h1 className="text-2xl font-bold mb-4">Starting Creative Studio...</h1>
+            <p className="text-gray-400">{debugInfo}</p>
+          </div>
+        </div>
+      )}
       
       <div className={`flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${selection ? 'h-48' : 'h-0'}`}>
         {selection && editorRef.current && (
@@ -200,10 +252,20 @@ export default function StudioPage() {
       </div>
 
       <div className="flex-grow relative min-h-0">
-        <div ref={canvasHostRef} data-shotstack-studio className="w-full h-full bg-black rounded-lg" />
+        <div 
+          ref={canvasHostRef} 
+          data-shotstack-studio 
+          className="w-full h-full bg-black rounded-lg" 
+          style={{ minHeight: '400px' }}
+        />
       </div>
 
-      <div ref={timelineHostRef} data-shotstack-timeline className="w-full h-80 bg-gray-800 rounded-lg" />
+      <div 
+        ref={timelineHostRef} 
+        data-shotstack-timeline 
+        className="w-full h-80 bg-gray-800 rounded-lg" 
+        style={{ minHeight: '300px' }}
+      />
 
       <EditorToolbar 
         isPlaying={isPlaying}
