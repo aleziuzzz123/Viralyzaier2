@@ -14,10 +14,14 @@ serve(async (req: Request) => {
   // Health check endpoint
   if (req.method === 'GET') {
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const keyPrefix = openaiApiKey ? openaiApiKey.substring(0, 10) + '...' : 'NOT_FOUND';
+    
     return new Response(JSON.stringify({ 
       status: 'ok', 
       hasApiKey: !!openaiApiKey,
-      timestamp: new Date().toISOString()
+      keyPrefix: keyPrefix,
+      timestamp: new Date().toISOString(),
+      environment: 'production'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -99,6 +103,8 @@ serve(async (req: Request) => {
       case 'generateImages': {
         const { prompt, config } = params;
         
+        console.log('Generating image with prompt:', prompt.substring(0, 100) + '...');
+        
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: {
@@ -123,6 +129,7 @@ serve(async (req: Request) => {
         }
 
         const data = await response.json();
+        console.log('Image generation successful, received', data.data.length, 'images');
         
         result = {
           generatedImages: data.data.map((img: any) => ({
@@ -130,6 +137,31 @@ serve(async (req: Request) => {
               imageBytes: img.b64_json
             }
           }))
+        };
+        break;
+      }
+
+      case 'test': {
+        // Simple test endpoint to verify OpenAI API is working
+        const testResponse = await fetch('https://api.openai.com/v1/models', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!testResponse.ok) {
+          const errorData = await testResponse.json().catch(() => ({}));
+          throw new Error(`OpenAI API test failed: ${testResponse.status} - ${errorData.error?.message || testResponse.statusText}`);
+        }
+
+        const models = await testResponse.json();
+        result = {
+          status: 'success',
+          message: 'OpenAI API is working',
+          availableModels: models.data.length,
+          timestamp: new Date().toISOString()
         };
         break;
       }
