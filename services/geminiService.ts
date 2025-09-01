@@ -308,40 +308,9 @@ Your output must be a JSON object with:
         type: 'generateContent',
         params: {
             model: 'gpt-4o',
-            contents: { parts: [{ text: textPrompt }] },
+            contents: textPrompt,
             config: {
-                responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        scores: { 
-                            type: Type.OBJECT, 
-                            properties: { 
-                                overall: { type: Type.INTEGER, description: "Score from 1-100" }, 
-                                hook: { type: Type.INTEGER, description: "Score from 1-100" }, 
-                                pacing: { type: Type.INTEGER, description: "Score from 1-100" }, 
-                                audio: { type: Type.INTEGER, description: "Score from 1-100" }, 
-                                cta: { type: Type.INTEGER, description: "Score from 1-100" } 
-                            },
-                            required: ["overall", "hook", "pacing", "audio", "cta"]
-                        },
-                        summary: { type: Type.STRING }, 
-                        goldenNugget: { type: Type.STRING },
-                        strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        improvements: { 
-                            type: Type.ARRAY, 
-                            items: { 
-                                type: Type.OBJECT, 
-                                properties: { 
-                                    suggestion: { type: Type.STRING }, 
-                                    reason: { type: Type.STRING } 
-                                }, 
-                                required: ["suggestion", "reason"] 
-                            }
-                        }
-                    },
-                    required: ["scores", "summary", "goldenNugget", "strengths", "improvements"]
-                }
+                responseMimeType: 'application/json'
             }
         }
     });
@@ -364,15 +333,7 @@ Your output MUST be a JSON object with:
             model: 'gpt-4o', 
             contents: prompt,
             config: {
-                responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        analysis: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { score: { type: Type.INTEGER }, pros: { type: Type.ARRAY, items: { type: Type.STRING } }, cons: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["score", "pros", "cons"] } },
-                        suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ["analysis", "suggestions"]
-                }
+                responseMimeType: 'application/json'
             }
         }
     });
@@ -473,29 +434,7 @@ ${videoDataSummary}
             model: 'gpt-4o', 
             contents: prompt,
             config: {
-                responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        contentPillars: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        audiencePersona: { type: Type.STRING },
-                        viralFormula: { type: Type.STRING },
-                        opportunities: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    idea: { type: Type.STRING },
-                                    reason: { type: Type.STRING },
-                                    suggestedTitle: { type: Type.STRING },
-                                    type: { type: Type.STRING }
-                                },
-                                required: ["idea", "reason", "suggestedTitle", "type"]
-                            }
-                        }
-                    },
-                    required: ["contentPillars", "audiencePersona", "viralFormula", "opportunities"]
-                }
+                responseMimeType: 'application/json'
             }
         }
     });
@@ -520,24 +459,7 @@ Your output MUST be a JSON object with this structure:
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        music: { type: Type.STRING },
-                        sfx: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    timecode: { type: Type.STRING },
-                                    description: { type: Type.STRING }
-                                },
-                                required: ["timecode", "description"]
-                            }
-                        }
-                    },
-                    required: ["music", "sfx"]
-                }
+
             }
         }
     });
@@ -558,14 +480,7 @@ export const rewriteScriptScene = async (scene: Scene, action: string): Promise<
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        visual: { type: Type.STRING },
-                        voiceover: { type: Type.STRING }
-                    },
-                    required: ["visual", "voiceover"]
-                }
+
             }
         }
     });
@@ -599,15 +514,7 @@ export const reviewVideoPerformance = async (performance: VideoPerformance, vide
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        summary: { type: Type.STRING },
-                        whatWorked: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        whatToImprove: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ["summary", "whatWorked", "whatToImprove"]
-                }
+
             }
         }
     });
@@ -623,18 +530,7 @@ export const suggestContentGaps = async (successfulTopics: string[], channelTopi
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            idea: { type: Type.STRING },
-                            reason: { type: Type.STRING },
-                            potentialTitles: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        },
-                        required: ["idea", "reason", "potentialTitles"]
-                    }
-                }
+
             }
         }
     });
@@ -660,14 +556,7 @@ export const generateSeo = async (title: string, script: Script, platform: Platf
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        description: { type: Type.STRING },
-                        tags: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ["description", "tags"]
-                }
+
             }
         }
     });
@@ -683,13 +572,7 @@ export const analyzeAndGenerateThumbnails = async (title: string, platform: Plat
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        prompts: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    },
-                    required: ["prompts"]
-                }
+
             }
         }
     });
@@ -718,22 +601,7 @@ export const repurposeProject = async (script: Script, title: string, fromPlatfo
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        scenes: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: { timecode: { type: Type.STRING }, visual: { type: Type.STRING }, voiceover: { type: Type.STRING }, onScreenText: { type: Type.STRING } },
-                                required: ["timecode", "visual", "voiceover", "onScreenText"]
-                            }
-                        },
-                        cta: { type: Type.STRING }
-                    },
-                    required: ["hooks", "scenes", "cta"]
-                }
+
             }
         }
     });
@@ -749,17 +617,7 @@ export const emphasizeSubtitleText = async (text: string): Promise<Partial<Subti
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
-                // responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            word: { type: Type.STRING },
-                            style: { type: Type.OBJECT, properties: { fontWeight: { type: Type.INTEGER }, color: { type: Type.STRING } } }
-                        },
-                        required: ["word", "style"]
-                    }
-                }
+
             }
         }
     });
