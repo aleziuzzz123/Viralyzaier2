@@ -153,8 +153,18 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
         setIsLoading(true);
         setSdkHandles(null);
 
-        // Initialize Shotstack Studio SDK
-        initializeShotstack();
+        // Wait for the next render cycle to ensure canvas element is available
+        const timer = setTimeout(() => {
+            console.log('🚀 CreativeStudioNew: Canvas element check:', canvasHostRef.current);
+            if (canvasHostRef.current) {
+                initializeShotstack();
+            } else {
+                setError('Canvas element not found. Please refresh the page.');
+                setIsLoading(false);
+            }
+        }, 100);
+
+        return () => clearTimeout(timer);
 
     }, [projectToUse?.id, initializeShotstack]);
 
@@ -261,7 +271,12 @@ export const CreativeStudioNew: React.FC<{ testProject?: any }> = ({ testProject
                         <div 
                             ref={canvasHostRef} 
                             className="w-full h-full"
-                            style={{ minHeight: '400px' }}
+                            style={{ 
+                                minHeight: '400px',
+                                width: '100%',
+                                height: '100%',
+                                position: 'relative'
+                            }}
                         />
                     </div>
 
