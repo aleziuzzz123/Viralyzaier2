@@ -181,11 +181,27 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
             console.error('Error message:', errorMessage);
             
             // Check if it's a subscription/payment error
-            if (errorMessage.includes('subscription') || errorMessage.includes('payment') || errorMessage.includes('invoice')) {
-                addToast(`Subscription issue detected. Please check your account status or contact support. Error: ${errorMessage}`, 'error');
-            } else {
-                addToast(`Blueprint generation failed: ${errorMessage}`, 'error');
+                    if (errorMessage.includes('subscription') || errorMessage.includes('payment') || errorMessage.includes('invoice')) {
+            addToast(`Subscription issue detected. Attempting to fix...`, 'warning');
+            
+            // Try to fix the subscription status
+            try {
+                const response = await invokeEdgeFunction('fix-user-subscription', {
+                    userId: user.id
+                });
+                
+                if (response.success) {
+                    addToast('Subscription status fixed! Please try generating your blueprint again.', 'success');
+                } else {
+                    addToast(`Subscription issue: ${errorMessage}. Please contact support.`, 'error');
+                }
+            } catch (fixError) {
+                console.error('Failed to fix subscription:', fixError);
+                addToast(`Subscription issue: ${errorMessage}. Please contact support.`, 'error');
             }
+        } else {
+            addToast(`Blueprint generation failed: ${errorMessage}`, 'error');
+        }
         } finally {
             setIsLoadingBlueprint(false);
             setProgressMessage('');
