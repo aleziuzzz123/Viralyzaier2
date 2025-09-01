@@ -6,6 +6,7 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
   console.log('🎬 StudioPage component loaded!');
   console.log('🎬 Window location:', window.location.href);
   console.log('🎬 Is iframe:', window.self !== window.top);
+  console.log('🎬 Prop project data:', propProjectData);
   
   const [edit, setEdit] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -93,14 +94,17 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
 
   useEffect(() => {
     console.log('🎬 StudioPage useEffect triggered:', { initialized, hasProjectData: !!projectData });
-    if (initialized || !projectData) {
-      console.log('🎬 Skipping initialization:', { initialized, hasProjectData: !!projectData });
+    console.log('🎬 Component mounted, starting initialization...');
+    if (initialized) {
+      console.log('🎬 Already initialized, skipping');
       return;
     }
 
     const initializeEditor = async () => {
       try {
-        console.log('🚀 Starting StudioPage initialization with project:', projectData);
+        console.log('🚀 Starting StudioPage initialization');
+        console.log('🚀 Shotstack SDK available:', { Edit, Canvas, Controls, Timeline });
+        console.log('🚀 Project data:', projectData);
         console.log('🚀 Project data details:', {
           hasScript: !!projectData?.script,
           hasScenes: !!projectData?.script?.scenes,
@@ -116,26 +120,29 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
         // Small delay to ensure DOM is ready
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Create edit configuration from project data
-        const editConfig = createEditFromProject(projectData);
-        console.log('🔧 Created edit config:', editConfig);
+        // 1. Start with a basic template (following official documentation)
+        console.log('🔧 Loading base template...');
+        const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
+        const response = await fetch(templateUrl);
+        const template = await response.json();
+        console.log('✅ Base template loaded:', template);
 
-        // 2. Initialize the edit with project dimensions
+        // 2. Initialize the edit with template dimensions and background
         console.log('🔧 Creating Edit component...');
-        const editInstance = new Edit(editConfig.output.size, editConfig.timeline.background);
+        const editInstance = new Edit(template.output.size, template.timeline.background);
         await editInstance.load();
         console.log('✅ Edit component loaded');
 
         // 3. Create a canvas to display the edit
         console.log('🎨 Creating Canvas component...');
-        const canvas = new Canvas(editConfig.output.size, editInstance);
-        await canvas.load();
+        const canvas = new Canvas(template.output.size, editInstance);
+        await canvas.load(); // Renders to [data-shotstack-studio] element
         console.log('✅ Canvas component loaded');
 
-        // 4. Load the project edit
-        console.log('📄 Loading project edit...');
-        await editInstance.loadEdit(editConfig);
-        console.log('✅ Project edit loaded');
+        // 4. Load the base template first
+        console.log('📄 Loading base template...');
+        await editInstance.loadEdit(template);
+        console.log('✅ Base template loaded');
         
         // 5. Add keyboard controls
         console.log('⌨️ Creating Controls component...');
@@ -143,14 +150,20 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
         await controls.load();
         console.log('✅ Controls component loaded');
 
-        // 6. Add timeline for visual editing (separate container)
+        // 6. Add timeline for visual editing
         console.log('📊 Creating Timeline component...');
         const timeline = new Timeline(editInstance, {
-          width: editConfig.output.size.width,
+          width: template.output.size.width,
           height: 300
         });
-        await timeline.load();
+        await timeline.load(); // Renders to [data-shotstack-timeline] element
         console.log('✅ Timeline component loaded');
+
+        // 7. Now add our project assets if we have project data
+        if (projectData) {
+          console.log('🎬 Adding project assets to editor...');
+          await addProjectAssetsToEditor(editInstance, projectData);
+        }
 
         // Set up event listeners
         editInstance.events.on("clip:selected", (data: any) => {
@@ -185,7 +198,65 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
     initializeEditor();
   }, [initialized, projectData]);
 
-  // Function to create edit configuration from project data
+  // Function to add project assets to the editor
+  const addProjectAssetsToEditor = async (editInstance: any, project: Project) => {
+    try {
+      console.log('🎬 Adding project assets:', project);
+      
+      if (project.script && project.script.scenes) {
+        console.log('🎬 Processing script scenes:', project.script.scenes);
+        
+        // Clear existing tracks and add our project assets
+        project.script.scenes.forEach((scene: Scene, index: number) => {
+          console.log(`🎬 Processing scene ${index}:`, {
+            timecode: scene.timecode,
+            visual: scene.visual,
+            voiceover: scene.voiceover,
+            storyboardImageUrl: scene.storyboardImageUrl
+          });
+          
+          if (scene.storyboardImageUrl) {
+            console.log(`🎬 Adding video clip for scene ${index} with image:`, scene.storyboardImageUrl);
+            editInstance.addClip(0, {
+              asset: {
+                type: 'image',
+                src: scene.storyboardImageUrl
+              },
+              start: parseTimecode(scene.timecode).start,
+              length: parseTimecode(scene.timecode).duration,
+              fit: 'cover'
+            });
+          }
+        });
+
+        // Add audio tracks from voiceovers
+        if (project.voiceoverUrls) {
+          console.log('🎬 Processing voiceover URLs:', project.voiceoverUrls);
+          
+          Object.entries(project.voiceoverUrls).forEach(([sceneIndex, voiceoverUrl]) => {
+            const scene = project.script!.scenes[parseInt(sceneIndex)];
+            if (scene) {
+              console.log(`🎬 Adding audio clip for scene ${sceneIndex}:`, voiceoverUrl);
+              editInstance.addClip(1, {
+                asset: {
+                  type: 'audio',
+                  src: voiceoverUrl
+                },
+                start: parseTimecode(scene.timecode).start,
+                length: parseTimecode(scene.timecode).duration
+              });
+            }
+          });
+        }
+      }
+      
+      console.log('✅ Project assets added successfully');
+    } catch (error) {
+      console.error('❌ Error adding project assets:', error);
+    }
+  };
+
+  // Function to create edit configuration from project data (kept for reference)
   const createEditFromProject = (project: Project) => {
     const videoSize = project.videoSize === '16:9' ? { width: 1920, height: 1080 } : 
                      project.videoSize === '9:16' ? { width: 1080, height: 1920 } : 
