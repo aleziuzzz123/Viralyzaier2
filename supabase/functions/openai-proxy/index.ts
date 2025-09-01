@@ -47,8 +47,11 @@ serve(async (req: Request) => {
     // Validate API key format
     if (!openaiApiKey.startsWith('sk-')) {
       console.error('Invalid OpenAI API key format. Key should start with "sk-"');
+      console.error('Current key format:', openaiApiKey.substring(0, 20) + '...');
       throw new Error('Invalid OpenAI API key format. Please check that you have the correct OpenAI API key.');
     }
+    
+    console.log('API key validation passed, key starts with:', openaiApiKey.substring(0, 10) + '...');
 
     let result;
 
