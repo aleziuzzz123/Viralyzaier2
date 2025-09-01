@@ -39,6 +39,12 @@ serve(async (req: Request) => {
       console.error('OpenAI API key not found. Available env vars:', Object.keys(Deno.env.toObject()));
       throw new Error('OpenAI API key not found in environment variables. Please check your Supabase Edge Function secrets.');
     }
+    
+    // Validate API key format
+    if (!openaiApiKey.startsWith('sk-')) {
+      console.error('Invalid OpenAI API key format. Key should start with "sk-"');
+      throw new Error('Invalid OpenAI API key format. Please check that you have the correct OpenAI API key.');
+    }
 
     let result;
 
