@@ -94,7 +94,17 @@ serve(async (req: Request) => {
 
     if (!elevenLabsResponse.ok || !contentType || !contentType.includes('audio/mpeg')) {
       let errorBodyText = await elevenLabsResponse.text();
-      let errorMessage = `ElevenLabs API Error: ${elevenLabsResponse.statusText}. Response: ${errorBodyText.substring(0, 200)}`;
+      let errorMessage = `ElevenLabs API Error: ${elevenLabsResponse.status} ${elevenLabsResponse.statusText}. Response: ${errorBodyText.substring(0, 200)}`;
+      
+      console.error("ElevenLabs API Error Details:", {
+        status: elevenLabsResponse.status,
+        statusText: elevenLabsResponse.statusText,
+        contentType: contentType,
+        responseBody: errorBodyText,
+        requestText: text,
+        requestVoiceId: voiceId
+      });
+      
       try {
         const errorJson = JSON.parse(errorBodyText);
         errorMessage = errorJson.detail?.message || JSON.stringify(errorJson.detail) || errorMessage;

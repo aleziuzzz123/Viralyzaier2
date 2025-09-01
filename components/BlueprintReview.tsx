@@ -166,38 +166,63 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                 const voiceoverPromises = editedScript.scenes.map(async (scene, index) => {
                     if (!scene.voiceover) return null;
 
-                    try {
-                        console.log(`🎤 Generating voiceover for scene ${index}:`, {
-                            text: scene.voiceover,
-                            voiceId
-                        });
-                        
-                        const response = await invokeEdgeFunction('elevenlabs-proxy', {
-                            type: 'tts',
-                            text: scene.voiceover,
-                            voiceId
-                        });
-                        
-                        console.log(`🎤 Voiceover response for scene ${index}:`, response);
+                    // Retry logic for failed voiceovers
+                    const maxRetries = 3;
+                    let lastError = null;
 
-                        if (response && response.audioUrl) {
-                            return response.audioUrl;
-                        } else {
-                            console.error(`No audio URL returned for scene ${index}:`, response);
-                            return null;
+                    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            console.log(`🎤 Generating voiceover for scene ${index} (attempt ${attempt}/${maxRetries}):`, {
+                                text: scene.voiceover,
+                                textLength: scene.voiceover.length,
+                                voiceId
+                            });
+                            
+                            const response = await invokeEdgeFunction('elevenlabs-proxy', {
+                                type: 'tts',
+                                text: scene.voiceover,
+                                voiceId
+                            });
+                            
+                            console.log(`🎤 Voiceover response for scene ${index} (attempt ${attempt}):`, response);
+
+                            if (response && response.audioUrl) {
+                                return response.audioUrl;
+                            } else {
+                                console.error(`No audio URL returned for scene ${index} (attempt ${attempt}):`, response);
+                                lastError = new Error(`No audio URL returned for scene ${index}`);
+                            }
+                        } catch (voiceError) {
+                            console.error(`Error generating voiceover for scene ${index} (attempt ${attempt}):`, voiceError);
+                            lastError = voiceError;
+                            
+                            // Check if it's a subscription error
+                            const errorMessage = voiceError?.message || voiceError?.toString() || '';
+                            if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
+                                console.error('ElevenLabs subscription issue detected for scene', index);
+                                // Don't retry subscription errors
+                                break;
+                            }
+                            
+                            // Wait before retrying (exponential backoff)
+                            if (attempt < maxRetries) {
+                                const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                                console.log(`⏳ Waiting ${delay}ms before retry for scene ${index}...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                            }
                         }
-                    } catch (voiceError) {
-                        console.error(`Error generating voiceover for scene ${index}:`, voiceError);
-                        
-                        // Check if it's a subscription error
-                        const errorMessage = voiceError?.message || voiceError?.toString() || '';
+                    }
+                    
+                    // If all retries failed, log the final error
+                    if (lastError) {
+                        const errorMessage = lastError?.message || lastError?.toString() || '';
                         if (errorMessage.includes('subscription') || errorMessage.includes('payment')) {
                             console.error('ElevenLabs subscription issue detected');
                             addToast('ElevenLabs subscription issue: Please check your ElevenLabs account payment status.', 'error');
                         }
-                        
-                        return null;
                     }
+                    
+                    return null;
                 });
 
                 const voiceoverUrls = await Promise.all(voiceoverPromises);
