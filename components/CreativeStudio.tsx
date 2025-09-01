@@ -173,6 +173,15 @@ const CreativeStudio: React.FC = () => {
                         
                         const projectData = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
                         console.log('🎬 Studio ready, sending project data:', projectData);
+                        console.log('🎬 Project data details:', {
+                            hasScript: !!projectData?.script,
+                            hasScenes: !!projectData?.script?.scenes,
+                            sceneCount: projectData?.script?.scenes?.length || 0,
+                            hasMoodboard: !!projectData?.moodboard,
+                            moodboardCount: projectData?.moodboard?.length || 0,
+                            hasVoiceovers: !!projectData?.voiceoverUrls,
+                            voiceoverCount: Object.keys(projectData?.voiceoverUrls || {}).length
+                        });
                         if (projectData) {
                         iframeRef.current.contentWindow?.postMessage({
                             type: 'app:load_project',
@@ -229,7 +238,9 @@ const CreativeStudio: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    backdropFilter: 'blur(10px)'
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 10000,
+                    position: 'relative'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
@@ -262,7 +273,31 @@ const CreativeStudio: React.FC = () => {
                             </p>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {/* Workflow Progress Indicator */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ 
+                                color: 'rgba(255, 255, 255, 0.7)', 
+                                fontSize: '12px',
+                                fontWeight: '500'
+                            }}>
+                                Stage 4 of 6
+                            </span>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {[1, 2, 3, 4, 5, 6].map((step) => (
+                                    <div
+                                        key={step}
+                                        style={{
+                                            width: '6px',
+                                            height: '6px',
+                                            borderRadius: '50%',
+                                            backgroundColor: step <= 4 ? '#667eea' : 'rgba(255, 255, 255, 0.3)'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        
                         <button
                             onClick={() => {
                                 const currentProject = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;

@@ -17,6 +17,22 @@ const StudioPage: React.FC = () => {
     const handleMessage = (event: MessageEvent) => {
         if (event.data.type === 'app:load_project') {
         console.log('📦 Received project data:', event.data.payload);
+        console.log('📦 Project data analysis:', {
+          hasScript: !!event.data.payload?.script,
+          hasScenes: !!event.data.payload?.script?.scenes,
+          sceneCount: event.data.payload?.script?.scenes?.length || 0,
+          hasMoodboard: !!event.data.payload?.moodboard,
+          moodboardCount: event.data.payload?.moodboard?.length || 0,
+          hasVoiceovers: !!event.data.payload?.voiceoverUrls,
+          voiceoverCount: Object.keys(event.data.payload?.voiceoverUrls || {}).length,
+          scenes: event.data.payload?.script?.scenes?.map((scene: any, index: number) => ({
+            index,
+            timecode: scene.timecode,
+            hasVisual: !!scene.visual,
+            hasVoiceover: !!scene.voiceover,
+            hasStoryboardImage: !!scene.storyboardImageUrl
+          }))
+        });
         setProjectData(event.data.payload);
       }
     };
@@ -237,8 +253,20 @@ const StudioPage: React.FC = () => {
       console.warn('Timecode is undefined, using default values');
       return { start: 0, end: 5, duration: 5 };
     }
-    const [start, end] = timecode.split('-').map(Number);
-    return { start, end, duration: end - start };
+    
+    // Handle different timecode formats
+    if (timecode.includes('-')) {
+      const [start, end] = timecode.split('-').map(Number);
+      return { start: start || 0, end: end || 5, duration: (end || 5) - (start || 0) };
+    } else if (timecode.includes('seconds')) {
+      // Handle "2 seconds" format
+      const duration = parseInt(timecode.replace(/\D/g, '')) || 5;
+      return { start: 0, end: duration, duration };
+    } else {
+      // Handle single number (duration)
+      const duration = parseInt(timecode) || 5;
+      return { start: 0, end: duration, duration };
+    }
   };
 
   const addSampleClip = () => {
