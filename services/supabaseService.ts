@@ -410,6 +410,10 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
         console.error('Project update error:', {
             projectId,
             error,
+            errorCode: error.code,
+            errorMessage: error.message,
+            errorDetails: error.details,
+            errorHint: error.hint,
             updateKeys: Object.keys(dbUpdates),
             dbUpdates: JSON.stringify(dbUpdates, null, 2)
         });
