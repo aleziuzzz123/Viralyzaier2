@@ -1,5 +1,5 @@
-import * as d from "https://unpkg.com/pixi.js@^8.5.2?module";
-import { Filter as ci, deprecation as hi, GpuProgram as di, GlProgram as ui, Color as pi } from "https://unpkg.com/pixi.js@^8.5.2?module";
+import * as d from "https://unpkg.com/pixi.js@^6.5.9?module";
+import { Filter as ci, deprecation as hi, GpuProgram as di, GlProgram as ui, Color as pi } from "https://unpkg.com/pixi.js@^6.5.9?module";
 import * as fi from "https://unpkg.com/howler@^2.2.4?module";
 import * as Ie from "https://unpkg.com/opentype.js@^1.3.4?module";
 import { FFmpeg as gi } from "https://unpkg.com/@ffmpeg/ffmpeg@^0.12.15?module";
