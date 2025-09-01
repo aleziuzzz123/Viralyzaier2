@@ -10,17 +10,37 @@ const CreativeStudio: React.FC = () => {
     const [isFullScreenRoute, setIsFullScreenRoute] = useState(false);
     const [fullScreenProjectData, setFullScreenProjectData] = useState<Project | null>(null);
     const [isLoadingProject, setIsLoadingProject] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingStep, setLoadingStep] = useState('');
+    const [isStudioReady, setIsStudioReady] = useState(false);
+    const [assetsLoaded, setAssetsLoaded] = useState({
+        script: false,
+        moodboard: false,
+        voiceovers: false,
+        studio: false
+    });
 
-    // Function to load project data for full-screen editor
+    // Function to load project data for full-screen editor with progress tracking
     const loadProjectForFullScreen = async () => {
         setIsLoadingProject(true);
+        setLoadingProgress(0);
+        setLoadingStep('Initializing...');
+        
         try {
-            // Try to get project ID from URL parameters
+            // Step 1: Get project ID
+            setLoadingProgress(10);
+            setLoadingStep('Locating project...');
+            
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('projectId');
             
             if (projectId) {
                 console.log('🎬 Loading project for full-screen editor:', projectId);
+                
+                // Step 2: Fetch project data
+                setLoadingProgress(30);
+                setLoadingStep('Loading project data...');
+                
                 const { data, error } = await supabase
                     .from('projects')
                     .select('*')
@@ -34,7 +54,10 @@ const CreativeStudio: React.FC = () => {
                 }
                 
                 if (data) {
-                    // Convert database row to Project type
+                    // Step 3: Convert and validate project data
+                    setLoadingProgress(50);
+                    setLoadingStep('Processing project data...');
+                    
                     const project: Project = {
                         id: data.id,
                         userId: data.user_id,
@@ -67,14 +90,47 @@ const CreativeStudio: React.FC = () => {
                     
                     setFullScreenProjectData(project);
                     console.log('🎬 Project loaded for full-screen editor:', project);
+                    
+                    // Step 4: Validate assets
+                    setLoadingProgress(70);
+                    setLoadingStep('Validating assets...');
+                    
+                    // Check if we have all required assets
+                    const hasScript = project.script && project.script.scenes && project.script.scenes.length > 0;
+                    const hasMoodboard = project.moodboard && project.moodboard.length > 0;
+                    const hasVoiceovers = project.voiceoverUrls && Object.keys(project.voiceoverUrls).length > 0;
+                    
+                    setAssetsLoaded({
+                        script: hasScript,
+                        moodboard: hasMoodboard,
+                        voiceovers: hasVoiceovers,
+                        studio: false
+                    });
+                    
+                    // Step 5: Ready to load studio
+                    setLoadingProgress(90);
+                    setLoadingStep('Preparing video editor...');
+                    
+                    // Wait a moment for smooth UX
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    setLoadingProgress(100);
+                    setLoadingStep('Ready!');
+                    
                 }
             } else {
                 // Try to get from localStorage as fallback
+                setLoadingProgress(50);
+                setLoadingStep('Loading from cache...');
+                
                 const savedProject = localStorage.getItem('activeProject');
                 if (savedProject) {
                     const project = JSON.parse(savedProject);
                     setFullScreenProjectData(project);
                     console.log('🎬 Project loaded from localStorage:', project);
+                    
+                    setLoadingProgress(100);
+                    setLoadingStep('Ready!');
                 } else {
                     addToast('No project data found', 'error');
                 }
@@ -100,6 +156,11 @@ const CreativeStudio: React.FC = () => {
             loadProjectForFullScreen();
         }
         
+        // Also load project data if we're on full-screen route and don't have project data yet
+        if (isFullScreen && !fullScreenProjectData && !isLoadingProject) {
+            loadProjectForFullScreen();
+        }
+        
         const handleMessage = (event: MessageEvent) => {
             console.log('🎬 CreativeStudio received message:', event.data);
             if (iframeRef.current && event.source === iframeRef.current.contentWindow) {
@@ -107,13 +168,16 @@ const CreativeStudio: React.FC = () => {
                 switch (type) {
                     // The editor is ready and requesting project data
                     case 'studio:ready':
+                        setIsStudioReady(true);
+                        setAssetsLoaded(prev => ({ ...prev, studio: true }));
+                        
                         const projectData = isFullScreenRoute ? fullScreenProjectData : activeProjectDetails;
                         console.log('🎬 Studio ready, sending project data:', projectData);
                         if (projectData) {
-                            iframeRef.current.contentWindow?.postMessage({
-                                type: 'app:load_project',
+                        iframeRef.current.contentWindow?.postMessage({
+                            type: 'app:load_project',
                                 payload: projectData,
-                            }, '*');
+                        }, '*');
                         } else {
                             console.warn('🎬 No project data available to send to studio');
                         }
@@ -129,7 +193,7 @@ const CreativeStudio: React.FC = () => {
                     // The editor is requesting a toast notification
                     case 'studio:addToast':
                         console.log('🎬 Studio toast:', payload);
-                        if (payload) {
+                         if (payload) {
                             addToast(payload.message, payload.type);
                         }
                         break;
@@ -145,7 +209,7 @@ const CreativeStudio: React.FC = () => {
     
     // If we're on the full-screen route, render the full-screen editor
     if (isFullScreenRoute) {
-        return (
+    return (
             <div style={{ 
                 position: 'fixed', 
                 top: 0, 
@@ -223,52 +287,182 @@ const CreativeStudio: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Loading State */}
-                {isLoadingProject ? (
+                {/* Professional Loading State with Progress */}
+                {isLoadingProject || !isStudioReady ? (
                     <div style={{
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white'
+                        color: 'white',
+                        padding: '40px'
                     }}>
+                        {/* Main Loading Animation */}
                         <div style={{
-                            width: '48px',
-                            height: '48px',
-                            border: '3px solid rgba(255, 255, 255, 0.3)',
-                            borderTop: '3px solid #667eea',
+                            width: '80px',
+                            height: '80px',
+                            border: '4px solid rgba(255, 255, 255, 0.1)',
+                            borderTop: '4px solid #667eea',
                             borderRadius: '50%',
                             animation: 'spin 1s linear infinite',
-                            marginBottom: '16px'
+                            marginBottom: '32px'
                         }}></div>
-                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '500' }}>
-                            Loading Project Data...
-                        </h3>
-                        <p style={{ 
-                            margin: '8px 0 0 0', 
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            fontSize: '14px'
-                        }}>
-                            Preparing your video editor
-                        </p>
-                    </div>
-                ) : (
-                    <iframe
-                        key={iframeKey}
-                        ref={iframeRef}
-                        src={`/studio.html?v=${iframeKey}`}
-                        style={{
-                            flex: 1,
+                        
+                        {/* Progress Bar */}
+                        <div style={{
                             width: '100%',
-                            border: 0,
-                            background: '#0b1220'
-                        }}
-                        allow="clipboard-write"
+                            maxWidth: '400px',
+                            height: '8px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{
+                                width: `${loadingProgress}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                                borderRadius: '4px',
+                                transition: 'width 0.3s ease'
+                            }}></div>
+                        </div>
+                        
+                        {/* Progress Text */}
+                        <h2 style={{ 
+                            margin: '0 0 8px 0', 
+                            fontSize: '24px', 
+                            fontWeight: '600',
+                            textAlign: 'center'
+                        }}>
+                            {loadingStep}
+                        </h2>
+                        
+                        <p style={{ 
+                            margin: '0 0 32px 0', 
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            fontSize: '16px',
+                            textAlign: 'center'
+                        }}>
+                            {loadingProgress}% Complete
+                        </p>
+                        
+                        {/* Asset Status Grid */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '16px',
+                            width: '100%',
+                            maxWidth: '400px'
+                        }}>
+                            {[
+                                { key: 'script', label: 'Script', icon: '📝' },
+                                { key: 'moodboard', label: 'Images', icon: '🎨' },
+                                { key: 'voiceovers', label: 'Voiceovers', icon: '🎤' },
+                                { key: 'studio', label: 'Editor', icon: '🎬' }
+                            ].map(({ key, label, icon }) => (
+                                <div key={key} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '12px',
+                                    backgroundColor: assetsLoaded[key as keyof typeof assetsLoaded] 
+                                        ? 'rgba(34, 197, 94, 0.1)' 
+                                        : 'rgba(255, 255, 255, 0.05)',
+                                    border: `1px solid ${assetsLoaded[key as keyof typeof assetsLoaded] 
+                                        ? 'rgba(34, 197, 94, 0.3)' 
+                                        : 'rgba(255, 255, 255, 0.1)'}`,
+                                    borderRadius: '8px',
+                                    transition: 'all 0.3s ease'
+                                }}>
+                                    <div style={{
+                                        fontSize: '20px',
+                                        opacity: assetsLoaded[key as keyof typeof assetsLoaded] ? 1 : 0.5
+                                    }}>
+                                        {assetsLoaded[key as keyof typeof assetsLoaded] ? '✅' : icon}
+                                    </div>
+                                    <span style={{
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        color: assetsLoaded[key as keyof typeof assetsLoaded] 
+                                            ? '#22c55e' 
+                                            : 'rgba(255, 255, 255, 0.7)'
+                                    }}>
+                                        {label}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* Project Info */}
+                        {fullScreenProjectData && (
+                            <div style={{
+                                marginTop: '32px',
+                                padding: '16px',
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                borderRadius: '12px',
+                                textAlign: 'center',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                            }}>
+                                <h4 style={{ 
+                                    margin: '0 0 8px 0', 
+                                    fontSize: '16px', 
+                                    fontWeight: '600',
+                                    color: '#667eea'
+                                }}>
+                                    {fullScreenProjectData.title || fullScreenProjectData.name}
+                                </h4>
+                                <p style={{ 
+                                    margin: '0', 
+                                    fontSize: '14px', 
+                                    color: 'rgba(255, 255, 255, 0.6)'
+                                }}>
+                                    {fullScreenProjectData.platform} • {fullScreenProjectData.videoSize}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                                ) : fullScreenProjectData ? (
+            <iframe
+                        key={iframeKey}
+                ref={iframeRef}
+                        src={`/studio.html?v=${iframeKey}`}
+                style={{
+                            flex: 1,
+                    width: '100%',
+                    border: 0,
+                    background: '#0b1220'
+                }}
+                allow="clipboard-write"
                         title="Creative Studio Editor - Full Screen"
-                        onLoad={() => console.log('🎬 Studio iframe loaded (full screen)')}
+                        onLoad={() => {
+                            console.log('🎬 Studio iframe loaded (full screen)');
+                            // Mark studio as ready when iframe loads
+                            setIsStudioReady(true);
+                        }}
                         onError={(e) => console.error('🎬 Studio iframe error:', e)}
                     />
+                ) : (
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white'
+                    }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px' }}>
+                                No Project Data Found
+                            </h3>
+                            <p style={{ 
+                                margin: '0', 
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                fontSize: '16px'
+                            }}>
+                                Please go back and select a project to edit.
+                            </p>
+                        </div>
+                    </div>
                 )}
 
                 <style>{`
