@@ -192,6 +192,24 @@ export default function StudioPage() {
             console.log('🎉 Studio initialization complete!');
             setDebugInfo('Studio ready!');
             setIsLoading(false);
+            
+            // Force a re-render to ensure canvas and timeline are visible
+            setTimeout(() => {
+              console.log('🔄 Forcing re-render...');
+              const canvasEl = document.querySelector('[data-shotstack-studio]');
+              const timelineEl = document.querySelector('[data-shotstack-timeline]');
+              console.log('🔍 Final check - Canvas element:', !!canvasEl, 'Timeline element:', !!timelineEl);
+              
+              if (canvasEl) {
+                console.log('🎨 Canvas element dimensions:', canvasEl.clientWidth, 'x', canvasEl.clientHeight);
+                console.log('🎨 Canvas element children:', canvasEl.children.length);
+              }
+              
+              if (timelineEl) {
+                console.log('📊 Timeline element dimensions:', timelineEl.clientWidth, 'x', timelineEl.clientHeight);
+                console.log('📊 Timeline element children:', timelineEl.children.length);
+              }
+            }, 1000);
           } catch (e: any) {
             console.error('❌ Boot error:', e);
             setError(e?.message ?? String(e));
