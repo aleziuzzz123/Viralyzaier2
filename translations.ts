@@ -4,7 +4,7 @@ export type Language = 'en' | 'fr' | 'es' | 'pt' | 'hi';
 export type TranslationKey = keyof typeof translations.en;
 
 const enTranslations = {
-  "app.name": "Viralyzer 5.0",
+  "app.name": "Viralyzaier",
   "app.error.title": "Application Error",
   "app.error.description": "A critical error occurred, and the application cannot start.",
   "app.error.cause": "This is often caused by missing environment variables:",
