@@ -2655,9 +2655,6 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         )}
       </div>
 
-
-      </div>
-
       <style>{`
         /* Professional Animations */
         @keyframes spin {
