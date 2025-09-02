@@ -189,29 +189,29 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col px-8">
         {/* Canvas Area */}
-        <div className="flex-1 p-6">
-          <div className="bg-gray-900 rounded-xl p-6 h-full">
-            <h3 className="text-xl font-bold mb-6 text-white">Canvas</h3>
+        <div className="flex-1 p-4">
+          <div className="bg-gray-900 rounded-xl p-4 h-full max-w-6xl mx-auto">
+            <h3 className="text-xl font-bold mb-4 text-white text-center">Canvas</h3>
             <div 
               ref={canvasRef}
               data-shotstack-studio
               className="w-full h-full bg-black rounded-lg border-2 border-gray-700"
-              style={{ minHeight: '500px' }}
+              style={{ minHeight: '600px' }}
             />
           </div>
         </div>
 
         {/* Timeline Area */}
-        <div className="h-96 p-6">
-          <div className="bg-gray-900 rounded-xl p-6 h-full">
-            <h3 className="text-xl font-bold mb-6 text-white">Timeline</h3>
+        <div className="h-80 p-4">
+          <div className="bg-gray-900 rounded-xl p-4 h-full max-w-6xl mx-auto">
+            <h3 className="text-xl font-bold mb-4 text-white text-center">Timeline</h3>
             <div 
               ref={timelineRef}
               data-shotstack-timeline
               className="w-full h-full bg-gray-800 rounded-lg border-2 border-gray-700"
-              style={{ minHeight: '300px' }}
+              style={{ minHeight: '250px' }}
             />
           </div>
         </div>
