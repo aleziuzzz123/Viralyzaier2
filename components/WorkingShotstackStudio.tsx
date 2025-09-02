@@ -189,11 +189,11 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col px-6">
+      <div className="flex-1 flex flex-col px-8">
         {/* Canvas Area */}
-        <div className="flex-1 p-4">
-          <div className="bg-gray-900 rounded-xl p-4 h-full max-w-5xl mx-auto">
-            <h3 className="text-xl font-bold mb-4 text-white text-center">Canvas</h3>
+        <div className="flex-1 p-6">
+          <div className="bg-gray-900 rounded-xl p-6 h-full max-w-7xl mx-auto">
+            <h3 className="text-xl font-bold mb-6 text-white text-center">Canvas</h3>
             <div 
               ref={canvasRef}
               data-shotstack-studio
@@ -204,9 +204,9 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         </div>
 
         {/* Timeline Area */}
-        <div className="h-80 p-4">
-          <div className="bg-gray-900 rounded-xl p-4 h-full max-w-5xl mx-auto">
-            <h3 className="text-xl font-bold mb-4 text-white text-center">Timeline</h3>
+        <div className="h-80 p-6">
+          <div className="bg-gray-900 rounded-xl p-6 h-full max-w-7xl mx-auto">
+            <h3 className="text-xl font-bold mb-6 text-white text-center">Timeline</h3>
             <div 
               ref={timelineRef}
               data-shotstack-timeline
