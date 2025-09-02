@@ -458,15 +458,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       fontFamily: 'Arial, sans-serif'
     }}>
 
-      {/* Main Editor Area - Clean and Centered */}
+      {/* Main Editor Area - Full Width and Centered */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: '40px 20px 20px 20px', // More top padding to clear navigation
+        padding: '20px',
         gap: '20px',
-        maxWidth: '1200px', // Reasonable max width
-        margin: '0 auto', // Center the editor
         width: '100%'
       }}>
 
@@ -633,11 +631,10 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             width: '100%',
             backgroundColor: '#000',
             borderRadius: '8px',
-            minHeight: '60vh',
+            minHeight: '70vh',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             opacity: isLoading ? 0.3 : 1,
-            transition: 'opacity 0.3s ease',
-            // No margins needed in full-width layout
+            transition: 'opacity 0.3s ease'
           }}
         />
 
@@ -656,8 +653,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            // No margins needed in full-width layout
+            justifyContent: 'center'
           }}
         >
           {isLoading && (
