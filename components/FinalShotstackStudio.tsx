@@ -46,6 +46,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [showPropertiesPanel, setShowPropertiesPanel] = useState<boolean>(false);
 
   // Load project assets into the editor after it's initialized
   const loadProjectAssets = async (edit: any, projectData: Project) => {
@@ -928,7 +929,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                   onClick={() => {
                     if (editRef.current) {
                       console.log('🎬 Exporting video...');
-                      console.log('📋 Current edit state:', editRef.current);
+                      // Get the current edit state
+                      const editState = editRef.current.getEdit?.() || editRef.current;
+                      console.log('📋 Current edit state:', editState);
+                      
+                      // Create a download link for the video
+                      // This would normally call the Shotstack API to render the video
+                      alert('Export functionality will render your video using Shotstack API. Check console for edit data.');
                     }
                   }}
                   style={{
@@ -945,6 +952,32 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 >
                   Export
                 </button>
+                <button
+                  onClick={() => {
+                    // Open properties panel with a sample asset
+                    setSelectedAsset({
+                      type: 'text',
+                      text: 'Sample Text',
+                      font: { size: 36, color: '#FFFFFF' },
+                      start: 0,
+                      length: 5
+                    });
+                    setShowPropertiesPanel(true);
+                  }}
+                  style={{
+                    background: '#4F46E5', // indigo-600
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Properties
+                </button>
               </div>
             </div>
           </div>
@@ -956,12 +989,16 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           data-shotstack-studio
           style={{
             width: '100%',
-            backgroundColor: '#000',
+            backgroundColor: '#111827', // gray-900
             borderRadius: '8px',
-            minHeight: '70vh',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            minHeight: '60vh',
+            maxHeight: '70vh',
+            border: '1px solid #374151', // gray-700
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
             opacity: isLoading ? 0.3 : 1,
-            transition: 'opacity 0.3s ease'
+            transition: 'all 0.3s ease',
+            overflow: 'hidden',
+            position: 'relative'
           }}
         />
 
@@ -971,17 +1008,19 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           data-shotstack-timeline
           style={{
             width: '100%',
-            backgroundColor: '#1f2937',
+            backgroundColor: '#1F2937', // gray-800
             borderRadius: '8px',
-            height: '300px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            height: '250px',
+            border: '1px solid #374151', // gray-700
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             opacity: isLoading ? 0.3 : 1,
-            transition: 'opacity 0.3s ease',
+            transition: 'all 0.3s ease',
+            overflow: 'hidden',
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '300px' // Ensure minimum height
+            minHeight: '250px' // Ensure minimum height
           }}
         >
           {isLoading && (
@@ -1021,6 +1060,228 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             <p style={{ margin: 0, fontSize: '14px' }}>
               The video editor is now ready. You can interact with the canvas and timeline above.
             </p>
+          </div>
+        )}
+
+        {/* Properties Panel - Right Sidebar */}
+        {showPropertiesPanel && selectedAsset && (
+          <div style={{
+            position: 'fixed',
+            top: '80px', // Below header
+            right: '20px',
+            width: '320px',
+            height: 'calc(100vh - 100px)',
+            background: 'rgba(0, 0, 0, 0.9)',
+            border: '1px solid #374151',
+            borderRadius: '8px',
+            padding: '20px',
+            zIndex: 1000,
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px',
+              paddingBottom: '12px',
+              borderBottom: '1px solid #374151'
+            }}>
+              <h3 style={{
+                color: '#F9FAFB',
+                fontSize: '16px',
+                fontWeight: '600',
+                margin: 0
+              }}>
+                Asset Properties
+              </h3>
+              <button
+                onClick={() => setShowPropertiesPanel(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9CA3AF',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ color: '#D1D5DB', fontSize: '14px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                  Asset Type
+                </label>
+                <div style={{
+                  padding: '8px 12px',
+                  background: '#374151',
+                  borderRadius: '4px',
+                  border: '1px solid #4B5563'
+                }}>
+                  {selectedAsset.type || 'Unknown'}
+                </div>
+              </div>
+
+              {selectedAsset.type === 'text' && (
+                <>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                      Text Content
+                    </label>
+                    <textarea
+                      value={selectedAsset.text || ''}
+                      onChange={(e) => {
+                        setSelectedAsset({...selectedAsset, text: e.target.value});
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        background: '#374151',
+                        border: '1px solid #4B5563',
+                        borderRadius: '4px',
+                        color: '#F9FAFB',
+                        fontSize: '14px',
+                        resize: 'vertical',
+                        minHeight: '60px'
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                      Font Size
+                    </label>
+                    <input
+                      type="number"
+                      value={selectedAsset.font?.size || 36}
+                      onChange={(e) => {
+                        setSelectedAsset({
+                          ...selectedAsset,
+                          font: {...selectedAsset.font, size: parseInt(e.target.value)}
+                        });
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        background: '#374151',
+                        border: '1px solid #4B5563',
+                        borderRadius: '4px',
+                        color: '#F9FAFB',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                      Text Color
+                    </label>
+                    <input
+                      type="color"
+                      value={selectedAsset.font?.color || '#FFFFFF'}
+                      onChange={(e) => {
+                        setSelectedAsset({
+                          ...selectedAsset,
+                          font: {...selectedAsset.font, color: e.target.value}
+                        });
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '40px',
+                        background: '#374151',
+                        border: '1px solid #4B5563',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                  Start Time (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={selectedAsset.start || 0}
+                  onChange={(e) => {
+                    setSelectedAsset({...selectedAsset, start: parseFloat(e.target.value)});
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#374151',
+                    border: '1px solid #4B5563',
+                    borderRadius: '4px',
+                    color: '#F9FAFB',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
+                  Duration (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={selectedAsset.length || 5}
+                  onChange={(e) => {
+                    setSelectedAsset({...selectedAsset, length: parseFloat(e.target.value)});
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#374151',
+                    border: '1px solid #4B5563',
+                    borderRadius: '4px',
+                    color: '#F9FAFB',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => {
+                    // Apply changes to the selected asset
+                    console.log('Applying changes to asset:', selectedAsset);
+                    setShowPropertiesPanel(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    background: '#4F46E5',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Apply Changes
+                </button>
+                <button
+                  onClick={() => setShowPropertiesPanel(false)}
+                  style={{
+                    flex: 1,
+                    background: '#374151',
+                    color: '#D1D5DB',
+                    border: '1px solid #4B5563',
+                    padding: '10px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
