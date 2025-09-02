@@ -1798,33 +1798,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           </div>
         </div>
 
-        {/* Asset Loading Status - Show when editor is loaded */}
-        {!isLoading && !error && (
-          <div style={{
-            background: loadedAssetsCount > 0 ? '#10b981' : '#f59e0b',
-            color: 'white',
-            padding: '16px',
-            borderRadius: '8px',
-            textAlign: 'center'
-          }}>
-            <h3 style={{ margin: '0 0 8px 0' }}>
-              {loadedAssetsCount > 0 ? '✅' : '⚠️'} Shotstack Studio Loaded Successfully!
-            </h3>
-            <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
-              {assetLoadingStatus}
-            </p>
-            {loadedAssetsCount > 0 && (
-              <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>
-                {loadedAssetsCount} blueprint asset{loadedAssetsCount !== 1 ? 's' : ''} loaded into editor
-              </p>
-            )}
-            {loadedAssetsCount === 0 && (
-              <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>
-                No blueprint assets found. Check console for debugging information.
-              </p>
-            )}
-          </div>
-        )}
+
 
         {/* Properties Panel - Right Sidebar */}
         {showPropertiesPanel && selectedAsset && (
