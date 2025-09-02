@@ -91,8 +91,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const { handleUpdateProject, addToast } = useAppContext();
   
   // New state for sidebar management
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   
   // Timeline state
@@ -1152,1200 +1151,167 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         onSave={handleVideoRender}
       />
       
-      {/* Left Sidebar - Asset Library */}
-      <div className={`${leftSidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
-        {leftSidebarOpen && (
-          <div className="h-full bg-gray-800 border-r border-gray-700 flex flex-col">
-            {/* Sidebar Header */}
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center">
-                <Bars3Icon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.idea }} />
-                Asset Library
-              </h3>
-              <button
-                onClick={() => setLeftSidebarOpen(false)}
-                className="p-1 hover:bg-gray-700 rounded"
-              >
-                <XIcon className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-            
-            {/* Asset Categories */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Basic Assets */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Basic Assets</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'text',
-                        content: 'New Text Overlay',
-                        duration: 3
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <DocumentTextIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.scripting }} />
-                    <span className="text-xs text-white">Text</span>
-                  </div>
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'shape',
-                        content: 'New Shape',
-                        duration: 5
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <CubeIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.idea }} />
-                    <span className="text-xs text-white">Shapes</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* AI Assets */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">AI Generation</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'audio',
-                        content: 'AI Generated Voice',
-                        duration: 10,
-                        track: 'audio'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <WandSparklesIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.autopilot }} />
-                    <span className="text-xs text-white">AI Voice</span>
-                  </div>
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'image',
-                        content: 'AI Generated Image',
-                        duration: 5,
-                        track: 'video'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <PhotoIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.rendering }} />
-                    <span className="text-xs text-white">AI Image</span>
-                  </div>
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'video',
-                        content: 'AI Generated Video',
-                        duration: 8,
-                        track: 'video'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <VideoCameraIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.published }} />
-                    <span className="text-xs text-white">AI Video</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Stock Assets */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Stock Assets</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'image',
-                        content: 'Stock Image',
-                        duration: 4,
-                        track: 'video'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <SearchIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.scheduled }} />
-                    <span className="text-xs text-white">Pixabay Images</span>
-                  </div>
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'video',
-                        content: 'Stock Video',
-                        duration: 6,
-                        track: 'video'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <SearchIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.scheduled }} />
-                    <span className="text-xs text-white">Pixabay Videos</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Music & Audio */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Music & Audio</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'music',
-                        content: 'Background Music',
-                        duration: 30,
-                        track: 'music'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <PlayCircleIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.scheduled }} />
-                    <span className="text-xs text-white">Background Music</span>
-                  </div>
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', JSON.stringify({
-                        type: 'audio',
-                        content: 'Sound Effect',
-                        duration: 2,
-                        track: 'audio'
-                      }));
-                    }}
-                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex flex-col items-center space-y-2 transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <MicrophoneIcon className="w-6 h-6" style={{ color: DASHBOARD_COLORS.autopilot }} />
-                    <span className="text-xs text-white">Sound Effects</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Top Toolbar */}
         <div className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6">
           {/* Left Sidebar Toggle */}
           <div className="flex items-center space-x-4">
-            {!leftSidebarOpen && (
-              <button
-                onClick={() => setLeftSidebarOpen(true)}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <Bars3Icon className="w-5 h-5 text-gray-400" />
-              </button>
-            )}
-            
-            {/* Playback Controls */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  if (editRef.current) {
-                    editRef.current.play?.();
-                    setIsPlaying(true);
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                style={{ backgroundColor: DASHBOARD_COLORS.idea }}
-              >
-                <PlayIcon className="w-5 h-5 text-white" />
-              </button>
-              <button
-                onClick={() => {
-                  if (editRef.current) {
-                    editRef.current.pause?.();
-                    setIsPlaying(false);
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
-              >
-                <PauseIcon className="w-5 h-5 text-white" />
-              </button>
-              <button
-                onClick={() => {
-                  if (editRef.current) {
-                    editRef.current.stop?.();
-                    setIsPlaying(false);
-                  }
-                }}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                style={{ backgroundColor: DASHBOARD_COLORS.failed }}
-              >
-                <StopCircleIcon className="w-5 h-5 text-white" />
-              </button>
-            </div>
-            
-            {/* Time Display */}
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <Cog6ToothIcon className="w-4 h-4" />
-              <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-            </div>
+            <button
+              onClick={() => setLeftSidebarOpen(true)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <Bars3Icon className="w-5 h-5 text-gray-400" />
+            </button>
           </div>
           
-          {/* Center - Project Status */}
+          {/* Center - Playback Controls */}
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 px-3 py-1 rounded-lg" style={{ backgroundColor: DASHBOARD_COLORS.card }}>
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: DASHBOARD_COLORS.published }}></div>
-              <span className="text-sm text-white font-medium">Ready</span>
-            </div>
+            <button
+              onClick={() => {
+                if (editRef.current) {
+                  editRef.current.play?.();
+                  setIsPlaying(true);
+                }
+              }}
+              className="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+            >
+              <PlayIcon className="w-5 h-5 text-white" />
+            </button>
+            <button
+              onClick={() => {
+                if (editRef.current) {
+                  editRef.current.pause?.();
+                  setIsPlaying(false);
+                }
+              }}
+              className="p-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors"
+            >
+              <PauseIcon className="w-5 h-5 text-white" />
+            </button>
+            <button
+              onClick={() => {
+                if (editRef.current) {
+                  editRef.current.stop?.();
+                  setIsPlaying(false);
+                }
+              }}
+              className="p-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors"
+            >
+              <StopIcon className="w-5 h-5 text-white" />
+            </button>
           </div>
           
-          {/* Right Side - Actions */}
-          <div className="flex items-center space-x-2">
+          {/* Right - Export and Clear */}
+          <div className="flex items-center space-x-4">
             <button
               onClick={handleVideoRender}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center space-x-2"
-              style={{ backgroundColor: DASHBOARD_COLORS.published }}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors flex items-center space-x-2"
             >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>Export</span>
+              <FilmStripIcon className="w-4 h-4" />
+              <span>Export Video</span>
             </button>
-            
-            {/* Right Sidebar Toggle */}
-            {!rightSidebarOpen && (
-              <button
-                onClick={() => setRightSidebarOpen(true)}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <AdjustmentsHorizontalIcon className="w-5 h-5 text-gray-400" />
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (editRef.current) {
+                  editRef.current.clear?.();
+                }
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <TrashIcon className="w-4 h-4" />
+              <span>Clear</span>
+            </button>
           </div>
         </div>
         
         {/* Canvas Area */}
-        <div className="flex-1 flex">
-          <div className="flex-1 p-6">
-            {/* Loading State */}
-            {isLoading && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-16 h-16 border-4 border-gray-700 border-t-indigo-500 rounded-full animate-spin"></div>
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold text-white">Loading Professional Video Editor</h2>
-                  <p className="text-gray-400">Initializing Shotstack Studio...</p>
-                </div>
-              </div>
-            )}
-
-            {/* Video Rendering Progress */}
-            {isRendering && (
-              <div 
-                className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2 mb-6"
-                style={{ 
-                  backgroundColor: DASHBOARD_COLORS.card,
-                  borderColor: DASHBOARD_COLORS.rendering
-                }}
-              >
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center space-x-3">
-                    <RenderingIcon className="w-8 h-8 animate-spin" style={{ color: DASHBOARD_COLORS.rendering }} />
-                    <h3 className="text-xl font-bold" style={{ color: DASHBOARD_COLORS.text }}>Rendering Your Video</h3>
-                  </div>
-                  <p style={{ color: DASHBOARD_COLORS.textSecondary }}>{renderStatus}</p>
-                  {renderProgress && (
-                    <div className="w-full rounded-full h-3" style={{ backgroundColor: DASHBOARD_COLORS.background }}>
-                      <div 
-                        className="h-3 rounded-full transition-all duration-500"
-                        style={{ 
-                          width: `${renderProgress.current}%`,
-                          backgroundColor: DASHBOARD_COLORS.rendering
-                        }}
-                      ></div>
-                    </div>
-                  )}
-                  <p className="text-sm" style={{ color: DASHBOARD_COLORS.textSecondary }}>
-                    This may take a few minutes. You can continue editing while your video renders.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Main Editor Content */}
-            {!isLoading && !error && (
-              <div className="space-y-6">
-                {/* Video Canvas */}
-                <div 
-                  className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2"
-                  style={{ 
-                    backgroundColor: DASHBOARD_COLORS.card,
-                    borderColor: DASHBOARD_COLORS.scripting
-                  }}
-                >
-                  <div className="aspect-video bg-black rounded-xl flex items-center justify-center border-2 border-dashed border-gray-600">
-                    <div className="text-center space-y-4">
-                      <VideoCameraIcon className="w-16 h-16 mx-auto" style={{ color: DASHBOARD_COLORS.textSecondary }} />
-                      <div>
-                        <h3 className="text-xl font-bold text-white mb-2">Video Canvas Ready</h3>
-                        <p className="text-gray-400">Drag assets from the sidebar to start building your video</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Professional Timeline */}
-                <div 
-                  className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2"
-                  style={{ 
-                    backgroundColor: DASHBOARD_COLORS.card,
-                    borderColor: DASHBOARD_COLORS.rendering
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold flex items-center space-x-2" style={{ color: DASHBOARD_COLORS.text }}>
-                      <FilmStripIcon className="w-5 h-5" style={{ color: DASHBOARD_COLORS.rendering }} />
-                      <span>Timeline</span>
-                    </h3>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2 text-sm text-gray-300">
-                        <span>Duration: {formatTime(duration)}</span>
-                        <span>•</span>
-                        <span>Position: {formatTime(currentTime)}</span>
-                      </div>
-                      <button
-                        onClick={loadBlueprintAssets}
-                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
-                      >
-                        Load Assets
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Timeline Ruler */}
-                  <div className="mb-4">
-                    <div className="h-8 bg-gray-800 rounded-lg flex items-center px-4 relative">
-                      <div className="flex space-x-8 text-xs text-gray-400">
-                        {[0, 5, 10, 15, 20, 25, 30].map(time => (
-                          <div key={time} className="flex flex-col items-center">
-                            <div className="w-px h-2 bg-gray-600"></div>
-                            <span className="mt-1">{time}s</span>
-                          </div>
-                        ))}
-                      </div>
-                      {/* Playhead */}
-                      <div 
-                        className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
-                        style={{ left: `${(currentTime / Math.max(duration, 30)) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Timeline Tracks */}
-                  <div className="space-y-2">
-                    {/* Video Track */}
-                    <div className="flex items-center space-x-4">
-                      <div className="w-20 text-sm font-medium text-gray-300 flex items-center">
-                        <VideoCameraIcon className="w-4 h-4 mr-2" style={{ color: DASHBOARD_COLORS.published }} />
-                        Video
-                      </div>
-                      <div 
-                        className="flex-1 h-16 bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 relative overflow-hidden"
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const assetData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                          if (assetData.track === 'video') {
-                            const newAsset = {
-                              ...assetData,
-                              id: `video-${Date.now()}`,
-                              startTime: 0,
-                              track: 'video'
-                            };
-                            setTimelineAssets(prev => [...prev, newAsset]);
-                          }
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                      >
-                        {/* Video Clips */}
-                        {timelineAssets.filter(asset => asset.track === 'video').map((asset, index) => (
-                          <div
-                            key={asset.id}
-                            className={`absolute top-1 bottom-1 rounded border-2 cursor-pointer transition-all ${
-                              selectedClip?.id === asset.id ? 'ring-2 ring-blue-400' : ''
-                            }`}
-                            style={{
-                              left: `${(asset.startTime / 30) * 100}%`,
-                              width: `${(asset.duration / 30) * 100}%`,
-                              backgroundColor: DASHBOARD_COLORS.published,
-                              borderColor: DASHBOARD_COLORS.published
-                            }}
-                            onClick={() => setSelectedClip(asset)}
-                          >
-                            <div className="p-2 text-white text-xs font-medium truncate">
-                              {asset.content}
-                            </div>
-                            {/* Resize handles */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                          </div>
-                        ))}
-                        {timelineAssets.filter(asset => asset.track === 'video').length === 0 && (
-                          <span className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                            Drop video assets here
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Audio Track */}
-                    <div className="flex items-center space-x-4">
-                      <div className="w-20 text-sm font-medium text-gray-300 flex items-center">
-                        <MicrophoneIcon className="w-4 h-4 mr-2" style={{ color: DASHBOARD_COLORS.autopilot }} />
-                        Audio
-                      </div>
-                      <div 
-                        className="flex-1 h-16 bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 relative overflow-hidden"
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const assetData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                          if (assetData.track === 'audio') {
-                            const newAsset = {
-                              ...assetData,
-                              id: `audio-${Date.now()}`,
-                              startTime: 0,
-                              track: 'audio'
-                            };
-                            setTimelineAssets(prev => [...prev, newAsset]);
-                          }
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                      >
-                        {/* Audio Clips */}
-                        {timelineAssets.filter(asset => asset.track === 'audio').map((asset, index) => (
-                          <div
-                            key={asset.id}
-                            className={`absolute top-1 bottom-1 rounded border-2 cursor-pointer transition-all ${
-                              selectedClip?.id === asset.id ? 'ring-2 ring-blue-400' : ''
-                            }`}
-                            style={{
-                              left: `${(asset.startTime / 30) * 100}%`,
-                              width: `${(asset.duration / 30) * 100}%`,
-                              backgroundColor: DASHBOARD_COLORS.autopilot,
-                              borderColor: DASHBOARD_COLORS.autopilot
-                            }}
-                            onClick={() => setSelectedClip(asset)}
-                          >
-                            <div className="p-2 text-white text-xs font-medium truncate flex items-center">
-                              <MicrophoneIcon className="w-3 h-3 mr-1" />
-                              {asset.content}
-                            </div>
-                            {/* Resize handles */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                          </div>
-                        ))}
-                        {timelineAssets.filter(asset => asset.track === 'audio').length === 0 && (
-                          <span className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                            Drop audio/voiceover here
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Text Track */}
-                    <div className="flex items-center space-x-4">
-                      <div className="w-20 text-sm font-medium text-gray-300 flex items-center">
-                        <DocumentTextIcon className="w-4 h-4 mr-2" style={{ color: DASHBOARD_COLORS.scripting }} />
-                        Text
-                      </div>
-                      <div 
-                        className="flex-1 h-16 bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 relative overflow-hidden"
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const assetData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                          if (assetData.type === 'text') {
-                            const newAsset = {
-                              ...assetData,
-                              id: `text-${Date.now()}`,
-                              startTime: 0,
-                              track: 'text'
-                            };
-                            setTimelineAssets(prev => [...prev, newAsset]);
-                          }
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                      >
-                        {/* Text Clips */}
-                        {timelineAssets.filter(asset => asset.track === 'text').map((asset, index) => (
-                          <div
-                            key={asset.id}
-                            className={`absolute top-1 bottom-1 rounded border-2 cursor-pointer transition-all ${
-                              selectedClip?.id === asset.id ? 'ring-2 ring-blue-400' : ''
-                            }`}
-                            style={{
-                              left: `${(asset.startTime / 30) * 100}%`,
-                              width: `${(asset.duration / 30) * 100}%`,
-                              backgroundColor: DASHBOARD_COLORS.scripting,
-                              borderColor: DASHBOARD_COLORS.scripting
-                            }}
-                            onClick={() => setSelectedClip(asset)}
-                          >
-                            <div className="p-2 text-white text-xs font-medium truncate flex items-center">
-                              <DocumentTextIcon className="w-3 h-3 mr-1" />
-                              {asset.content}
-                            </div>
-                            {/* Resize handles */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                            <div className="absolute right-0 top-0 bottom-0 w-1 bg-white opacity-50 cursor-ew-resize"></div>
-                          </div>
-                        ))}
-                        {timelineAssets.filter(asset => asset.track === 'text').length === 0 && (
-                          <span className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                            Drop text overlays here
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Music Track */}
-                    <div className="flex items-center space-x-4">
-                      <div className="w-20 text-sm font-medium text-gray-300 flex items-center">
-                        <PlayCircleIcon className="w-4 h-4 mr-2" style={{ color: DASHBOARD_COLORS.scheduled }} />
-                        Music
-                      </div>
-                      <div 
-                        className="flex-1 h-16 bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 relative overflow-hidden"
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const assetData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                          if (assetData.track === 'music') {
-                            const newAsset = {
-                              ...assetData,
-                              id: `music-${Date.now()}`,
-                              startTime: 0,
-                              track: 'music'
-                            };
-                            setTimelineAssets(prev => [...prev, newAsset]);
-                          }
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                      >
-                        <span className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                          Drop background music here
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Timeline Controls */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
-                    <div className="flex items-center space-x-4">
-                      <button
-                        onClick={() => {
-                          if (selectedClip) {
-                            setTimelineAssets(assets => assets.filter(asset => asset.id !== selectedClip.id));
-                            setSelectedClip(null);
-                          }
-                        }}
-                        disabled={!selectedClip}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-                      >
-                        Delete Clip
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (selectedClip) {
-                            setSelectedAsset(selectedClip);
-                            setRightSidebarOpen(true);
-                          }
-                        }}
-                        disabled={!selectedClip}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
-                      >
-                        Edit Clip
-                      </button>
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-300">
-                      <span>Clips: {timelineAssets.length}</span>
-                      <span>•</span>
-                      <span>Selected: {selectedClip ? selectedClip.content : 'None'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Navigation Buttons */}
-                <div className="flex justify-between items-center pt-6">
-                  <button
-                    onClick={() => {
-                      // Navigate to Stage 3
-                      if (project) {
-                        handleUpdateProject({
-                          ...project,
-                          workflowStep: 3
-                        });
-                      }
-                    }}
-                    className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <ChevronLeftIcon className="w-4 h-4" />
-                    <span>Back to Review</span>
-                  </button>
-
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={handleVideoRender}
-                      className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center space-x-2"
-                      style={{ backgroundColor: DASHBOARD_COLORS.published }}
-                    >
-                      <ArrowDownTrayIcon className="w-4 h-4" />
-                      <span>Export Video</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        // Navigate to Stage 5
-                        if (project) {
-                          handleUpdateProject({
-                            ...project,
-                            workflowStep: 5
-                          });
-                        }
-                      }}
-                      className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center space-x-2"
-                      style={{ backgroundColor: DASHBOARD_COLORS.rendering }}
-                    >
-                      <span>Analyze & Report</span>
-                      <ChevronRightIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-4xl">
+            <Canvas
+              ref={canvasRef}
+              edit={edit}
+              onReady={() => {
+                console.log('✅ Canvas ready');
+                setCanvasReady(true);
+              }}
+              onError={(error) => {
+                console.error('❌ Canvas error:', error);
+                setCanvasReady(false);
+              }}
+            />
           </div>
         </div>
-
-        {/* Right Sidebar - Asset Properties */}
-        <div className={`${rightSidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
-          {rightSidebarOpen && (
-            <div className="h-full bg-gray-800 border-l border-gray-700 flex flex-col">
-              {/* Sidebar Header */}
-              <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white flex items-center">
-                  <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.rendering }} />
-                  Asset Properties
-                </h3>
-                <button
-                  onClick={() => setRightSidebarOpen(false)}
-                  className="p-1 hover:bg-gray-700 rounded"
-                >
-                  <XIcon className="w-4 h-4 text-gray-400" />
-                </button>
-              </div>
-              
-              {/* Properties Content */}
-              <div className="flex-1 overflow-y-auto p-4">
-                {selectedAsset ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Asset Type</label>
-                      <input
-                        type="text"
-                        value={selectedAsset.type || 'text'}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                        readOnly
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Content</label>
-                      <textarea
-                        value={selectedAsset.content || ''}
-                        onChange={(e) => setSelectedAsset({...selectedAsset, content: e.target.value})}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                        rows={3}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Start Time (seconds)</label>
-                      <input
-                        type="number"
-                        value={selectedAsset.startTime || 0}
-                        onChange={(e) => setSelectedAsset({...selectedAsset, startTime: parseFloat(e.target.value)})}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Duration (seconds)</label>
-                      <input
-                        type="number"
-                        value={selectedAsset.duration || 5}
-                        onChange={(e) => setSelectedAsset({...selectedAsset, duration: parseFloat(e.target.value)})}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                      />
-                    </div>
-                    
-                    <div className="flex space-x-3 pt-4">
-                      <button
-                        onClick={() => {
-                          console.log('Applying changes to asset:', selectedAsset);
-                          setSelectedAsset(null);
-                        }}
-                        className="flex-1 px-4 py-2 text-white font-medium rounded-lg transition-colors"
-                        style={{ backgroundColor: DASHBOARD_COLORS.published }}
-                      >
-                        Apply Changes
-                      </button>
-                      <button
-                        onClick={() => setSelectedAsset(null)}
-                        className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <AdjustmentsHorizontalIcon className="w-12 h-12 mx-auto mb-4" style={{ color: DASHBOARD_COLORS.textSecondary }} />
-                    <p className="text-gray-400">Select an asset to edit its properties</p>
-                  </div>
-                )}
-              </div>
+        
+        {/* Timeline Controls */}
+        <div className="h-20 bg-gray-800 border-t border-gray-700 flex items-center justify-between px-6">
+          {/* Left - Timeline Navigation */}
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-300 text-sm font-medium">Timeline:</span>
+            <button
+              onClick={() => setTimelineZoom(Math.max(0.5, timelineZoom - 0.1))}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <MinusIcon className="w-4 h-4 text-gray-400" />
+            </button>
+            <span className="text-gray-300 text-sm">{Math.round(timelineZoom * 100)}%</span>
+            <button
+              onClick={() => setTimelineZoom(Math.min(2, timelineZoom + 0.1))}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <PlusIcon className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+          
+          {/* Center - Timeline Position */}
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-300 text-sm">
+              {Math.floor(timelinePosition / 60)}:{(timelinePosition % 60).toFixed(1).padStart(4, '0')}
+            </span>
+            <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-indigo-600 transition-all duration-100"
+                style={{ width: `${(timelinePosition / duration) * 100}%` }}
+              />
             </div>
-          )}
+            <span className="text-gray-300 text-sm">
+              {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}
+            </span>
+          </div>
+          
+          {/* Right - Timeline Info */}
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-300 text-sm">
+              {timelineAssets.length} assets
+            </span>
+            <button
+              onClick={() => setRightSidebarOpen(true)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <AdjustmentsHorizontalIcon className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-        {/* Professional Editor Toolbar - Matching Dashboard Theme */}
-        {!isLoading && !error && (
-          <div 
-            className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2"
-            style={{ 
-              backgroundColor: DASHBOARD_COLORS.card,
-              borderColor: DASHBOARD_COLORS.scripting
-            }}
-          >
-            {/* Top Row - Playback Controls & Status */}
-            <div className="flex justify-between items-center mb-6">
-              {/* Left - Enhanced Playback Controls */}
-              <div className="flex items-center space-x-4">
-                {/* Play/Pause Button - Enhanced */}
-                <button
-                  onClick={() => {
-                    if (isPlaying) {
-                      editRef.current?.pause();
-                    } else {
-                      editRef.current?.play();
-                    }
-                  }}
-                  className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold text-white transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg min-w-[140px]"
-                  style={{ 
-                    backgroundColor: isPlaying ? DASHBOARD_COLORS.failed : DASHBOARD_COLORS.idea
-                  }}
-                >
-                  <VideoCameraIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
-                  {isPlaying ? 'Pause' : 'Play'}
-                </button>
-                
-                {/* Stop Button - Enhanced */}
-                <button
-                  onClick={() => editRef.current?.stop()}
-                  className="inline-flex items-center justify-center px-4 py-3 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
-                  style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
-                >
-                  <FilmStripIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
-                  Stop
-                </button>
-                
-                {/* Separator */}
-                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
-                
-                {/* Time Display - Enhanced */}
-                <div 
-                  className="flex items-center space-x-4 px-4 py-3 rounded-xl border-2"
-                  style={{ 
-                    backgroundColor: DASHBOARD_COLORS.background,
-                    borderColor: DASHBOARD_COLORS.scripting
-                  }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div 
-                      className="w-2 h-2 rounded-full"
-                      style={{ 
-                        backgroundColor: isPlaying ? DASHBOARD_COLORS.published : DASHBOARD_COLORS.textSecondary,
-                        animation: isPlaying ? 'pulse 2s infinite' : 'none'
-                      }}
-                    ></div>
-                    <span 
-                      className="text-sm font-bold"
-                      style={{ color: isPlaying ? DASHBOARD_COLORS.published : DASHBOARD_COLORS.textSecondary }}
-                    >
-                      {isPlaying ? 'PLAYING' : 'READY'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 font-mono text-sm">
-                    <Cog6ToothIcon className="w-4 h-4" style={{ color: DASHBOARD_COLORS.idea }} />
-                    <span style={{ color: DASHBOARD_COLORS.text }}>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
-                    <span style={{ color: DASHBOARD_COLORS.textSecondary }}>/</span>
-                    <span style={{ color: DASHBOARD_COLORS.textSecondary }}>{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right - Blueprint Status */}
-              <div className="flex items-center space-x-2">
-                {project?.script?.scenes && project.script.scenes.length > 0 && (
-                  <span 
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
-                    style={{ 
-                      backgroundColor: DASHBOARD_COLORS.scripting,
-                      color: DASHBOARD_COLORS.text,
-                      borderColor: DASHBOARD_COLORS.scripting
-                    }}
-                  >
-                    <DocumentTextIcon className="w-3 h-3 mr-1" />
-                    Script
-                  </span>
-                )}
-                {project?.voiceoverUrls && Object.keys(project.voiceoverUrls).length > 0 && (
-                  <span 
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
-                    style={{ 
-                      backgroundColor: DASHBOARD_COLORS.autopilot,
-                      color: DASHBOARD_COLORS.text,
-                      borderColor: DASHBOARD_COLORS.autopilot
-                    }}
-                  >
-                    <MicrophoneIcon className="w-3 h-3 mr-1" />
-                    Voice
-                  </span>
-                )}
-                {project?.assets && Object.keys(project.assets).length > 0 && (
-                  <span 
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
-                    style={{ 
-                      backgroundColor: DASHBOARD_COLORS.rendering,
-                      color: DASHBOARD_COLORS.text,
-                      borderColor: DASHBOARD_COLORS.rendering
-                    }}
-                  >
-                    <VideoCameraIcon className="w-3 h-3 mr-1" />
-                    Assets
-                  </span>
-                )}
-                {project?.moodboard && project.moodboard.length > 0 && (
-                  <span 
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
-                    style={{ 
-                      backgroundColor: DASHBOARD_COLORS.published,
-                      color: DASHBOARD_COLORS.text,
-                      borderColor: DASHBOARD_COLORS.published
-                    }}
-                  >
-                    <ImageIcon className="w-3 h-3 mr-1" />
-                    {project.moodboard.length} Images
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Middle Row - Timeline Controls */}
-            <div 
-              className="flex justify-between items-center mb-6 p-4 rounded-xl border-2"
-              style={{ 
-                backgroundColor: DASHBOARD_COLORS.background,
-                borderColor: DASHBOARD_COLORS.idea
-              }}
-            >
-              {/* Left - Timeline Navigation */}
-              <div className="flex items-center space-x-3">
-                <span className="text-gray-300 text-sm font-medium">Timeline:</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => debouncedSeek(Math.max(0, currentTime - 5))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    ⏪ 5s
-                  </button>
-                  <button
-                    onClick={() => debouncedSeek(Math.max(0, currentTime - 1))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    ⏮️ 1s
-                  </button>
-                  <button
-                    onClick={() => debouncedSeek(Math.min(duration, currentTime + 1))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    1s ⏭️
-                  </button>
-                  <button
-                    onClick={() => debouncedSeek(Math.min(duration, currentTime + 5))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    5s ⏩
-                  </button>
-                </div>
-              </div>
-              
-              {/* Center - Zoom Controls */}
-              <div className="flex items-center space-x-3">
-                <span className="text-gray-300 text-sm font-medium">Zoom:</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => debouncedZoom(Math.max(timelineZoom / 1.2, 0.1))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    🔍- Out
-                  </button>
-                  <span className="px-3 py-2 bg-gray-700 text-white text-xs font-bold rounded-lg min-w-[60px] text-center">
-                    {Math.round(timelineZoom * 100)}%
-                  </span>
-                  <button
-                    onClick={() => debouncedZoom(Math.min(timelineZoom * 1.2, 5))}
-                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
-                  >
-                    🔍+ In
-                  </button>
-                </div>
-              </div>
-              
-              {/* Right - Timeline Info */}
-              <div className="flex items-center space-x-3">
-                <span className="text-gray-300 text-sm font-medium">Tracks:</span>
-                <span className="inline-flex items-center px-3 py-1 bg-emerald-500/10 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/20">
-                  {loadedAssetsCount} loaded
-                </span>
-              </div>
-            </div>
-
-            {/* Bottom Row - Asset Tools */}
-            <div className="flex flex-wrap gap-4">
-              {/* Basic Assets */}
-              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
-                <span className="text-gray-300 text-sm font-medium">Basic:</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(2, {
-                          asset: {
-                            type: 'text',
-                            text: 'New Text Overlay',
-                            font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
-                            background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
-                            alignment: { horizontal: 'center', vertical: 'center' }
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    📝 Text
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(3, {
-                          asset: {
-                            type: 'shape',
-                            shape: 'rectangle',
-                            rectangle: { width: 200, height: 100 },
-                            fill: { color: '#4F46E5', opacity: 0.8 }
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    🔷 Shape
-                  </button>
-                </div>
-              </div>
-
-              {/* AI Generation */}
-              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
-                <span className="text-gray-300 text-sm font-medium">AI:</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(4, {
-                          asset: {
-                            type: 'text-to-speech',
-                            text: 'Welcome to your AI-generated voiceover. This text will be converted to speech automatically.',
-                            voice: 'Joanna',
-                            newscaster: true
-                          },
-                          start: 0,
-                          length: 'auto'
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    🎤 Voice
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(5, {
-                          asset: {
-                            type: 'text-to-image',
-                            prompt: 'Professional business meeting, modern office, high quality, cinematic lighting',
-                            width: 1280,
-                            height: 720
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    🖼️ Image
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(6, {
-                          asset: {
-                            type: 'image-to-video',
-                            src: 'https://shotstack-assets.s3.amazonaws.com/images/handbag-flower-peaches.jpg',
-                            prompt: 'Slowly zoom out and orbit left around the object.'
-                          },
-                          start: 0,
-                          length: 'auto'
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    🎬 Video
-                  </button>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
-                <span className="text-gray-300 text-sm font-medium">Actions:</span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={addSampleClip}
-                    className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                    style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
-                  >
-                    <BeakerIcon className="w-4 h-4 mr-2 inline" />
-                    Sample
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.clearTracks();
-                      }
-                    }}
-                    className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                    style={{ backgroundColor: DASHBOARD_COLORS.failed }}
-                  >
-                    <FailedIcon className="w-4 h-4 mr-2 inline" />
-                    Clear
-                  </button>
-                  <button
-                    onClick={handleVideoRender}
-                    disabled={isRendering}
-                    className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg ${
-                      isRendering ? 'cursor-not-allowed' : ''
-                    }`}
-                    style={{ 
-                      backgroundColor: isRendering ? DASHBOARD_COLORS.textSecondary : DASHBOARD_COLORS.published
-                    }}
-                  >
-                    {isRendering ? (
-                      <>
-                        <RenderingIcon className="w-4 h-4 mr-2 inline animate-spin" />
-                        Rendering...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowDownTrayIcon className="w-4 h-4 mr-2 inline" />
-                        Export Video
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Open properties panel with a sample asset
-                      setSelectedAsset({
-                        type: 'text',
-                        text: 'Sample Text',
-                        font: { size: 36, color: '#FFFFFF' },
-                        start: 0,
-                        length: 5
-                      });
-                      setShowPropertiesPanel(true);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
-                  >
-                    ⚙️ Properties
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Canvas - Always render for ref callbacks */}
-        <div className="relative">
-          <div
-            ref={canvasRefCallback}
-            data-shotstack-studio
-            className={`w-full bg-gray-900 rounded-2xl min-h-[60vh] max-h-[70vh] border-2 border-gray-700 shadow-2xl overflow-hidden transition-all duration-300 ${
-              isLoading ? 'opacity-30' : 'opacity-100'
-            }`}
-            style={{
-              background: `
-                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.1) 50%, rgba(55, 65, 81, 0.1) 51%, transparent 52%, transparent 100%),
-                linear-gradient(0deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.1) 50%, rgba(55, 65, 81, 0.1) 51%, transparent 52%, transparent 100%),
-                #111827
-              `,
-              backgroundSize: '40px 40px, 40px 40px, 100% 100%'
-            }}
-          />
-          
-          {/* Canvas Overlay Info */}
-          {!isLoading && (
-            <div 
-              className="absolute top-4 left-4 backdrop-blur-sm px-4 py-2 rounded-xl border-2"
-              style={{ 
-                backgroundColor: DASHBOARD_COLORS.card,
-                borderColor: DASHBOARD_COLORS.published
-              }}
-            >
-              <div className="flex items-center space-x-2 text-sm" style={{ color: DASHBOARD_COLORS.text }}>
-                <div 
-                  className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ backgroundColor: DASHBOARD_COLORS.published }}
-                ></div>
-                <span>Video Canvas Ready</span>
-              </div>
-            </div>
-          )}
-        </div>
-
+      
+      {/* Navigation Buttons */}
+      <div className="flex justify-between items-center p-6 bg-gray-800 border-t border-gray-700">
+        <button
+          onClick={() => handleUpdateProject({ currentStep: 3 })}
+          className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+          <span>Back to Review</span>
+        </button>
+        
+        <button
+          onClick={() => handleUpdateProject({ currentStep: 5 })}
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <span>Analyze & Report</span>
+          <ChevronRightIcon className="w-5 h-5" />
+        </button>
+      </div>
         {/* Enhanced Timeline Container */}
         <div 
           className="w-full rounded-2xl border-2 shadow-2xl overflow-hidden relative"
