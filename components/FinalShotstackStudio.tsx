@@ -21,6 +21,7 @@ interface ShotstackEdit {
 const FinalShotstackStudio: React.FC = () => {
   console.log('🎬 FinalShotstackStudio component loaded!');
   console.log('🚀 FINAL SHOTSTACK STUDIO V2.0 - THIS IS THE NEW COMPONENT!');
+  console.log('⏰ TIMESTAMP: ' + new Date().toISOString());
   
   const canvasHost = useRef<HTMLDivElement>(null);
   const timelineHost = useRef<HTMLDivElement>(null);
