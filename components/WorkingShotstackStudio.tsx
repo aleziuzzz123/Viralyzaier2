@@ -189,29 +189,29 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4">
         {/* Canvas Area */}
         <div className="flex-1 p-4">
-          <div className="bg-gray-800 rounded-lg p-4 h-full">
-            <h3 className="text-lg font-semibold mb-4">Canvas</h3>
+          <div className="bg-gray-800 rounded-lg p-4 h-full max-w-6xl mx-auto">
+            <h3 className="text-lg font-semibold mb-4 text-center">Canvas</h3>
             <div 
               ref={canvasRef}
               data-shotstack-studio
-              className="w-full h-full bg-black rounded border border-gray-600"
-              style={{ minHeight: '400px' }}
+              className="w-full h-full bg-black rounded border border-gray-600 mx-auto"
+              style={{ minHeight: '400px', maxWidth: '100%' }}
             />
           </div>
         </div>
 
         {/* Timeline Area */}
         <div className="h-80 p-4">
-          <div className="bg-gray-800 rounded-lg p-4 h-full">
-            <h3 className="text-lg font-semibold mb-4">Timeline</h3>
+          <div className="bg-gray-800 rounded-lg p-4 h-full max-w-6xl mx-auto">
+            <h3 className="text-lg font-semibold mb-4 text-center">Timeline</h3>
             <div 
               ref={timelineRef}
               data-shotstack-timeline
-              className="w-full h-full bg-gray-700 rounded border border-gray-600"
-              style={{ minHeight: '200px' }}
+              className="w-full h-full bg-gray-700 rounded border border-gray-600 mx-auto"
+              style={{ minHeight: '200px', maxWidth: '100%' }}
             />
           </div>
         </div>
