@@ -2,6 +2,15 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
 import { Project } from '../types';
 
+// Utility function for debouncing
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
+}
+
 interface Size {
   width: number;
   height: number;
@@ -109,6 +118,37 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [showPropertiesPanel, setShowPropertiesPanel] = useState<boolean>(false);
   const [assetLoadingStatus, setAssetLoadingStatus] = useState<string>('Initializing...');
   const [loadedAssetsCount, setLoadedAssetsCount] = useState<number>(0);
+  
+  // Performance optimization states
+  const [timelineZoom, setTimelineZoom] = useState<number>(1);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [selectedTracks, setSelectedTracks] = useState<Set<number>>(new Set());
+  const [timelinePosition, setTimelinePosition] = useState<number>(0);
+  const [isSeeking, setIsSeeking] = useState<boolean>(false);
+  
+  // Debounced functions for performance
+  const debouncedSeek = useCallback(
+    debounce((time: number) => {
+      if (editRef.current && !isSeeking) {
+        setIsSeeking(true);
+        editRef.current.seek?.(time);
+        setCurrentTime(time);
+        setTimeout(() => setIsSeeking(false), 100);
+      }
+    }, 50),
+    [isSeeking]
+  );
+  
+  const debouncedZoom = useCallback(
+    debounce((zoom: number) => {
+      setTimelineZoom(zoom);
+      // Update timeline zoom if Shotstack supports it
+      if (timelineRef.current && typeof timelineRef.current.setZoom === 'function') {
+        timelineRef.current.setZoom(zoom);
+      }
+    }, 100),
+    []
+  );
 
   // Load project assets into the editor after it's initialized
   const loadProjectAssets = async (edit: any, projectData: Project) => {
@@ -670,9 +710,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
     }
   };
 
-  // Keyboard shortcuts
+  // Enhanced keyboard shortcuts with performance optimization
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // Don't interfere with input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
       if (!editRef.current) return;
       
       switch (event.code) {
@@ -688,26 +733,109 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           event.preventDefault();
           // Seek backward 1 second
           const newTime = Math.max(0, currentTime - 1);
-          editRef.current.seek?.(newTime);
-          setCurrentTime(newTime);
+          debouncedSeek(newTime);
           break;
         case 'ArrowRight':
           event.preventDefault();
           // Seek forward 1 second
           const forwardTime = Math.min(duration, currentTime + 1);
-          editRef.current.seek?.(forwardTime);
-          setCurrentTime(forwardTime);
+          debouncedSeek(forwardTime);
+          break;
+        case 'KeyJ':
+          event.preventDefault();
+          // Rewind 5 seconds
+          const rewindTime = Math.max(0, currentTime - 5);
+          debouncedSeek(rewindTime);
+          break;
+        case 'KeyK':
+          event.preventDefault();
+          // Toggle play/pause
+          if (isPlaying) {
+            editRef.current.pause();
+          } else {
+            editRef.current.play();
+          }
+          break;
+        case 'KeyL':
+          event.preventDefault();
+          // Fast forward 5 seconds
+          const fastForwardTime = Math.min(duration, currentTime + 5);
+          debouncedSeek(fastForwardTime);
+          break;
+        case 'Digit0':
+          event.preventDefault();
+          // Seek to beginning
+          debouncedSeek(0);
+          break;
+        case 'Digit1':
+          event.preventDefault();
+          // Seek to 10%
+          debouncedSeek(duration * 0.1);
+          break;
+        case 'Digit2':
+          event.preventDefault();
+          // Seek to 20%
+          debouncedSeek(duration * 0.2);
+          break;
+        case 'Digit3':
+          event.preventDefault();
+          // Seek to 30%
+          debouncedSeek(duration * 0.3);
+          break;
+        case 'Digit4':
+          event.preventDefault();
+          // Seek to 40%
+          debouncedSeek(duration * 0.4);
+          break;
+        case 'Digit5':
+          event.preventDefault();
+          // Seek to 50%
+          debouncedSeek(duration * 0.5);
+          break;
+        case 'Digit6':
+          event.preventDefault();
+          // Seek to 60%
+          debouncedSeek(duration * 0.6);
+          break;
+        case 'Digit7':
+          event.preventDefault();
+          // Seek to 70%
+          debouncedSeek(duration * 0.7);
+          break;
+        case 'Digit8':
+          event.preventDefault();
+          // Seek to 80%
+          debouncedSeek(duration * 0.8);
+          break;
+        case 'Digit9':
+          event.preventDefault();
+          // Seek to 90%
+          debouncedSeek(duration * 0.9);
+          break;
+        case 'Equal':
+        case 'NumpadAdd':
+          event.preventDefault();
+          // Zoom in
+          debouncedZoom(Math.min(timelineZoom * 1.2, 5));
+          break;
+        case 'Minus':
+        case 'NumpadSubtract':
+          event.preventDefault();
+          // Zoom out
+          debouncedZoom(Math.max(timelineZoom / 1.2, 0.1));
           break;
         case 'Escape':
           event.preventDefault();
           editRef.current.stop();
+          setSelectedTracks(new Set());
+          setShowPropertiesPanel(false);
           break;
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isPlaying, currentTime, duration]);
+  }, [isPlaying, currentTime, duration, timelineZoom, debouncedSeek, debouncedZoom]);
 
   // Cleanup on unmount - EXACTLY like MinimalWorkingVideoEditor
   useEffect(() => {
@@ -830,69 +958,133 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
               alignItems: 'center',
               marginBottom: '16px'
             }}>
-              {/* Left - Playback Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Left - Enhanced Playback Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* Play/Pause Button - Enhanced */}
                 <button
-                  onClick={() => editRef.current?.play()}
+                  onClick={() => {
+                    if (isPlaying) {
+                      editRef.current?.pause();
+                    } else {
+                      editRef.current?.play();
+                    }
+                  }}
                   style={{
-                    background: isPlaying ? '#4B5563' : '#4F46E5', // gray-600 : indigo-600
+                    background: isPlaying ? '#EF4444' : '#10B981', // red-500 : emerald-500
                     color: 'white',
                     border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
+                    padding: '12px 20px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
+                    fontSize: '16px',
+                    fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s ease'
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                    minWidth: '120px',
+                    justifyContent: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
                   }}
                 >
-                  {isPlaying ? '⏸️' : '▶️'} {isPlaying ? 'Pause' : 'Play'}
+                  <span style={{ fontSize: '18px' }}>
+                    {isPlaying ? '⏸️' : '▶️'}
+                  </span>
+                  {isPlaying ? 'Pause' : 'Play'}
                 </button>
+                
+                {/* Stop Button - Enhanced */}
                 <button
                   onClick={() => editRef.current?.stop()}
                   style={{
-                    background: '#374151', // gray-700
+                    background: '#6B7280', // gray-500
                     color: 'white',
                     border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
+                    fontSize: '16px',
+                    fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s ease'
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#4B5563';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#6B7280';
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  ⏹️ Stop
+                  <span style={{ fontSize: '18px' }}>⏹️</span>
+                  Stop
                 </button>
+                
+                {/* Separator */}
                 <div style={{
-                  width: '1px',
-                  height: '24px',
-                  background: '#4B5563', // gray-600
-                  margin: '0 12px'
+                  width: '2px',
+                  height: '32px',
+                  background: 'linear-gradient(to bottom, transparent, #4B5563, transparent)',
+                  margin: '0 8px'
                 }}></div>
+                
+                {/* Time Display - Enhanced */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  color: '#D1D5DB', // gray-300
-                  fontSize: '14px',
-                  fontWeight: '500'
+                  gap: '12px',
+                  color: '#F9FAFB', // gray-50
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: 'rgba(31, 41, 55, 0.8)', // gray-800 with opacity
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #374151' // gray-700
                 }}>
                   <div style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: isPlaying ? '#10B981' : '#6B7280' // emerald-500 : gray-500
-                  }}></div>
-                  <span>{isPlaying ? 'Playing' : 'Ready'}</span>
-                  <span style={{ color: '#9CA3AF' }}>•</span>
-                  <span>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')} / {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: isPlaying ? '#10B981' : '#6B7280', // emerald-500 : gray-500
+                      animation: isPlaying ? 'pulse 2s infinite' : 'none'
+                    }}></div>
+                    <span style={{ 
+                      color: isPlaying ? '#10B981' : '#9CA3AF',
+                      fontWeight: '700'
+                    }}>
+                      {isPlaying ? 'PLAYING' : 'READY'}
+                    </span>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: '14px'
+                  }}>
+                    <span style={{ color: '#4F46E5' }}>⏱️</span>
+                    <span>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
+                    <span style={{ color: '#6B7280' }}>/</span>
+                    <span style={{ color: '#9CA3AF' }}>{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
+                  </div>
                 </div>
               </div>
 
@@ -950,6 +1142,152 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                     {project.moodboard.length} Images
                   </span>
                 )}
+              </div>
+            </div>
+
+            {/* Middle Row - Timeline Controls */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              padding: '12px 16px',
+              background: 'rgba(31, 41, 55, 0.6)', // gray-800 with opacity
+              borderRadius: '6px',
+              border: '1px solid #374151' // gray-700
+            }}>
+              {/* Left - Timeline Navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Timeline:</span>
+                <button
+                  onClick={() => debouncedSeek(Math.max(0, currentTime - 5))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ⏪ 5s
+                </button>
+                <button
+                  onClick={() => debouncedSeek(Math.max(0, currentTime - 1))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  ⏮️ 1s
+                </button>
+                <button
+                  onClick={() => debouncedSeek(Math.min(duration, currentTime + 1))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  1s ⏭️
+                </button>
+                <button
+                  onClick={() => debouncedSeek(Math.min(duration, currentTime + 5))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  5s ⏩
+                </button>
+              </div>
+              
+              {/* Center - Zoom Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Zoom:</span>
+                <button
+                  onClick={() => debouncedZoom(Math.max(timelineZoom / 1.2, 0.1))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🔍- Zoom Out
+                </button>
+                <span style={{ 
+                  color: '#F9FAFB', 
+                  fontSize: '12px', 
+                  fontWeight: '600',
+                  background: '#374151',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  minWidth: '60px',
+                  textAlign: 'center'
+                }}>
+                  {Math.round(timelineZoom * 100)}%
+                </span>
+                <button
+                  onClick={() => debouncedZoom(Math.min(timelineZoom * 1.2, 5))}
+                  style={{
+                    background: '#4B5563',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🔍+ Zoom In
+                </button>
+              </div>
+              
+              {/* Right - Timeline Info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Tracks:</span>
+                <span style={{ 
+                  color: '#10B981', 
+                  fontSize: '14px', 
+                  fontWeight: '600',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(16, 185, 129, 0.3)'
+                }}>
+                  {loadedAssetsCount} loaded
+                </span>
               </div>
             </div>
 
@@ -1253,49 +1591,211 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           }}
         />
 
-        {/* Timeline - Always render for ref callbacks */}
-        <div
-          ref={timelineRefCallback}
-          data-shotstack-timeline
-          style={{
-            width: '100%',
-            backgroundColor: '#1F2937', // gray-800
-            borderRadius: '8px',
-            height: '250px',
-            border: '1px solid #374151', // gray-700
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-            opacity: isLoading ? 0.3 : 1,
-            transition: 'all 0.3s ease',
-            overflow: 'hidden',
-            position: 'relative',
+        {/* Enhanced Timeline Container */}
+        <div style={{
+          width: '100%',
+          background: 'linear-gradient(135deg, #1F2937 0%, #111827 100%)', // gray-800 to gray-900
+          borderRadius: '12px',
+          border: '2px solid #374151', // gray-700
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          {/* Timeline Header */}
+          <div style={{
+            background: 'linear-gradient(90deg, #374151 0%, #4B5563 100%)', // gray-700 to gray-600
+            padding: '12px 20px',
+            borderBottom: '1px solid #4B5563',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ 
+                color: '#F9FAFB', 
+                fontSize: '16px', 
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                🎬 Timeline
+              </span>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '6px',
+                border: '1px solid #4B5563'
+              }}>
+                <span style={{ color: '#D1D5DB', fontSize: '12px' }}>Zoom:</span>
+                <span style={{ color: '#10B981', fontSize: '12px', fontWeight: '600' }}>
+                  {Math.round(timelineZoom * 100)}%
+                </span>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#D1D5DB', fontSize: '12px' }}>Assets:</span>
+              <span style={{ 
+                color: '#10B981', 
+                fontSize: '12px', 
+                fontWeight: '600',
+                background: 'rgba(16, 185, 129, 0.2)',
+                padding: '2px 8px',
+                borderRadius: '4px'
+              }}>
+                {loadedAssetsCount}
+              </span>
+            </div>
+          </div>
+          
+          {/* Timeline Ruler */}
+          <div style={{
+            background: '#111827', // gray-900
+            padding: '8px 20px',
+            borderBottom: '1px solid #374151',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '250px' // Ensure minimum height
-          }}
-        >
-          {isLoading && (
-            <div style={{
-              color: 'white',
-              fontSize: '14px',
-              textAlign: 'center',
-              position: 'absolute',
-              zIndex: 10
-            }}>
-              Loading Timeline...
+            gap: '20px',
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#9CA3AF'
+          }}>
+            <span style={{ color: '#4F46E5', fontWeight: '600' }}>⏱️ Time Ruler:</span>
+            {[0, 5, 10, 15, 20, 25, 30].map(time => (
+              <span key={time} style={{
+                color: time === Math.floor(currentTime) ? '#10B981' : '#6B7280',
+                fontWeight: time === Math.floor(currentTime) ? '700' : '500',
+                background: time === Math.floor(currentTime) ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                padding: '2px 6px',
+                borderRadius: '3px'
+              }}>
+                {time}s
+              </span>
+            ))}
+          </div>
+          
+          {/* Main Timeline Area */}
+          <div
+            ref={timelineRefCallback}
+            data-shotstack-timeline
+            style={{
+              width: '100%',
+              height: '300px',
+              backgroundColor: '#111827', // gray-900
+              opacity: isLoading ? 0.3 : 1,
+              transition: 'all 0.3s ease',
+              overflow: 'hidden',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '300px',
+              background: `
+                linear-gradient(90deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
+                linear-gradient(0deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
+                #111827
+              `,
+              backgroundSize: '20px 20px, 20px 20px, 100% 100%'
+            }}
+          >
+            {/* Playhead Indicator */}
+            {!isLoading && (
+              <div style={{
+                position: 'absolute',
+                left: `${(currentTime / Math.max(duration, 1)) * 100}%`,
+                top: '0',
+                bottom: '0',
+                width: '2px',
+                background: 'linear-gradient(to bottom, #EF4444, #DC2626)',
+                boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                zIndex: 10,
+                transition: 'left 0.1s ease'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  left: '-6px',
+                  width: '14px',
+                  height: '14px',
+                  background: '#EF4444',
+                  borderRadius: '50%',
+                  border: '2px solid #111827',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'
+                }}></div>
+              </div>
+            )}
+            
+            {isLoading && (
+              <div style={{
+                color: '#F9FAFB',
+                fontSize: '16px',
+                textAlign: 'center',
+                position: 'absolute',
+                zIndex: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '3px solid rgba(79, 70, 229, 0.3)',
+                  borderTop: '3px solid #4F46E5',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                <span>Loading Professional Timeline...</span>
+              </div>
+            )}
+            
+            {!isLoading && !error && (
+              <div style={{
+                color: '#6B7280',
+                fontSize: '14px',
+                textAlign: 'center',
+                position: 'absolute',
+                zIndex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ fontSize: '18px' }}>🎬</span>
+                <span>Professional Timeline Ready</span>
+                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                  Shotstack Studio will render your assets here
+                </span>
+              </div>
+            )}
+          </div>
+          
+          {/* Timeline Footer */}
+          <div style={{
+            background: '#111827', // gray-900
+            padding: '8px 20px',
+            borderTop: '1px solid #374151',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '12px',
+            color: '#9CA3AF'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span>🎵 Audio Tracks</span>
+              <span>🎬 Video Tracks</span>
+              <span>📝 Text Tracks</span>
             </div>
-          )}
-          {!isLoading && !error && (
-            <div style={{
-              color: '#666',
-              fontSize: '12px',
-              textAlign: 'center',
-              position: 'absolute',
-              zIndex: 5
-            }}>
-              Timeline Ready - Shotstack will render here
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Duration: {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
+              <span>•</span>
+              <span>Position: {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Asset Loading Status - Show when editor is loaded */}
@@ -1556,6 +2056,62 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+          from { transform: translateX(-20px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .timeline-button {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .timeline-button:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .timeline-button:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .playhead {
+          transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .timeline-grid {
+          background-image: 
+            linear-gradient(90deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
+            linear-gradient(0deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%);
+          background-size: 20px 20px, 20px 20px;
+        }
+        
+        .asset-track {
+          transition: all 0.2s ease;
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .asset-track:hover {
+          border-color: #4F46E5;
+          box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
+        }
+        
+        .asset-track.selected {
+          border-color: #10B981;
+          box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
         }
       `}</style>
     </div>
