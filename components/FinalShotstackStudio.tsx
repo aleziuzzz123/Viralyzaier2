@@ -458,14 +458,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       fontFamily: 'Arial, sans-serif'
     }}>
 
-      {/* Main Editor Area - Centered */}
+      {/* Main Editor Area - Clean and Centered */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: '20px',
+        padding: '40px 20px 20px 20px', // More top padding to clear navigation
         gap: '20px',
-        maxWidth: '1400px', // Limit max width for better centering
+        maxWidth: '1200px', // Reasonable max width
         margin: '0 auto', // Center the editor
         width: '100%'
       }}>
@@ -688,40 +688,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         )}
       </div>
 
-        {/* Asset Status Bar */}
-        {!isLoading && !error && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '8px',
-            padding: '12px 20px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '10px'
-          }}>
-            <div style={{ color: 'white', fontSize: '14px', fontWeight: '600' }}>
-              📋 Project Assets Status:
-            </div>
-            <div style={{ display: 'flex', gap: '20px', fontSize: '12px' }}>
-              <span style={{ color: project?.script ? '#10b981' : '#ef4444' }}>
-                ✅ Script: {project?.script ? 'Loaded' : 'Missing'}
-              </span>
-              <span style={{ color: project?.voiceoverUrl ? '#10b981' : '#ef4444' }}>
-                🎤 Voiceover: {project?.voiceoverUrl ? 'Loaded' : 'Missing'}
-              </span>
-              <span style={{ color: project?.backgroundVideo ? '#10b981' : '#ef4444' }}>
-                🎨 Background: {project?.backgroundVideo ? 'Loaded' : 'Missing'}
-              </span>
-              <span style={{ color: project?.moodboards ? '#10b981' : '#ef4444' }}>
-                🖼️ Moodboards: {project?.moodboards ? 'Loaded' : 'Missing'}
-              </span>
-            </div>
-          </div>
-        )}
+
       </div>
-    </div>
 
       <style>{`
         @keyframes spin {
