@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
 import { Project, Script, Scene } from '../types';
 
@@ -16,6 +16,44 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
   const [projectData, setProjectData] = useState<Project | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [fullscreenMode, setFullscreenMode] = useState<'modal' | 'popup' | 'newtab'>('modal');
+  
+  // Refs for DOM elements
+  const canvasHost = useRef<HTMLDivElement>(null);
+  const timelineHost = useRef<HTMLDivElement>(null);
+  const [canvasReady, setCanvasReady] = useState<boolean>(false);
+  const [timelineReady, setTimelineReady] = useState<boolean>(false);
+
+  // Wait for DOM elements to be ready
+  const waitForHosts = async (): Promise<void> => {
+    const isReady = (): boolean => {
+      const canvas = canvasHost.current;
+      const timeline = timelineHost.current;
+      
+      const hasSize = (el?: HTMLElement | null): boolean =>
+        !!el && el.offsetParent !== null && el.clientWidth > 0 && el.clientHeight > 0;
+        
+      return hasSize(canvas) && !!timeline;
+    };
+
+    for (let i = 0; i < 60; i++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (isReady()) return;
+    }
+    throw new Error("Editor hosts not ready");
+  };
+
+  // Callback refs that trigger when elements are ready
+  const canvasRefCallback = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setCanvasReady(true);
+    }
+  }, []);
+
+  const timelineRefCallback = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      setTimelineReady(true);
+    }
+  }, []);
 
   // Listen for project data from parent or use prop data
   useEffect(() => {
@@ -92,13 +130,21 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
     }
   };
 
+  // Initialize when both elements are ready
   useEffect(() => {
-    console.log('🎬 StudioPage useEffect triggered:', { initialized, hasProjectData: !!projectData });
-    console.log('🎬 Component mounted, starting initialization...');
-    if (initialized) {
-      console.log('🎬 Already initialized, skipping');
-      return;
+    console.log('🎬 StudioPage useEffect triggered:', { 
+      initialized, 
+      hasProjectData: !!projectData,
+      canvasReady,
+      timelineReady,
+      isLoading
+    });
+    
+    if (canvasReady && timelineReady && isLoading && !initialized) {
+      console.log('🎬 Both DOM elements ready, starting initialization...');
+      initializeEditor();
     }
+  }, [canvasReady, timelineReady, isLoading, initialized, projectData]);
 
     const initializeEditor = async () => {
       try {
@@ -117,13 +163,20 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
         setIsLoading(true);
         setInitialized(true);
 
-        // Small delay to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for DOM elements to be ready
+        console.log('🔧 Waiting for DOM elements to be ready...');
+        await waitForHosts();
+        console.log('✅ DOM elements ready');
 
         // 1. Start with a basic template (following official documentation)
         console.log('🔧 Loading base template...');
         const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
         const response = await fetch(templateUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch template: ${response.status}`);
+        }
+        
         const template = await response.json();
         console.log('✅ Base template loaded:', template);
 
@@ -133,10 +186,10 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
         await editInstance.load();
         console.log('✅ Edit component loaded');
 
-        // 3. Create a canvas to display the edit
+        // 3. Create a canvas to display the edit (CORRECT METHOD)
         console.log('🎨 Creating Canvas component...');
-        const canvas = new Canvas(template.output.size, editInstance);
-        await canvas.load(); // Renders to [data-shotstack-studio] element
+        const canvas = new Canvas(template.output.size, editInstance, { responsive: true });
+        await canvas.load(canvasHost.current!); // Pass the DOM element directly
         console.log('✅ Canvas component loaded');
 
         // 4. Load the base template first
@@ -152,8 +205,9 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
 
         // 6. Add timeline for visual editing
         console.log('📊 Creating Timeline component...');
+        const timelineWidth = timelineHost.current?.clientWidth || template.output.size.width;
         const timeline = new Timeline(editInstance, {
-          width: template.output.size.width,
+          width: timelineWidth,
           height: 300
         });
         await timeline.load(); // Renders to [data-shotstack-timeline] element
@@ -547,6 +601,10 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
         <div className="relative flex-1">
           <div className="relative h-full">
             <div 
+              ref={(node) => {
+                canvasHost.current = node;
+                canvasRefCallback(node);
+              }}
               data-shotstack-studio 
               className="w-full h-full bg-gradient-to-br from-gray-900 to-black rounded-xl border border-indigo-500/30 shadow-lg" 
             />
@@ -909,6 +967,10 @@ const StudioPage: React.FC<{ projectData?: Project }> = ({ projectData: propProj
           </div>
         </div>
         <div 
+          ref={(node) => {
+            timelineHost.current = node;
+            timelineRefCallback(node);
+          }}
           data-shotstack-timeline 
           className="w-full bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg border border-indigo-500/30 shadow-lg" 
           style={{ height: '25vh', minHeight: '200px' }}

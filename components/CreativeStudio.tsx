@@ -1,10 +1,10 @@
 import React from 'react';
-import WorkingShotstackStudio from './WorkingShotstackStudio';
+import FinalShotstackStudio from './FinalShotstackStudio';
 
 const CreativeStudio: React.FC = () => {
-    console.log('🎬 CreativeStudio component loaded - rendering WorkingShotstackStudio');
+    console.log('🎬 CreativeStudio component loaded - rendering FinalShotstackStudio');
     
-    return <WorkingShotstackStudio />;
+    return <FinalShotstackStudio />;
 };
 
 export default CreativeStudio;
