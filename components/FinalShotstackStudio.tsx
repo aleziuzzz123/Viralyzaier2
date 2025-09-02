@@ -43,6 +43,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [canvasReady, setCanvasReady] = useState<boolean>(false);
   const [timelineReady, setTimelineReady] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
 
   // Load project assets into the editor after it's initialized
   const loadProjectAssets = async (edit: any, projectData: Project) => {
@@ -63,47 +66,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         }
       };
 
-      // Add your background video as the main track
-      if (projectData.backgroundVideo) {
-        console.log('🎥 Adding your background video...');
-        newEdit.timeline.tracks.push({
-          clips: [{
-            asset: {
-              type: 'video',
-              src: projectData.backgroundVideo
-            },
-            start: 0,
-            length: 10,
-            fit: 'cover'
-          }]
-        });
-        console.log('✅ Background video added:', projectData.backgroundVideo);
-      }
-
-      // Add your voiceover as audio track
-      if (projectData.voiceoverUrl) {
-        console.log('🎤 Adding your voiceover...');
-        newEdit.timeline.tracks.push({
-          clips: [{
-            asset: {
-              type: 'audio',
-              src: projectData.voiceoverUrl
-            },
-            start: 0,
-            length: 10
-          }]
-        });
-        console.log('✅ Voiceover added:', projectData.voiceoverUrl);
-      }
-
       // Add your script as text overlay
-      if (projectData.script) {
+      if (projectData.script && projectData.script.content) {
         console.log('📝 Adding your script as text overlay...');
         newEdit.timeline.tracks.push({
           clips: [{
             asset: {
               type: 'text',
-              text: projectData.script,
+              text: projectData.script.content,
               font: {
                 family: 'Clear Sans',
                 size: 48,
@@ -127,10 +97,27 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         console.log('✅ Script added as text overlay');
       }
 
+      // Add your voiceover as audio track
+      if (projectData.voiceoverUrls && Object.keys(projectData.voiceoverUrls).length > 0) {
+        console.log('🎤 Adding your voiceover...');
+        const firstVoiceover = Object.values(projectData.voiceoverUrls)[0];
+        newEdit.timeline.tracks.push({
+          clips: [{
+            asset: {
+              type: 'audio',
+              src: firstVoiceover
+            },
+            start: 0,
+            length: 10
+          }]
+        });
+        console.log('✅ Voiceover added:', firstVoiceover);
+      }
+
       // Add your moodboards as image assets
-      if (projectData.moodboards && Array.isArray(projectData.moodboards)) {
+      if (projectData.moodboard && Array.isArray(projectData.moodboard)) {
         console.log('🖼️ Adding your moodboards...');
-        projectData.moodboards.forEach((moodboard, index) => {
+        projectData.moodboard.forEach((moodboard, index) => {
           newEdit.timeline.tracks.push({
             clips: [{
               asset: {
@@ -143,11 +130,32 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             }]
           });
         });
-        console.log('✅ Moodboards added:', projectData.moodboards.length);
+        console.log('✅ Moodboards added:', projectData.moodboard.length);
+      }
+
+      // Add assets from the assets object
+      if (projectData.assets && Object.keys(projectData.assets).length > 0) {
+        console.log('🎬 Adding scene assets...');
+        Object.values(projectData.assets).forEach((sceneAssets, index) => {
+          if (sceneAssets.backgroundVideo) {
+            newEdit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: 'video',
+                  src: sceneAssets.backgroundVideo
+                },
+                start: index * 5,
+                length: 5,
+                fit: 'cover'
+              }]
+            });
+          }
+        });
+        console.log('✅ Scene assets added');
       }
 
       // If no assets found, add a placeholder
-      if (!projectData.backgroundVideo && !projectData.voiceoverUrl && !projectData.script && !projectData.moodboards) {
+      if (!projectData.script?.content && !projectData.voiceoverUrls && !projectData.moodboard && !projectData.assets) {
         console.log('⚠️ No blueprint assets found, adding placeholder...');
         newEdit.timeline.tracks.push({
           clips: [{
@@ -373,10 +381,11 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       if (project) {
         console.log('📋 Loading your project assets:', project);
         console.log('📋 Project data details:', {
-          script: project.script ? 'Available' : 'Missing',
-          voiceoverUrl: project.voiceoverUrl ? 'Available' : 'Missing',
-          backgroundVideo: project.backgroundVideo ? 'Available' : 'Missing',
-          moodboards: project.moodboards ? `${project.moodboards.length} items` : 'Missing'
+          script: project.script?.content ? 'Available' : 'Missing',
+          voiceoverUrls: project.voiceoverUrls ? `${Object.keys(project.voiceoverUrls).length} files` : 'Missing',
+          moodboard: project.moodboard ? `${project.moodboard.length} items` : 'Missing',
+          assets: project.assets ? `${Object.keys(project.assets).length} scenes` : 'Missing',
+          title: project.title || 'Missing'
         });
         await loadProjectAssets(edit, project);
       } else {
@@ -408,6 +417,45 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.error('❌ Failed to add sample clip:', error);
     }
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (!editRef.current) return;
+      
+      switch (event.code) {
+        case 'Space':
+          event.preventDefault();
+          if (isPlaying) {
+            editRef.current.pause();
+          } else {
+            editRef.current.play();
+          }
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          // Seek backward 1 second
+          const newTime = Math.max(0, currentTime - 1);
+          editRef.current.seek?.(newTime);
+          setCurrentTime(newTime);
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          // Seek forward 1 second
+          const forwardTime = Math.min(duration, currentTime + 1);
+          editRef.current.seek?.(forwardTime);
+          setCurrentTime(forwardTime);
+          break;
+        case 'Escape':
+          event.preventDefault();
+          editRef.current.stop();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [isPlaying, currentTime, duration]);
 
   // Cleanup on unmount - EXACTLY like MinimalWorkingVideoEditor
   useEffect(() => {
@@ -513,40 +561,40 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         gap: '20px',
         margin: '0 auto' // Center with auto margins
       }}>
-        {/* Professional Editor Header */}
+        {/* Professional Editor Toolbar - Matching App Theme */}
         {!isLoading && !error && (
           <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '16px',
-            padding: '20px',
+            background: 'rgba(0, 0, 0, 0.3)', // bg-black/30 like header
+            border: '1px solid rgba(55, 65, 81, 0.5)', // border-gray-700/50
+            borderRadius: '8px',
+            padding: '16px',
             marginBottom: '20px',
-            boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
+            backdropFilter: 'blur(8px)'
           }}>
-            {/* Main Controls Row */}
+            {/* Top Row - Playback Controls & Status */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '20px'
+              marginBottom: '16px'
             }}>
               {/* Left - Playback Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   onClick={() => editRef.current?.play()}
                   style={{
-                    background: isPlaying ? '#FF6B35' : '#10B981',
+                    background: isPlaying ? '#4B5563' : '#4F46E5', // gray-600 : indigo-600
                     color: 'white',
                     border: 'none',
-                    padding: '12px 20px',
-                    borderRadius: '12px',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: '500',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   {isPlaying ? '⏸️' : '▶️'} {isPlaying ? 'Pause' : 'Play'}
@@ -554,334 +602,349 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 <button
                   onClick={() => editRef.current?.stop()}
                   style={{
-                    background: '#EF4444',
+                    background: '#374151', // gray-700
                     color: 'white',
                     border: 'none',
-                    padding: '12px 20px',
-                    borderRadius: '12px',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: '500',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   ⏹️ Stop
                 </button>
                 <div style={{
                   width: '1px',
-                  height: '40px',
-                  background: 'rgba(255,255,255,0.3)',
-                  margin: '0 15px'
+                  height: '24px',
+                  background: '#4B5563', // gray-600
+                  margin: '0 12px'
                 }}></div>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '8px 16px',
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '8px',
-                  backdropFilter: 'blur(10px)'
+                  color: '#D1D5DB', // gray-300
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }}>
                   <div style={{
-                    width: '8px',
-                    height: '8px',
+                    width: '6px',
+                    height: '6px',
                     borderRadius: '50%',
-                    background: isPlaying ? '#10B981' : '#6B7280'
+                    background: isPlaying ? '#10B981' : '#6B7280' // emerald-500 : gray-500
                   }}></div>
-                  <span style={{ color: 'white', fontSize: '14px', fontWeight: '500' }}>
-                    {isPlaying ? 'Playing' : 'Ready'}
-                  </span>
+                  <span>{isPlaying ? 'Playing' : 'Ready'}</span>
+                  <span style={{ color: '#9CA3AF' }}>•</span>
+                  <span>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')} / {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
                 </div>
               </div>
 
               {/* Right - Blueprint Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {project?.script && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {project?.script?.content && (
                   <span style={{ 
-                    background: 'rgba(16, 185, 129, 0.9)', 
-                    color: 'white', 
-                    padding: '6px 12px', 
-                    borderRadius: '20px', 
+                    background: '#374151', // gray-700
+                    color: '#D1D5DB', // gray-300
+                    padding: '4px 8px', 
+                    borderRadius: '4px', 
                     fontSize: '12px',
-                    fontWeight: '600',
-                    backdropFilter: 'blur(10px)'
+                    fontWeight: '500',
+                    border: '1px solid #4B5563' // gray-600
                   }}>
-                    📝 Script Ready
+                    Script
                   </span>
                 )}
-                {project?.voiceoverUrl && (
+                {project?.voiceoverUrls && Object.keys(project.voiceoverUrls).length > 0 && (
                   <span style={{ 
-                    background: 'rgba(239, 68, 68, 0.9)', 
-                    color: 'white', 
-                    padding: '6px 12px', 
-                    borderRadius: '20px', 
+                    background: '#374151', // gray-700
+                    color: '#D1D5DB', // gray-300
+                    padding: '4px 8px', 
+                    borderRadius: '4px', 
                     fontSize: '12px',
-                    fontWeight: '600',
-                    backdropFilter: 'blur(10px)'
+                    fontWeight: '500',
+                    border: '1px solid #4B5563' // gray-600
                   }}>
-                    🎤 Voice Ready
+                    Voice
                   </span>
                 )}
-                {project?.backgroundVideo && (
+                {project?.assets && Object.keys(project.assets).length > 0 && (
                   <span style={{ 
-                    background: 'rgba(59, 130, 246, 0.9)', 
-                    color: 'white', 
-                    padding: '6px 12px', 
-                    borderRadius: '20px', 
+                    background: '#374151', // gray-700
+                    color: '#D1D5DB', // gray-300
+                    padding: '4px 8px', 
+                    borderRadius: '4px', 
                     fontSize: '12px',
-                    fontWeight: '600',
-                    backdropFilter: 'blur(10px)'
+                    fontWeight: '500',
+                    border: '1px solid #4B5563' // gray-600
                   }}>
-                    🎥 Video Ready
+                    Assets
                   </span>
                 )}
-                {project?.moodboards && project.moodboards.length > 0 && (
+                {project?.moodboard && project.moodboard.length > 0 && (
                   <span style={{ 
-                    background: 'rgba(139, 92, 246, 0.9)', 
-                    color: 'white', 
-                    padding: '6px 12px', 
-                    borderRadius: '20px', 
+                    background: '#374151', // gray-700
+                    color: '#D1D5DB', // gray-300
+                    padding: '4px 8px', 
+                    borderRadius: '4px', 
                     fontSize: '12px',
-                    fontWeight: '600',
-                    backdropFilter: 'blur(10px)'
+                    fontWeight: '500',
+                    border: '1px solid #4B5563' // gray-600
                   }}>
-                    🖼️ {project.moodboards.length} Images
+                    {project.moodboard.length} Images
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Asset Tools Row */}
+            {/* Bottom Row - Asset Tools */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '12px'
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
               {/* Basic Assets */}
               <div style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '16px',
-                backdropFilter: 'blur(10px)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                background: '#1F2937', // gray-800
+                borderRadius: '6px',
+                border: '1px solid #374151' // gray-700
               }}>
-                <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
-                  📝 Basic Assets
-                </h4>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(2, {
-                          asset: {
-                            type: 'text',
-                            text: 'New Text Overlay',
-                            font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
-                            background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
-                            alignment: { horizontal: 'center', vertical: 'center' }
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    style={{
-                      background: '#10B981',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    📝 Text
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(3, {
-                          asset: {
-                            type: 'shape',
-                            shape: 'rectangle',
-                            rectangle: { width: 200, height: 100 },
-                            fill: { color: '#3B82F6', opacity: 0.8 }
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    style={{
-                      background: '#8B5CF6',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    🔷 Shape
-                  </button>
-                </div>
+                <span style={{ color: '#D1D5DB', fontSize: '12px', fontWeight: '500' }}>Basic:</span>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.addClip(2, {
+                        asset: {
+                          type: 'text',
+                          text: 'New Text Overlay',
+                          font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
+                          background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
+                          alignment: { horizontal: 'center', vertical: 'center' }
+                        },
+                        start: 0,
+                        length: 5
+                      });
+                    }
+                  }}
+                  style={{
+                    background: '#4F46E5', // indigo-600
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Text
+                </button>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.addClip(3, {
+                        asset: {
+                          type: 'shape',
+                          shape: 'rectangle',
+                          rectangle: { width: 200, height: 100 },
+                          fill: { color: '#4F46E5', opacity: 0.8 }
+                        },
+                        start: 0,
+                        length: 5
+                      });
+                    }
+                  }}
+                  style={{
+                    background: '#4F46E5', // indigo-600
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Shape
+                </button>
               </div>
 
-              {/* AI Generation Tools */}
+              {/* AI Generation */}
               <div style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '16px',
-                backdropFilter: 'blur(10px)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                background: '#1F2937', // gray-800
+                borderRadius: '6px',
+                border: '1px solid #374151' // gray-700
               }}>
-                <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
-                  🤖 AI Generation
-                </h4>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(4, {
-                          asset: {
-                            type: 'text-to-speech',
-                            text: 'Welcome to your AI-generated voiceover. This text will be converted to speech automatically.',
-                            voice: 'Joanna',
-                            newscaster: true
-                          },
-                          start: 0,
-                          length: 'auto'
-                        });
-                      }
-                    }}
-                    style={{
-                      background: '#F59E0B',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    🎤 AI Voice
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(5, {
-                          asset: {
-                            type: 'text-to-image',
-                            prompt: 'Professional business meeting, modern office, high quality, cinematic lighting',
-                            width: 1280,
-                            height: 720
-                          },
-                          start: 0,
-                          length: 5
-                        });
-                      }
-                    }}
-                    style={{
-                      background: '#EC4899',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    🖼️ AI Image
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.addClip(6, {
-                          asset: {
-                            type: 'image-to-video',
-                            src: 'https://shotstack-assets.s3.amazonaws.com/images/handbag-flower-peaches.jpg',
-                            prompt: 'Slowly zoom out and orbit left around the object.'
-                          },
-                          start: 0,
-                          length: 'auto'
-                        });
-                      }
-                    }}
-                    style={{
-                      background: '#8B5CF6',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    🎬 AI Video
-                  </button>
-                </div>
+                <span style={{ color: '#D1D5DB', fontSize: '12px', fontWeight: '500' }}>AI:</span>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.addClip(4, {
+                        asset: {
+                          type: 'text-to-speech',
+                          text: 'Welcome to your AI-generated voiceover. This text will be converted to speech automatically.',
+                          voice: 'Joanna',
+                          newscaster: true
+                        },
+                        start: 0,
+                        length: 'auto'
+                      });
+                    }
+                  }}
+                  style={{
+                    background: '#10B981', // emerald-500
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Voice
+                </button>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.addClip(5, {
+                        asset: {
+                          type: 'text-to-image',
+                          prompt: 'Professional business meeting, modern office, high quality, cinematic lighting',
+                          width: 1280,
+                          height: 720
+                        },
+                        start: 0,
+                        length: 5
+                      });
+                    }
+                  }}
+                  style={{
+                    background: '#10B981', // emerald-500
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Image
+                </button>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.addClip(6, {
+                        asset: {
+                          type: 'image-to-video',
+                          src: 'https://shotstack-assets.s3.amazonaws.com/images/handbag-flower-peaches.jpg',
+                          prompt: 'Slowly zoom out and orbit left around the object.'
+                        },
+                        start: 0,
+                        length: 'auto'
+                      });
+                    }
+                  }}
+                  style={{
+                    background: '#10B981', // emerald-500
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Video
+                </button>
               </div>
 
-              {/* Quick Actions */}
+              {/* Actions */}
               <div style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '16px',
-                backdropFilter: 'blur(10px)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                background: '#1F2937', // gray-800
+                borderRadius: '6px',
+                border: '1px solid #374151' // gray-700
               }}>
-                <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600' }}>
-                  ⚡ Quick Actions
-                </h4>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={addSampleClip}
-                    style={{
-                      background: '#06B6D4',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    ➕ Sample
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        editRef.current.clearTracks();
-                      }
-                    }}
-                    style={{
-                      background: '#EF4444',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    🗑️ Clear
-                  </button>
-                </div>
+                <button
+                  onClick={addSampleClip}
+                  style={{
+                    background: '#4B5563', // gray-600
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Sample
+                </button>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      editRef.current.clearTracks();
+                    }
+                  }}
+                  style={{
+                    background: '#EF4444', // red-500
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => {
+                    if (editRef.current) {
+                      console.log('🎬 Exporting video...');
+                      console.log('📋 Current edit state:', editRef.current);
+                    }
+                  }}
+                  style={{
+                    background: '#10B981', // emerald-500
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Export
+                </button>
               </div>
             </div>
           </div>
