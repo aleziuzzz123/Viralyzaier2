@@ -21,7 +21,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
-import FinalShotstackStudio from './components/FinalShotstackStudio';
+// import FinalShotstackStudio from './components/FinalShotstackStudio'; // Temporarily disabled
 import SimpleShotstackStudio from './components/SimpleShotstackStudio';
 
 

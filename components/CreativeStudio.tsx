@@ -7,7 +7,7 @@ interface CreativeStudioProps {
 }
 
 const CreativeStudio: React.FC<CreativeStudioProps> = ({ project }) => {
-    console.log('🎬 CreativeStudio component loaded - rendering FinalShotstackStudio');
+    console.log('🎬 CreativeStudio component loaded - rendering SimpleShotstackStudio');
     console.log('🚀 CREATIVE STUDIO V2.0 - FORCE REBUILD - ' + new Date().toISOString());
     console.log('📋 Project data received:', project);
     
