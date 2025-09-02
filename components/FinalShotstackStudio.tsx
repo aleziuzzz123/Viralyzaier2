@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
-import { Project } from '../types';
+import { Project, ShotstackEditJson } from '../types';
 
 // Utility function for debouncing
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
@@ -551,14 +551,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       // 1. Create empty template - will be populated with your blueprint assets
       console.log('🔧 Creating empty template for your blueprint assets...');
-      const template: ShotstackEdit = {
+      const template: ShotstackEditJson = {
         timeline: {
-          tracks: [] // Empty - will be filled with your assets
+          tracks: [], // Empty - will be filled with your assets
+          background: '#000000'
         },
         output: {
-          format: 'mp4',
-          resolution: 'hd',
-          size: { width: 1280, height: 720 }
+          size: { width: 1280, height: 720 },
+          format: 'mp4'
         }
       };
       console.log('✅ Empty template created - ready for your blueprint assets');
@@ -571,8 +571,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       // 3. Create a canvas to display the edit - EXACTLY like MinimalWorkingVideoEditor
       console.log('🎨 Creating Canvas component...');
-      const canvas = new Canvas(template.output.size, edit, { responsive: true });
-      await canvas.load(canvasHost.current!); // Pass DOM element like working example
+      const canvas = new Canvas(template.output.size, edit);
+      await canvas.load(); // Pass DOM element like working example
       console.log('✅ Canvas component loaded');
 
       // 4. Load the template - EXACTLY like official docs
@@ -886,80 +886,30 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   }
 
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      background: '#0b1220',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Arial, sans-serif'
-    }}>
+    <div className="w-full h-full bg-gray-900 flex flex-col animate-fade-in-up">
       {/* Main Editor Area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '20px',
-        gap: '20px'
-      }}>
+      <div className="flex-1 flex flex-col p-6 space-y-6">
 
       {/* Loading State */}
       {isLoading && (
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white'
-        }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            border: '4px solid rgba(255, 255, 255, 0.1)',
-            borderTop: '4px solid #667eea',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '24px'
-          }}></div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
-            Loading Shotstack Studio...
-          </h2>
-          <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.7)' }}>
-            Initializing video editor...
-          </p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+          <div className="w-16 h-16 border-4 border-gray-700 border-t-indigo-500 rounded-full animate-spin"></div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-white">Loading Professional Video Editor</h2>
+            <p className="text-gray-400">Initializing Shotstack Studio...</p>
+          </div>
         </div>
       )}
 
       {/* Main Editor - Always render DOM elements, even during loading */}
-      <div style={{ 
-        width: '100%',
-        maxWidth: '100%', // Use full available width
-        display: 'flex', 
-        flexDirection: 'column',
-        padding: '0', // Remove padding to prevent overlap
-        gap: '20px',
-        margin: '0' // Remove margins to prevent overlap
-      }}>
+      <div className="w-full max-w-full flex flex-col space-y-6">
         {/* Professional Editor Toolbar - Matching App Theme */}
         {!isLoading && !error && (
-          <div style={{
-            background: 'rgba(0, 0, 0, 0.3)', // bg-black/30 like header
-            border: '1px solid rgba(55, 65, 81, 0.5)', // border-gray-700/50
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '20px',
-            backdropFilter: 'blur(8px)'
-          }}>
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
             {/* Top Row - Playback Controls & Status */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px'
-            }}>
+            <div className="flex justify-between items-center mb-6">
               {/* Left - Enhanced Playback Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="flex items-center space-x-4">
                 {/* Play/Pause Button - Enhanced */}
                 <button
                   onClick={() => {
@@ -969,33 +919,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                       editRef.current?.play();
                     }
                   }}
-                  style={{
-                    background: isPlaying ? '#EF4444' : '#10B981', // red-500 : emerald-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '12px 20px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                    minWidth: '120px',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                  }}
+                  className={`inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold text-white transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg min-w-[140px] ${
+                    isPlaying 
+                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'
+                  }`}
                 >
-                  <span style={{ fontSize: '18px' }}>
+                  <span className="text-xl mr-2">
                     {isPlaying ? '⏸️' : '▶️'}
                   </span>
                   {isPlaying ? 'Pause' : 'Play'}
@@ -1004,675 +934,353 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 {/* Stop Button - Enhanced */}
                 <button
                   onClick={() => editRef.current?.stop()}
-                  style={{
-                    background: '#6B7280', // gray-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#4B5563';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#6B7280';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  className="inline-flex items-center justify-center px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 >
-                  <span style={{ fontSize: '18px' }}>⏹️</span>
+                  <span className="text-xl mr-2">⏹️</span>
                   Stop
                 </button>
                 
                 {/* Separator */}
-                <div style={{
-                  width: '2px',
-                  height: '32px',
-                  background: 'linear-gradient(to bottom, transparent, #4B5563, transparent)',
-                  margin: '0 8px'
-                }}></div>
+                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
                 
                 {/* Time Display - Enhanced */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  color: '#F9FAFB', // gray-50
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  background: 'rgba(31, 41, 55, 0.8)', // gray-800 with opacity
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #374151' // gray-700
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <div style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: isPlaying ? '#10B981' : '#6B7280', // emerald-500 : gray-500
-                      animation: isPlaying ? 'pulse 2s infinite' : 'none'
-                    }}></div>
-                    <span style={{ 
-                      color: isPlaying ? '#10B981' : '#9CA3AF',
-                      fontWeight: '700'
-                    }}>
+                <div className="flex items-center space-x-4 bg-gray-800/80 px-4 py-3 rounded-xl border border-gray-700">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'}`}></div>
+                    <span className={`text-sm font-bold ${isPlaying ? 'text-emerald-400' : 'text-gray-400'}`}>
                       {isPlaying ? 'PLAYING' : 'READY'}
                     </span>
                   </div>
                   
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontFamily: 'monospace',
-                    fontSize: '14px'
-                  }}>
-                    <span style={{ color: '#4F46E5' }}>⏱️</span>
-                    <span>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
-                    <span style={{ color: '#6B7280' }}>/</span>
-                    <span style={{ color: '#9CA3AF' }}>{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
+                  <div className="flex items-center space-x-2 font-mono text-sm">
+                    <span className="text-indigo-400">⏱️</span>
+                    <span className="text-white">{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
+                    <span className="text-gray-500">/</span>
+                    <span className="text-gray-400">{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
                   </div>
                 </div>
               </div>
 
               {/* Right - Blueprint Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center space-x-2">
                 {project?.script?.scenes && project.script.scenes.length > 0 && (
-                  <span style={{ 
-                    background: '#374151', // gray-700
-                    color: '#D1D5DB', // gray-300
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    border: '1px solid #4B5563' // gray-600
-                  }}>
-                    Script
+                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
+                    📝 Script
                   </span>
                 )}
                 {project?.voiceoverUrls && Object.keys(project.voiceoverUrls).length > 0 && (
-                  <span style={{ 
-                    background: '#374151', // gray-700
-                    color: '#D1D5DB', // gray-300
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    border: '1px solid #4B5563' // gray-600
-                  }}>
-                    Voice
+                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
+                    🎤 Voice
                   </span>
                 )}
                 {project?.assets && Object.keys(project.assets).length > 0 && (
-                  <span style={{ 
-                    background: '#374151', // gray-700
-                    color: '#D1D5DB', // gray-300
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    border: '1px solid #4B5563' // gray-600
-                  }}>
-                    Assets
+                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
+                    🎬 Assets
                   </span>
                 )}
                 {project?.moodboard && project.moodboard.length > 0 && (
-                  <span style={{ 
-                    background: '#374151', // gray-700
-                    color: '#D1D5DB', // gray-300
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    border: '1px solid #4B5563' // gray-600
-                  }}>
-                    {project.moodboard.length} Images
+                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
+                    🖼️ {project.moodboard.length} Images
                   </span>
                 )}
               </div>
             </div>
 
             {/* Middle Row - Timeline Controls */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px',
-              padding: '12px 16px',
-              background: 'rgba(31, 41, 55, 0.6)', // gray-800 with opacity
-              borderRadius: '6px',
-              border: '1px solid #374151' // gray-700
-            }}>
+            <div className="flex justify-between items-center mb-6 p-4 bg-gray-800/60 rounded-xl border border-gray-700">
               {/* Left - Timeline Navigation */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Timeline:</span>
-                <button
-                  onClick={() => debouncedSeek(Math.max(0, currentTime - 5))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  ⏪ 5s
-                </button>
-                <button
-                  onClick={() => debouncedSeek(Math.max(0, currentTime - 1))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  ⏮️ 1s
-                </button>
-                <button
-                  onClick={() => debouncedSeek(Math.min(duration, currentTime + 1))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  1s ⏭️
-                </button>
-                <button
-                  onClick={() => debouncedSeek(Math.min(duration, currentTime + 5))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  5s ⏩
-                </button>
+              <div className="flex items-center space-x-3">
+                <span className="text-gray-300 text-sm font-medium">Timeline:</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => debouncedSeek(Math.max(0, currentTime - 5))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    ⏪ 5s
+                  </button>
+                  <button
+                    onClick={() => debouncedSeek(Math.max(0, currentTime - 1))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    ⏮️ 1s
+                  </button>
+                  <button
+                    onClick={() => debouncedSeek(Math.min(duration, currentTime + 1))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    1s ⏭️
+                  </button>
+                  <button
+                    onClick={() => debouncedSeek(Math.min(duration, currentTime + 5))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    5s ⏩
+                  </button>
+                </div>
               </div>
               
               {/* Center - Zoom Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Zoom:</span>
-                <button
-                  onClick={() => debouncedZoom(Math.max(timelineZoom / 1.2, 0.1))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  🔍- Zoom Out
-                </button>
-                <span style={{ 
-                  color: '#F9FAFB', 
-                  fontSize: '12px', 
-                  fontWeight: '600',
-                  background: '#374151',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  minWidth: '60px',
-                  textAlign: 'center'
-                }}>
-                  {Math.round(timelineZoom * 100)}%
-                </span>
-                <button
-                  onClick={() => debouncedZoom(Math.min(timelineZoom * 1.2, 5))}
-                  style={{
-                    background: '#4B5563',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  🔍+ Zoom In
-                </button>
+              <div className="flex items-center space-x-3">
+                <span className="text-gray-300 text-sm font-medium">Zoom:</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => debouncedZoom(Math.max(timelineZoom / 1.2, 0.1))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    🔍- Out
+                  </button>
+                  <span className="px-3 py-2 bg-gray-700 text-white text-xs font-bold rounded-lg min-w-[60px] text-center">
+                    {Math.round(timelineZoom * 100)}%
+                  </span>
+                  <button
+                    onClick={() => debouncedZoom(Math.min(timelineZoom * 1.2, 5))}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-all duration-200 hover:scale-105"
+                  >
+                    🔍+ In
+                  </button>
+                </div>
               </div>
               
               {/* Right - Timeline Info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#D1D5DB', fontSize: '14px', fontWeight: '500' }}>Tracks:</span>
-                <span style={{ 
-                  color: '#10B981', 
-                  fontSize: '14px', 
-                  fontWeight: '600',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(16, 185, 129, 0.3)'
-                }}>
+              <div className="flex items-center space-x-3">
+                <span className="text-gray-300 text-sm font-medium">Tracks:</span>
+                <span className="inline-flex items-center px-3 py-1 bg-emerald-500/10 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/20">
                   {loadedAssetsCount} loaded
                 </span>
               </div>
             </div>
 
             {/* Bottom Row - Asset Tools */}
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap'
-            }}>
+            <div className="flex flex-wrap gap-4">
               {/* Basic Assets */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                background: '#1F2937', // gray-800
-                borderRadius: '6px',
-                border: '1px solid #374151' // gray-700
-              }}>
-                <span style={{ color: '#D1D5DB', fontSize: '12px', fontWeight: '500' }}>Basic:</span>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.addClip(2, {
-                        asset: {
-                          type: 'text',
-                          text: 'New Text Overlay',
-                          font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
-                          background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
-                          alignment: { horizontal: 'center', vertical: 'center' }
-                        },
-                        start: 0,
-                        length: 5
-                      });
-                    }
-                  }}
-                  style={{
-                    background: '#4F46E5', // indigo-600
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Text
-                </button>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.addClip(3, {
-                        asset: {
-                          type: 'shape',
-                          shape: 'rectangle',
-                          rectangle: { width: 200, height: 100 },
-                          fill: { color: '#4F46E5', opacity: 0.8 }
-                        },
-                        start: 0,
-                        length: 5
-                      });
-                    }
-                  }}
-                  style={{
-                    background: '#4F46E5', // indigo-600
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Shape
-                </button>
+              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
+                <span className="text-gray-300 text-sm font-medium">Basic:</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.addClip(2, {
+                          asset: {
+                            type: 'text',
+                            text: 'New Text Overlay',
+                            font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
+                            background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
+                            alignment: { horizontal: 'center', vertical: 'center' }
+                          },
+                          start: 0,
+                          length: 5
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    📝 Text
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.addClip(3, {
+                          asset: {
+                            type: 'shape',
+                            shape: 'rectangle',
+                            rectangle: { width: 200, height: 100 },
+                            fill: { color: '#4F46E5', opacity: 0.8 }
+                          },
+                          start: 0,
+                          length: 5
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🔷 Shape
+                  </button>
+                </div>
               </div>
 
               {/* AI Generation */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                background: '#1F2937', // gray-800
-                borderRadius: '6px',
-                border: '1px solid #374151' // gray-700
-              }}>
-                <span style={{ color: '#D1D5DB', fontSize: '12px', fontWeight: '500' }}>AI:</span>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.addClip(4, {
-                        asset: {
-                          type: 'text-to-speech',
-                          text: 'Welcome to your AI-generated voiceover. This text will be converted to speech automatically.',
-                          voice: 'Joanna',
-                          newscaster: true
-                        },
-                        start: 0,
-                        length: 'auto'
-                      });
-                    }
-                  }}
-                  style={{
-                    background: '#10B981', // emerald-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Voice
-                </button>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.addClip(5, {
-                        asset: {
-                          type: 'text-to-image',
-                          prompt: 'Professional business meeting, modern office, high quality, cinematic lighting',
-                          width: 1280,
-                          height: 720
-                        },
-                        start: 0,
-                        length: 5
-                      });
-                    }
-                  }}
-                  style={{
-                    background: '#10B981', // emerald-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Image
-                </button>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.addClip(6, {
-                        asset: {
-                          type: 'image-to-video',
-                          src: 'https://shotstack-assets.s3.amazonaws.com/images/handbag-flower-peaches.jpg',
-                          prompt: 'Slowly zoom out and orbit left around the object.'
-                        },
-                        start: 0,
-                        length: 'auto'
-                      });
-                    }
-                  }}
-                  style={{
-                    background: '#10B981', // emerald-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Video
-                </button>
+              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
+                <span className="text-gray-300 text-sm font-medium">AI:</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.addClip(4, {
+                          asset: {
+                            type: 'text-to-speech',
+                            text: 'Welcome to your AI-generated voiceover. This text will be converted to speech automatically.',
+                            voice: 'Joanna',
+                            newscaster: true
+                          },
+                          start: 0,
+                          length: 'auto'
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🎤 Voice
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.addClip(5, {
+                          asset: {
+                            type: 'text-to-image',
+                            prompt: 'Professional business meeting, modern office, high quality, cinematic lighting',
+                            width: 1280,
+                            height: 720
+                          },
+                          start: 0,
+                          length: 5
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🖼️ Image
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.addClip(6, {
+                          asset: {
+                            type: 'image-to-video',
+                            src: 'https://shotstack-assets.s3.amazonaws.com/images/handbag-flower-peaches.jpg',
+                            prompt: 'Slowly zoom out and orbit left around the object.'
+                          },
+                          start: 0,
+                          length: 'auto'
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🎬 Video
+                  </button>
+                </div>
               </div>
 
               {/* Actions */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                background: '#1F2937', // gray-800
-                borderRadius: '6px',
-                border: '1px solid #374151' // gray-700
-              }}>
-                <button
-                  onClick={addSampleClip}
-                  style={{
-                    background: '#4B5563', // gray-600
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Sample
-                </button>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      editRef.current.clearTracks();
-                    }
-                  }}
-                  style={{
-                    background: '#EF4444', // red-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => {
-                    if (editRef.current) {
-                      console.log('🎬 Exporting video...');
-                      // Get the current edit state
-                      const editState = editRef.current.getEdit?.() || editRef.current;
-                      console.log('📋 Current edit state:', editState);
-                      
-                      // Create a download link for the video
-                      // This would normally call the Shotstack API to render the video
-                      alert('Export functionality will render your video using Shotstack API. Check console for edit data.');
-                    }
-                  }}
-                  style={{
-                    background: '#10B981', // emerald-500
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Export
-                </button>
-                <button
-                  onClick={() => {
-                    // Open properties panel with a sample asset
-                    setSelectedAsset({
-                      type: 'text',
-                      text: 'Sample Text',
-                      font: { size: 36, color: '#FFFFFF' },
-                      start: 0,
-                      length: 5
-                    });
-                    setShowPropertiesPanel(true);
-                  }}
-                  style={{
-                    background: '#4F46E5', // indigo-600
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Properties
-                </button>
+              <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800 rounded-xl border border-gray-700">
+                <span className="text-gray-300 text-sm font-medium">Actions:</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={addSampleClip}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🎬 Sample
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        editRef.current.clearTracks();
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🗑️ Clear
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editRef.current) {
+                        console.log('🎬 Exporting video...');
+                        // Get the current edit state
+                        const editState = editRef.current.getEdit?.() || editRef.current;
+                        console.log('📋 Current edit state:', editState);
+                        
+                        // Create a download link for the video
+                        // This would normally call the Shotstack API to render the video
+                        alert('Export functionality will render your video using Shotstack API. Check console for edit data.');
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    📤 Export
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Open properties panel with a sample asset
+                      setSelectedAsset({
+                        type: 'text',
+                        text: 'Sample Text',
+                        font: { size: 36, color: '#FFFFFF' },
+                        start: 0,
+                        length: 5
+                      });
+                      setShowPropertiesPanel(true);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    ⚙️ Properties
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* Canvas - Always render for ref callbacks */}
-        <div
-          ref={canvasRefCallback}
-          data-shotstack-studio
-          style={{
-            width: '100%',
-            backgroundColor: '#111827', // gray-900
-            borderRadius: '8px',
-            minHeight: '60vh',
-            maxHeight: '70vh',
-            border: '1px solid #374151', // gray-700
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
-            opacity: isLoading ? 0.3 : 1,
-            transition: 'all 0.3s ease',
-            overflow: 'hidden',
-            position: 'relative'
-          }}
-        />
+        <div className="relative">
+          <div
+            ref={canvasRefCallback}
+            data-shotstack-studio
+            className={`w-full bg-gray-900 rounded-2xl min-h-[60vh] max-h-[70vh] border-2 border-gray-700 shadow-2xl overflow-hidden transition-all duration-300 ${
+              isLoading ? 'opacity-30' : 'opacity-100'
+            }`}
+            style={{
+              background: `
+                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.1) 50%, rgba(55, 65, 81, 0.1) 51%, transparent 52%, transparent 100%),
+                linear-gradient(0deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.1) 50%, rgba(55, 65, 81, 0.1) 51%, transparent 52%, transparent 100%),
+                #111827
+              `,
+              backgroundSize: '40px 40px, 40px 40px, 100% 100%'
+            }}
+          />
+          
+          {/* Canvas Overlay Info */}
+          {!isLoading && (
+            <div className="absolute top-4 left-4 bg-gray-800/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700">
+              <div className="flex items-center space-x-2 text-sm text-gray-300">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
+                <span>Video Canvas Ready</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Enhanced Timeline Container */}
-        <div style={{
-          width: '100%',
-          background: 'linear-gradient(135deg, #1F2937 0%, #111827 100%)', // gray-800 to gray-900
-          borderRadius: '12px',
-          border: '2px solid #374151', // gray-700
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
+        <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-gray-700 shadow-2xl overflow-hidden relative">
           {/* Timeline Header */}
-          <div style={{
-            background: 'linear-gradient(90deg, #374151 0%, #4B5563 100%)', // gray-700 to gray-600
-            padding: '12px 20px',
-            borderBottom: '1px solid #4B5563',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ 
-                color: '#F9FAFB', 
-                fontSize: '16px', 
-                fontWeight: '700',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🎬 Timeline
-              </span>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: 'rgba(0, 0, 0, 0.3)',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                border: '1px solid #4B5563'
-              }}>
-                <span style={{ color: '#D1D5DB', fontSize: '12px' }}>Zoom:</span>
-                <span style={{ color: '#10B981', fontSize: '12px', fontWeight: '600' }}>
-                  {Math.round(timelineZoom * 100)}%
-                </span>
+          <div className="bg-gradient-to-r from-gray-700 to-gray-600 px-6 py-4 border-b border-gray-600 flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <h3 className="text-white text-lg font-bold flex items-center space-x-2">
+                <span>🎬</span>
+                <span>Timeline</span>
+              </h3>
+              <div className="bg-gray-800/50 text-gray-300 px-3 py-1 rounded-lg text-sm font-medium border border-gray-600 flex items-center space-x-2">
+                <span>Zoom:</span>
+                <span className="text-emerald-400 font-semibold">{Math.round(timelineZoom * 100)}%</span>
               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#D1D5DB', fontSize: '12px' }}>Assets:</span>
-              <span style={{ 
-                color: '#10B981', 
-                fontSize: '12px', 
-                fontWeight: '600',
-                background: 'rgba(16, 185, 129, 0.2)',
-                padding: '2px 8px',
-                borderRadius: '4px'
-              }}>
-                {loadedAssetsCount}
+            <div className="flex items-center space-x-3">
+              <span className="text-gray-300 text-sm">Assets:</span>
+              <span className="inline-flex items-center px-3 py-1 bg-emerald-500/20 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/30">
+                {loadedAssetsCount} loaded
               </span>
             </div>
           </div>
           
           {/* Timeline Ruler */}
-          <div style={{
-            background: '#111827', // gray-900
-            padding: '8px 20px',
-            borderBottom: '1px solid #374151',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '20px',
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            color: '#9CA3AF'
-          }}>
-            <span style={{ color: '#4F46E5', fontWeight: '600' }}>⏱️ Time Ruler:</span>
+          <div className="bg-gray-900 px-6 py-3 border-b border-gray-700 flex items-center space-x-5 font-mono text-xs text-gray-400">
+            <span className="text-indigo-400 font-semibold">⏱️ Time Ruler:</span>
             {[0, 5, 10, 15, 20, 25, 30].map(time => (
-              <span key={time} style={{
-                color: time === Math.floor(currentTime) ? '#10B981' : '#6B7280',
-                fontWeight: time === Math.floor(currentTime) ? '700' : '500',
-                background: time === Math.floor(currentTime) ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                padding: '2px 6px',
-                borderRadius: '3px'
-              }}>
+              <span key={time} className={`px-2 py-1 rounded ${
+                time === Math.floor(currentTime) 
+                  ? 'text-emerald-400 font-bold bg-emerald-500/20' 
+                  : 'text-gray-500 font-medium'
+              }`}>
                 {time}s
               </span>
             ))}
@@ -1682,24 +1290,16 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           <div
             ref={timelineRefCallback}
             data-shotstack-timeline
+            className={`w-full h-80 bg-gray-900 overflow-hidden relative flex items-center justify-center min-h-80 transition-all duration-300 ${
+              isLoading ? 'opacity-30' : 'opacity-100'
+            }`}
             style={{
-              width: '100%',
-              height: '300px',
-              backgroundColor: '#111827', // gray-900
-              opacity: isLoading ? 0.3 : 1,
-              transition: 'all 0.3s ease',
-              overflow: 'hidden',
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '300px',
               background: `
-                linear-gradient(90deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
-                linear-gradient(0deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
+                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%),
+                linear-gradient(0deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%),
                 #111827
               `,
-              backgroundSize: '20px 20px, 20px 20px, 100% 100%'
+              backgroundSize: '40px 40px, 40px 40px, 100% 100%'
             }}
           >
             {/* Playhead Indicator */}
@@ -1775,24 +1375,24 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           </div>
           
           {/* Timeline Footer */}
-          <div style={{
-            background: '#111827', // gray-900
-            padding: '8px 20px',
-            borderTop: '1px solid #374151',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: '12px',
-            color: '#9CA3AF'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span>🎵 Audio Tracks</span>
-              <span>🎬 Video Tracks</span>
-              <span>📝 Text Tracks</span>
+          <div className="bg-gray-900 px-6 py-3 border-t border-gray-700 flex justify-between items-center text-xs text-gray-400">
+            <div className="flex items-center space-x-4">
+              <span className="flex items-center space-x-1">
+                <span>🎵</span>
+                <span>Audio Tracks</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span>🎬</span>
+                <span>Video Tracks</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span>📝</span>
+                <span>Text Tracks</span>
+              </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="flex items-center space-x-3 font-mono">
               <span>Duration: {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
-              <span>•</span>
+              <span className="text-gray-600">•</span>
               <span>Position: {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
             </div>
           </div>
@@ -1802,94 +1402,39 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
         {/* Properties Panel - Right Sidebar */}
         {showPropertiesPanel && selectedAsset && (
-          <div style={{
-            position: 'fixed',
-            top: '80px', // Below header
-            right: '20px',
-            width: '320px',
-            height: 'calc(100vh - 100px)',
-            background: 'rgba(0, 0, 0, 0.9)',
-            border: '1px solid #374151',
-            borderRadius: '8px',
-            padding: '20px',
-            zIndex: 1000,
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-              paddingBottom: '12px',
-              borderBottom: '1px solid #374151'
-            }}>
-              <h3 style={{
-                color: '#F9FAFB',
-                fontSize: '16px',
-                fontWeight: '600',
-                margin: 0
-              }}>
-                Asset Properties
-              </h3>
+          <div className="fixed top-20 right-6 w-80 h-[calc(100vh-120px)] bg-gray-800/95 border border-gray-700 rounded-2xl p-6 z-50 backdrop-blur-xl shadow-2xl">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
+              <h3 className="text-white text-lg font-semibold">Asset Properties</h3>
               <button
                 onClick={() => setShowPropertiesPanel(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#9CA3AF',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  padding: '4px'
-                }}
+                className="text-gray-400 hover:text-white text-xl p-1 transition-colors duration-200"
               >
                 ×
               </button>
             </div>
 
-            <div style={{ color: '#D1D5DB', fontSize: '14px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                  Asset Type
-                </label>
-                <div style={{
-                  padding: '8px 12px',
-                  background: '#374151',
-                  borderRadius: '4px',
-                  border: '1px solid #4B5563'
-                }}>
+            <div className="text-gray-300 text-sm space-y-4">
+              <div>
+                <label className="block mb-2 font-medium text-gray-300">Asset Type</label>
+                <div className="px-3 py-2 bg-gray-700 rounded-lg border border-gray-600 text-gray-200">
                   {selectedAsset.type || 'Unknown'}
                 </div>
               </div>
 
               {selectedAsset.type === 'text' && (
                 <>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                      Text Content
-                    </label>
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-300">Text Content</label>
                     <textarea
                       value={selectedAsset.text || ''}
                       onChange={(e) => {
                         setSelectedAsset({...selectedAsset, text: e.target.value});
                       }}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: '#374151',
-                        border: '1px solid #4B5563',
-                        borderRadius: '4px',
-                        color: '#F9FAFB',
-                        fontSize: '14px',
-                        resize: 'vertical',
-                        minHeight: '60px'
-                      }}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm resize-vertical min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                      Font Size
-                    </label>
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-300">Font Size</label>
                     <input
                       type="number"
                       value={selectedAsset.font?.size || 36}
@@ -1899,21 +1444,11 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                           font: {...selectedAsset.font, size: parseInt(e.target.value)}
                         });
                       }}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: '#374151',
-                        border: '1px solid #4B5563',
-                        borderRadius: '4px',
-                        color: '#F9FAFB',
-                        fontSize: '14px'
-                      }}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                      Text Color
-                    </label>
+                  <div>
+                    <label className="block mb-2 font-medium text-gray-300">Text Color</label>
                     <input
                       type="color"
                       value={selectedAsset.font?.color || '#FFFFFF'}
@@ -1923,97 +1458,50 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                           font: {...selectedAsset.font, color: e.target.value}
                         });
                       }}
-                      style={{
-                        width: '100%',
-                        height: '40px',
-                        background: '#374151',
-                        border: '1px solid #4B5563',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
+                      className="w-full h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
                 </>
               )}
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                  Start Time (seconds)
-                </label>
+              <div>
+                <label className="block mb-2 font-medium text-gray-300">Start Time (seconds)</label>
                 <input
                   type="number"
                   value={selectedAsset.start || 0}
                   onChange={(e) => {
                     setSelectedAsset({...selectedAsset, start: parseFloat(e.target.value)});
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    background: '#374151',
-                    border: '1px solid #4B5563',
-                    borderRadius: '4px',
-                    color: '#F9FAFB',
-                    fontSize: '14px'
-                  }}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500' }}>
-                  Duration (seconds)
-                </label>
+              <div>
+                <label className="block mb-2 font-medium text-gray-300">Duration (seconds)</label>
                 <input
                   type="number"
                   value={selectedAsset.length || 5}
                   onChange={(e) => {
                     setSelectedAsset({...selectedAsset, length: parseFloat(e.target.value)});
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    background: '#374151',
-                    border: '1px solid #4B5563',
-                    borderRadius: '4px',
-                    color: '#F9FAFB',
-                    fontSize: '14px'
-                  }}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex space-x-3 pt-4">
                 <button
                   onClick={() => {
                     // Apply changes to the selected asset
                     console.log('Applying changes to asset:', selectedAsset);
                     setShowPropertiesPanel(false);
                   }}
-                  style={{
-                    flex: 1,
-                    background: '#4F46E5',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 16px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
                 >
                   Apply Changes
                 </button>
                 <button
                   onClick={() => setShowPropertiesPanel(false)}
-                  style={{
-                    flex: 1,
-                    background: '#374151',
-                    color: '#D1D5DB',
-                    border: '1px solid #4B5563',
-                    padding: '10px 16px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-3 px-4 rounded-lg border border-gray-600 transition-all duration-200 hover:scale-105 shadow-lg"
                 >
                   Cancel
                 </button>
@@ -2027,6 +1515,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       </div>
 
       <style>{`
+        /* Professional Animations */
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
@@ -2047,45 +1536,155 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           to { transform: translateX(0); opacity: 1; }
         }
         
+        @keyframes slideInUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 5px rgba(79, 70, 229, 0.3); }
+          50% { box-shadow: 0 0 20px rgba(79, 70, 229, 0.6); }
+        }
+        
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        
+        /* Professional Button Animations */
         .timeline-button {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .timeline-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          transition: left 0.5s;
+        }
+        
+        .timeline-button:hover::before {
+          left: 100%;
         }
         
         .timeline-button:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
         }
         
         .timeline-button:active {
-          transform: translateY(0);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          transform: translateY(0) scale(0.98);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         
+        /* Professional Playhead Animation */
         .playhead {
           transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: glow 2s ease-in-out infinite;
         }
         
+        /* Professional Timeline Grid */
         .timeline-grid {
           background-image: 
-            linear-gradient(90deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%),
-            linear-gradient(0deg, transparent 0%, transparent 49%, #374151 50%, #374151 51%, transparent 52%, transparent 100%);
-          background-size: 20px 20px, 20px 20px;
+            linear-gradient(90deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%),
+            linear-gradient(0deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%);
+          background-size: 40px 40px, 40px 40px;
+          animation: shimmer 3s ease-in-out infinite;
         }
         
+        /* Professional Asset Track Animations */
         .asset-track {
-          transition: all 0.2s ease;
-          border-radius: 4px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          border-radius: 8px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .asset-track::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.1), transparent);
+          transition: left 0.6s;
+        }
+        
+        .asset-track:hover::before {
+          left: 100%;
         }
         
         .asset-track:hover {
           border-color: #4F46E5;
-          box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
+          box-shadow: 0 0 15px rgba(79, 70, 229, 0.4);
+          transform: translateY(-1px);
         }
         
         .asset-track.selected {
           border-color: #10B981;
-          box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+          animation: glow 1.5s ease-in-out infinite;
+        }
+        
+        /* Professional Loading States */
+        .loading-shimmer {
+          background: linear-gradient(90deg, #374151 25%, #4B5563 50%, #374151 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        
+        /* Professional Focus States */
+        .focus-ring:focus {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3);
+        }
+        
+        /* Professional Hover Effects */
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Professional Glassmorphism */
+        .glass-effect {
+          background: rgba(31, 41, 55, 0.8);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Professional Gradient Text */
+        .gradient-text {
+          background: linear-gradient(135deg, #4F46E5, #10B981);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        /* Professional Scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: #1F2937;
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: #4B5563;
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: #6B7280;
         }
       `}</style>
     </div>
