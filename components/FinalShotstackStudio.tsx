@@ -237,14 +237,12 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [showPropertiesPanel, setShowPropertiesPanel] = useState<boolean>(false);
   const [assetLoadingStatus, setAssetLoadingStatus] = useState<string>('Initializing...');
   const [loadedAssetsCount, setLoadedAssetsCount] = useState<number>(0);
   
   // Performance optimization states
   const [timelineZoom, setTimelineZoom] = useState<number>(1);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [selectedTracks, setSelectedTracks] = useState<Set<number>>(new Set());
   const [timelinePosition, setTimelinePosition] = useState<number>(0);
   const [isSeeking, setIsSeeking] = useState<boolean>(false);
