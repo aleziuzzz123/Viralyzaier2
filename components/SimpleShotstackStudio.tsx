@@ -15,21 +15,54 @@ const SimpleShotstackStudio: React.FC<SimpleShotstackStudioProps> = ({ project }
   useEffect(() => {
     console.log('🎬 SimpleShotstackStudio: Component mounted');
     console.log('🎬 SimpleShotstackStudio: Project data:', project);
+    console.log('🎬 SimpleShotstackStudio: Window object:', typeof window);
+    console.log('🎬 SimpleShotstackStudio: Document object:', typeof document);
     
     const initializeEditor = async () => {
       try {
         console.log('🚀 SimpleShotstackStudio: Starting initialization...');
+        console.log('🔧 SimpleShotstackStudio: Checking Shotstack SDK availability...');
+        
+        // Check if Shotstack SDK is available
+        if (typeof Edit === 'undefined') {
+          console.error('❌ SimpleShotstackStudio: Edit class not available');
+          setError('Shotstack SDK Edit class not available');
+          return;
+        }
+        
+        if (typeof Canvas === 'undefined') {
+          console.error('❌ SimpleShotstackStudio: Canvas class not available');
+          setError('Shotstack SDK Canvas class not available');
+          return;
+        }
+        
+        if (typeof Timeline === 'undefined') {
+          console.error('❌ SimpleShotstackStudio: Timeline class not available');
+          setError('Shotstack SDK Timeline class not available');
+          return;
+        }
+        
+        console.log('✅ SimpleShotstackStudio: All Shotstack SDK classes available');
         
         // Wait a bit to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        console.log('⏳ SimpleShotstackStudio: Waiting for DOM elements...');
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        if (!canvasRef.current || !timelineRef.current) {
-          console.error('❌ SimpleShotstackStudio: DOM elements not ready');
-          setError('DOM elements not ready');
+        if (!canvasRef.current) {
+          console.error('❌ SimpleShotstackStudio: Canvas DOM element not ready');
+          setError('Canvas DOM element not ready');
+          return;
+        }
+        
+        if (!timelineRef.current) {
+          console.error('❌ SimpleShotstackStudio: Timeline DOM element not ready');
+          setError('Timeline DOM element not ready');
           return;
         }
 
         console.log('✅ SimpleShotstackStudio: DOM elements ready');
+        console.log('📊 SimpleShotstackStudio: Canvas element:', canvasRef.current);
+        console.log('📊 SimpleShotstackStudio: Timeline element:', timelineRef.current);
         console.log('🔧 SimpleShotstackStudio: Shotstack SDK available:', { Edit, Canvas, Controls, Timeline });
 
         // Create a simple template
@@ -45,20 +78,41 @@ const SimpleShotstackStudio: React.FC<SimpleShotstackStudioProps> = ({ project }
         };
 
         // Initialize the edit
+        console.log('🔧 SimpleShotstackStudio: Creating Edit instance...');
         const edit = new Edit(template.output.size, template.timeline.background);
-        console.log('✅ SimpleShotstackStudio: Edit created');
+        console.log('✅ SimpleShotstackStudio: Edit created:', edit);
+
+        // Load the edit
+        console.log('🔧 SimpleShotstackStudio: Loading Edit...');
+        await edit.load();
+        console.log('✅ SimpleShotstackStudio: Edit loaded');
 
         // Initialize canvas
+        console.log('🔧 SimpleShotstackStudio: Creating Canvas instance...');
         const canvas = new Canvas(edit, canvasRef.current);
-        console.log('✅ SimpleShotstackStudio: Canvas initialized');
+        console.log('✅ SimpleShotstackStudio: Canvas created:', canvas);
+        
+        console.log('🔧 SimpleShotstackStudio: Loading Canvas...');
+        await canvas.load();
+        console.log('✅ SimpleShotstackStudio: Canvas loaded');
 
         // Initialize timeline
+        console.log('🔧 SimpleShotstackStudio: Creating Timeline instance...');
         const timeline = new Timeline(edit, timelineRef.current);
-        console.log('✅ SimpleShotstackStudio: Timeline initialized');
+        console.log('✅ SimpleShotstackStudio: Timeline created:', timeline);
+        
+        console.log('🔧 SimpleShotstackStudio: Loading Timeline...');
+        await timeline.load();
+        console.log('✅ SimpleShotstackStudio: Timeline loaded');
 
         // Initialize controls
+        console.log('🔧 SimpleShotstackStudio: Creating Controls instance...');
         const controls = new Controls(edit);
-        console.log('✅ SimpleShotstackStudio: Controls initialized');
+        console.log('✅ SimpleShotstackStudio: Controls created:', controls);
+        
+        console.log('🔧 SimpleShotstackStudio: Loading Controls...');
+        await controls.load();
+        console.log('✅ SimpleShotstackStudio: Controls loaded');
 
         setInitialized(true);
         setIsLoading(false);
@@ -66,9 +120,34 @@ const SimpleShotstackStudio: React.FC<SimpleShotstackStudioProps> = ({ project }
 
       } catch (err) {
         console.error('❌ SimpleShotstackStudio: Initialization failed:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('❌ SimpleShotstackStudio: Error details:', {
+          name: err instanceof Error ? err.name : 'Unknown',
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : 'No stack trace',
+          type: typeof err
+        });
+        
+        // Try fallback initialization
+        console.log('🔄 SimpleShotstackStudio: Attempting fallback initialization...');
+        try {
+          await fallbackInitialization();
+        } catch (fallbackErr) {
+          console.error('❌ SimpleShotstackStudio: Fallback also failed:', fallbackErr);
+          setError(`Initialization failed: ${err instanceof Error ? err.message : 'Unknown error'}. Fallback also failed: ${fallbackErr instanceof Error ? fallbackErr.message : 'Unknown error'}`);
+        }
         setIsLoading(false);
       }
+    };
+
+    const fallbackInitialization = async () => {
+      console.log('🔄 SimpleShotstackStudio: Fallback - Creating minimal edit...');
+      const edit = new Edit({ width: 1280, height: 720 }, '#000000');
+      await edit.load();
+      console.log('✅ SimpleShotstackStudio: Fallback - Edit created and loaded');
+      
+      setInitialized(true);
+      setIsLoading(false);
+      console.log('🎉 SimpleShotstackStudio: Fallback initialization complete!');
     };
 
     initializeEditor();
@@ -96,7 +175,12 @@ const SimpleShotstackStudio: React.FC<SimpleShotstackStudioProps> = ({ project }
       {/* Header */}
       <div className="bg-gray-800 p-4 border-b border-gray-700">
         <h1 className="text-xl font-bold">Simple Shotstack Studio</h1>
-        <p className="text-gray-400">Status: {isLoading ? 'Loading...' : initialized ? 'Ready' : 'Initializing...'}</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-gray-400">Status: {isLoading ? 'Loading...' : initialized ? 'Ready' : 'Initializing...'}</p>
+          <p className="text-sm text-gray-500">SDK: {typeof Edit !== 'undefined' ? '✅ Available' : '❌ Missing'}</p>
+          <p className="text-sm text-gray-500">Canvas: {canvasRef.current ? '✅ Ready' : '⏳ Loading'}</p>
+          <p className="text-sm text-gray-500">Timeline: {timelineRef.current ? '✅ Ready' : '⏳ Loading'}</p>
+        </div>
       </div>
 
       {/* Main Content */}
