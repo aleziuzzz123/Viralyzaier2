@@ -24,15 +24,18 @@ import {
   FailedIcon,
   PlayIcon,
   PauseIcon,
+
   StopCircleIcon,
   PlusIcon,
+
   SearchIcon,
   WandSparklesIcon,
-  XIcon,
+  Bars3Icon,
+  TrashIcon,
+  AdjustmentsHorizontalIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Bars3Icon,
-  AdjustmentsHorizontalIcon,
+  XIcon,
   PhotoIcon,
   PlayCircleIcon
 } from './Icons';
@@ -1198,7 +1201,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
               }}
               className="p-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors"
             >
-              <StopIcon className="w-5 h-5 text-white" />
+              <StopCircleIcon className="w-5 h-5 text-white" />
             </button>
           </div>
           
@@ -1252,7 +1255,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
               onClick={() => setTimelineZoom(Math.max(0.5, timelineZoom - 0.1))}
               className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <MinusIcon className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-400 font-bold">−</span>
             </button>
             <span className="text-gray-300 text-sm">{Math.round(timelineZoom * 100)}%</span>
             <button
