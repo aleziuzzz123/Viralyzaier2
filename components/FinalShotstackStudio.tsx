@@ -454,118 +454,20 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       height: '100%',
       background: '#0b1220',
       display: 'flex',
-      flexDirection: 'row', // Changed to row for side-by-side layout
+      flexDirection: 'column', // Back to column for proper layout
       fontFamily: 'Arial, sans-serif'
     }}>
 
-      {/* Left Sidebar - Assets & Tools */}
-      <div style={{
-        width: '300px',
-        background: '#1a1a2e',
-        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '20px',
-        gap: '20px'
-      }}>
-        <h3 style={{ color: 'white', margin: 0, fontSize: '16px', fontWeight: '600' }}>
-          🎬 Assets & Tools
-        </h3>
-        
-        {/* Project Assets */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            📋 Project Assets
-          </h4>
-          {project ? (
-            <div style={{ color: '#ccc', fontSize: '12px' }}>
-              <div>✅ Script: {project.script ? 'Loaded' : 'Missing'}</div>
-              <div>🎤 Voiceover: {project.voiceoverUrl ? 'Loaded' : 'Missing'}</div>
-              <div>🎨 Background: {project.backgroundVideo ? 'Loaded' : 'Missing'}</div>
-              <div>🖼️ Moodboards: {project.moodboards ? 'Loaded' : 'Missing'}</div>
-            </div>
-          ) : (
-            <div style={{ color: '#666', fontSize: '12px' }}>
-              No project data loaded
-            </div>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            ⚡ Quick Actions
-          </h4>
-          <button
-            onClick={addSampleClip}
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}
-          >
-            ➕ Add Sample Video
-          </button>
-          <button
-            onClick={() => editRef.current?.play()}
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600'
-            }}
-          >
-            ▶️ Play Preview
-          </button>
-        </div>
-
-        {/* Timeline Info */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            📊 Timeline Info
-          </h4>
-          <div style={{ color: '#ccc', fontSize: '12px' }}>
-            <div>Duration: 10.0s</div>
-            <div>Tracks: 3</div>
-            <div>Status: {isPlaying ? 'Playing' : 'Paused'}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Editor Area */}
+      {/* Main Editor Area - Centered */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         padding: '20px',
-        gap: '20px'
+        gap: '20px',
+        maxWidth: '1400px', // Limit max width for better centering
+        margin: '0 auto', // Center the editor
+        width: '100%'
       }}>
 
       {/* Loading State */}
@@ -786,139 +688,38 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         )}
       </div>
 
-      {/* Right Sidebar - Properties & Effects */}
-      <div style={{
-        width: '300px',
-        background: '#1a1a2e',
-        borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '20px',
-        gap: '20px'
-      }}>
-        <h3 style={{ color: 'white', margin: 0, fontSize: '16px', fontWeight: '600' }}>
-          ⚙️ Properties & Effects
-        </h3>
-        
-        {/* Video Properties */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            🎥 Video Properties
-          </h4>
-          <div style={{ color: '#ccc', fontSize: '12px' }}>
-            <div>Resolution: 1920x1080</div>
-            <div>FPS: 30</div>
-            <div>Format: MP4</div>
-            <div>Duration: 10.0s</div>
+        {/* Asset Status Bar */}
+        {!isLoading && !error && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '8px',
+            padding: '12px 20px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            <div style={{ color: 'white', fontSize: '14px', fontWeight: '600' }}>
+              📋 Project Assets Status:
+            </div>
+            <div style={{ display: 'flex', gap: '20px', fontSize: '12px' }}>
+              <span style={{ color: project?.script ? '#10b981' : '#ef4444' }}>
+                ✅ Script: {project?.script ? 'Loaded' : 'Missing'}
+              </span>
+              <span style={{ color: project?.voiceoverUrl ? '#10b981' : '#ef4444' }}>
+                🎤 Voiceover: {project?.voiceoverUrl ? 'Loaded' : 'Missing'}
+              </span>
+              <span style={{ color: project?.backgroundVideo ? '#10b981' : '#ef4444' }}>
+                🎨 Background: {project?.backgroundVideo ? 'Loaded' : 'Missing'}
+              </span>
+              <span style={{ color: project?.moodboards ? '#10b981' : '#ef4444' }}>
+                🖼️ Moodboards: {project?.moodboards ? 'Loaded' : 'Missing'}
+              </span>
+            </div>
           </div>
-        </div>
-
-        {/* Text Effects */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            📝 Text Effects
-          </h4>
-          <button
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '8px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}
-          >
-            🎨 Add Text Overlay
-          </button>
-          <button
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '8px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600'
-            }}
-          >
-            ✨ Add Animation
-          </button>
-        </div>
-
-        {/* Audio Controls */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            🎵 Audio Controls
-          </h4>
-          <div style={{ color: '#ccc', fontSize: '12px', marginBottom: '12px' }}>
-            <div>Volume: 100%</div>
-            <div>Fade In: 0.5s</div>
-            <div>Fade Out: 0.5s</div>
-          </div>
-          <button
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '8px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600'
-            }}
-          >
-            🎤 Add Voiceover
-          </button>
-        </div>
-
-        {/* Export Options */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '8px',
-          padding: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{ color: 'white', margin: '0 0 12px 0', fontSize: '14px' }}>
-            📤 Export Options
-          </h4>
-          <button
-            style={{
-              width: '100%',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '600'
-            }}
-          >
-            🚀 Export Video
-          </button>
-        </div>
+        )}
       </div>
     </div>
 
