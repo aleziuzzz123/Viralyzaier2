@@ -2541,10 +2541,6 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             </div>
           </div>
         </div>
-
-
-
-
       
       <style>{`
         /* Professional Animations */
