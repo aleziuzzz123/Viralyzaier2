@@ -94,7 +94,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const { handleUpdateProject, addToast } = useAppContext();
   
   // New state for sidebar management
-
+  const [edit, setEdit] = useState<any>(null);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   
   // Timeline state
@@ -660,13 +660,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('🔄 ===== LOADING EDIT INTO SHOTSTACK =====');
       console.log('🔄 Final edit structure:', newEdit);
       console.log('🔄 Edit instance:', edit);
-      console.log('🔄 Edit.loadEdit method exists:', typeof edit.loadEdit === 'function');
+      console.log('🔄 Edit.loadEdit method exists:', typeof edit?.loadEdit === 'function');
       
       if (newEdit.timeline.tracks.length > 0) {
         console.log('🔄 Loading new edit with your blueprint assets...');
         try {
           // Try the primary method first
-          if (typeof edit.loadEdit === 'function') {
+          if (typeof edit?.loadEdit === 'function') {
             await edit.loadEdit(newEdit);
             console.log('✅ Editor updated with your blueprint assets!');
             console.log('✅ Edit loaded successfully into Shotstack');
@@ -677,7 +677,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             newEdit.timeline.tracks.forEach((track, trackIndex) => {
               track.clips.forEach((clip, clipIndex) => {
                 try {
-                  if (typeof edit.addClip === 'function') {
+                  if (typeof edit?.addClip === 'function') {
                     edit.addClip(trackIndex, clip);
                     console.log(`✅ Added clip ${clipIndex} to track ${trackIndex}`);
                   } else {
@@ -698,7 +698,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             newEdit.timeline.tracks.forEach((track, trackIndex) => {
               track.clips.forEach((clip, clipIndex) => {
                 try {
-                  if (typeof edit.addClip === 'function') {
+                  if (typeof edit?.addClip === 'function') {
                     edit.addClip(trackIndex, clip);
                     console.log(`🔄 Fallback: Added clip ${clipIndex} to track ${trackIndex}`);
                   }
@@ -816,24 +816,25 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       // 2. Initialize the edit with dimensions and background color - EXACTLY like official docs
       console.log('🔧 Creating Edit component...');
-      const edit = new Edit(template.output.size, template.timeline.background);
-      await edit.load();
+      const newEdit = new Edit(template.output.size, template.timeline.background);
+      await newEdit.load();
+      setEdit(newEdit);
       console.log('✅ Edit component loaded');
 
       // 3. Create a canvas to display the edit - EXACTLY like MinimalWorkingVideoEditor
       console.log('🎨 Creating Canvas component...');
-      const canvas = new Canvas(template.output.size, edit);
+      const canvas = new Canvas(newEdit, canvasRef.current);
       await canvas.load(); // Pass DOM element like working example
       console.log('✅ Canvas component loaded');
 
       // 4. Load the template - EXACTLY like official docs
       console.log('📄 Loading template into edit...');
-      await edit.loadEdit(template);
+      await newEdit.loadEdit(template);
       console.log('✅ Template loaded into edit');
 
       // 5. Add keyboard controls - EXACTLY like official docs
       console.log('⌨️ Creating Controls component...');
-      const controls = new Controls(edit);
+      const controls = new Controls(newEdit);
       await controls.load();
       console.log('✅ Controls component loaded');
 
@@ -850,7 +851,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       const timelineWidth = timelineHost.current?.clientWidth || template.output.size.width;
       console.log('📊 Using timeline width:', timelineWidth);
       
-      const timeline = new Timeline(edit, {
+      const timeline = new Timeline(newEdit, {
         width: timelineWidth,
         height: 300
       });
@@ -880,31 +881,31 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       }
 
       // Set up event listeners - EXACTLY like MinimalWorkingVideoEditor
-      edit.events.on("clip:selected", (data: any) => {
+      newEdit.events.on("clip:selected", (data: any) => {
         console.log("Clip selected:", data);
       });
 
-      edit.events.on("clip:updated", (data: any) => {
+      newEdit.events.on("clip:updated", (data: any) => {
         console.log("Clip updated:", data);
       });
 
-      edit.events.on("play", () => {
+      newEdit.events.on("play", () => {
         console.log("Play event");
         setIsPlaying(true);
       });
 
-      edit.events.on("pause", () => {
+      newEdit.events.on("pause", () => {
         console.log("Pause event");
         setIsPlaying(false);
       });
 
-      edit.events.on("stop", () => {
+      newEdit.events.on("stop", () => {
         console.log("Stop event");
         setIsPlaying(false);
       });
 
       // Store references - EXACTLY like MinimalWorkingVideoEditor
-      editRef.current = edit;
+      editRef.current = newEdit;
       canvasRef.current = canvas;
       timelineRef.current = timeline;
       controlsRef.current = controls;

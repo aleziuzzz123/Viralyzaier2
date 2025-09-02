@@ -1,5 +1,5 @@
 import React from 'react';
-import FinalShotstackStudio from './FinalShotstackStudio';
+import SimpleShotstackStudio from './SimpleShotstackStudio';
 import { Project } from '../types';
 
 interface CreativeStudioProps {
@@ -11,7 +11,7 @@ const CreativeStudio: React.FC<CreativeStudioProps> = ({ project }) => {
     console.log('🚀 CREATIVE STUDIO V2.0 - FORCE REBUILD - ' + new Date().toISOString());
     console.log('📋 Project data received:', project);
     
-    return <FinalShotstackStudio project={project} />;
+    return <SimpleShotstackStudio project={project} />;
 };
 
 export default CreativeStudio;
