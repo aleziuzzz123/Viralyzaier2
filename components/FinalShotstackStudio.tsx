@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
+import { Project } from '../types';
 
 interface Size {
   width: number;
@@ -18,10 +19,15 @@ interface ShotstackEdit {
   };
 }
 
-const FinalShotstackStudio: React.FC = () => {
+interface FinalShotstackStudioProps {
+  project?: Project;
+}
+
+const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) => {
   console.log('🎬 FinalShotstackStudio component loaded!');
   console.log('🚀 FINAL SHOTSTACK STUDIO V2.0 - THIS IS THE NEW COMPONENT!');
   console.log('⏰ TIMESTAMP: ' + new Date().toISOString());
+  console.log('📋 Project data received:', project);
   
   const canvasHost = useRef<HTMLDivElement>(null);
   const timelineHost = useRef<HTMLDivElement>(null);
@@ -37,6 +43,111 @@ const FinalShotstackStudio: React.FC = () => {
   const [canvasReady, setCanvasReady] = useState<boolean>(false);
   const [timelineReady, setTimelineReady] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  // Create custom template from project data
+  const createCustomTemplate = (projectData?: Project): ShotstackEdit => {
+    console.log('🎨 Creating custom template from project data:', projectData);
+    
+    if (!projectData) {
+      console.log('⚠️ No project data, using fallback template');
+      return {
+        timeline: {
+          tracks: [
+            {
+              clips: [
+                {
+                  asset: {
+                    type: 'video',
+                    src: 'https://shotstack-assets.s3.amazonaws.com/hello-world/earth.mp4'
+                  },
+                  start: 0,
+                  length: 5
+                }
+              ]
+            }
+          ]
+        },
+        output: {
+          format: 'mp4',
+          resolution: 'hd',
+          size: { width: 1280, height: 720 }
+        }
+      };
+    }
+
+    // Build template from project assets
+    const clips: any[] = [];
+    let currentTime = 0;
+
+    // Add script as text overlay
+    if (projectData.script) {
+      clips.push({
+        asset: {
+          type: 'text',
+          text: projectData.script,
+          style: 'future',
+          color: '#ffffff',
+          size: 'large'
+        },
+        start: currentTime,
+        length: 3,
+        track: 1
+      });
+      currentTime += 3;
+    }
+
+    // Add background video
+    if (projectData.backgroundVideo) {
+      clips.push({
+        asset: {
+          type: 'video',
+          src: projectData.backgroundVideo
+        },
+        start: 0,
+        length: 10,
+        track: 0
+      });
+    } else {
+      // Fallback background
+      clips.push({
+        asset: {
+          type: 'video',
+          src: 'https://shotstack-assets.s3.amazonaws.com/hello-world/earth.mp4'
+        },
+        start: 0,
+        length: 10,
+        track: 0
+      });
+    }
+
+    // Add voiceover
+    if (projectData.voiceoverUrl) {
+      clips.push({
+        asset: {
+          type: 'audio',
+          src: projectData.voiceoverUrl
+        },
+        start: 0,
+        length: 10,
+        track: 2
+      });
+    }
+
+    return {
+      timeline: {
+        tracks: [
+          { clips: clips.filter(c => c.track === 0) }, // Video track
+          { clips: clips.filter(c => c.track === 1) }, // Text track
+          { clips: clips.filter(c => c.track === 2) }  // Audio track
+        ]
+      },
+      output: {
+        format: 'mp4',
+        resolution: 'hd',
+        size: { width: 1280, height: 720 }
+      }
+    };
+  };
 
   // Wait for DOM elements to be ready - EXACTLY like MinimalWorkingVideoEditor
   const waitForHosts = async (): Promise<void> => {
@@ -340,57 +451,13 @@ const FinalShotstackStudio: React.FC = () => {
 
   return (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
+      width: '100%',
+      height: '100%',
       background: '#0b1220',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'Arial, sans-serif'
     }}>
-      {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        padding: '16px 24px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px'
-          }}>
-            🎬
-          </div>
-          <h1 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Final Shotstack Studio v2.0
-          </h1>
-        </div>
-        <button
-          onClick={() => window.close()}
-          style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          Close
-        </button>
-      </div>
 
       {/* Loading State */}
       {isLoading && (

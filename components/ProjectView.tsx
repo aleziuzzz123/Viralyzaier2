@@ -43,7 +43,7 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ project }) => {
             case 4:
                 // By keying the component on lastUpdated, we force a full remount when the project data changes,
                 // ensuring a clean state for the editor and preventing hangs from stale props.
-                return <CreativeStudio key={project.lastUpdated} />;
+                return <CreativeStudio key={project.lastUpdated} project={project} />;
             case 5:
                 return <AnalysisStep project={project} onProceedToLaunchpad={handleProceedToLaunchpad} onReturnToStudio={handleReturnToStudio} />;
             case 6:
