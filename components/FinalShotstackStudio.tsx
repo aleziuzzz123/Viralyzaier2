@@ -7,6 +7,7 @@ import KeyboardShortcuts from './KeyboardShortcuts';
 import { 
   VideoCameraIcon, 
   FilmIcon, 
+  FilmStripIcon, 
   MicrophoneIcon, 
   ImageIcon, 
   DocumentTextIcon, 
@@ -1154,7 +1155,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                   className="inline-flex items-center justify-center px-4 py-3 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                   style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
                 >
-                  <FilmIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
+                  <FilmStripIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
                   Stop
                 </button>
                 
@@ -1556,7 +1557,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           >
             <div className="flex items-center space-x-4">
               <h3 className="text-lg font-bold flex items-center space-x-2" style={{ color: DASHBOARD_COLORS.text }}>
-                <FilmIcon className="w-5 h-5" style={{ color: DASHBOARD_COLORS.rendering }} />
+                <FilmStripIcon className="w-5 h-5" style={{ color: DASHBOARD_COLORS.rendering }} />
                 <span>Timeline</span>
               </h3>
               <div 
@@ -1694,7 +1695,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <FilmIcon className="w-8 h-8" style={{ color: DASHBOARD_COLORS.rendering }} />
+                <FilmStripIcon className="w-8 h-8" style={{ color: DASHBOARD_COLORS.rendering }} />
                 <span style={{ color: DASHBOARD_COLORS.text }}>Professional Timeline Ready</span>
                 <span style={{ fontSize: '12px', color: DASHBOARD_COLORS.textSecondary }}>
                   Shotstack Studio will render your assets here

@@ -143,7 +143,7 @@ export const VideoCameraIcon: React.FC<IconProps> = ({ className }) => (
     </svg>
 );
 
-export const FilmIcon: React.FC<IconProps> = ({ className }) => (
+export const FilmStripIcon: React.FC<IconProps> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625H3.375m0 0a1.125 1.125 0 0 1-1.125-1.125m1.125 1.125v-1.5m0 0V5.625m0 1.5v1.5m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M20.625 7.5v1.5m0 0V5.625m0 1.5h-7.5c-.621 0-1.125-.504-1.125-1.125m9.75 0v1.5m0 0h-7.5" />
     </svg>
