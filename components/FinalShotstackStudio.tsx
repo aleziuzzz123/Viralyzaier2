@@ -107,12 +107,16 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [duration, setDuration] = useState<number>(0);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [showPropertiesPanel, setShowPropertiesPanel] = useState<boolean>(false);
+  const [assetLoadingStatus, setAssetLoadingStatus] = useState<string>('Initializing...');
+  const [loadedAssetsCount, setLoadedAssetsCount] = useState<number>(0);
 
   // Load project assets into the editor after it's initialized
   const loadProjectAssets = async (edit: any, projectData: Project) => {
     console.log('🎨 ===== STARTING ASSET LOADING PROCESS =====');
     console.log('🎨 Loading ONLY your blueprint assets into editor:', projectData);
     console.log('🎨 Edit instance:', edit);
+    
+    setAssetLoadingStatus('Analyzing project data...');
     
     try {
       // Create a new edit with your blueprint assets
@@ -136,6 +140,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('📝 Script exists:', !!projectData.script);
       console.log('📝 Script scenes exist:', !!(projectData.script && projectData.script.scenes));
       console.log('📝 Script scenes length:', projectData.script?.scenes?.length || 0);
+      
+      setAssetLoadingStatus('Loading script scenes...');
       
       if (projectData.script && projectData.script.scenes && projectData.script.scenes.length > 0) {
         console.log('📝 Adding your script scenes as text overlays...');
@@ -192,6 +198,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('🎤 Voiceover URLs exist:', !!projectData.voiceoverUrls);
       console.log('🎤 Voiceover URLs:', projectData.voiceoverUrls);
       
+      setAssetLoadingStatus('Loading voiceover tracks...');
+      
       if (projectData.voiceoverUrls && Object.keys(projectData.voiceoverUrls).length > 0) {
         console.log('🎤 Adding your voiceover...');
         const voiceoverEntries = Object.entries(projectData.voiceoverUrls);
@@ -227,6 +235,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('🖼️ Moodboard is array:', Array.isArray(projectData.moodboard));
       console.log('🖼️ Moodboard length:', projectData.moodboard?.length || 0);
       console.log('🖼️ Moodboard content:', projectData.moodboard);
+      
+      setAssetLoadingStatus('Loading moodboard images...');
       
       if (projectData.moodboard && Array.isArray(projectData.moodboard)) {
         console.log('🖼️ Adding your moodboards...');
@@ -264,6 +274,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('🎬 Assets keys:', projectData.assets ? Object.keys(projectData.assets) : 'None');
       console.log('🎬 Assets count:', projectData.assets ? Object.keys(projectData.assets).length : 0);
       console.log('🎬 Assets content:', projectData.assets);
+      
+      setAssetLoadingStatus('Loading scene assets...');
       
       if (projectData.assets && Object.keys(projectData.assets).length > 0) {
         console.log('🎬 Adding scene assets...');
@@ -319,6 +331,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       console.log('🔍 Total tracks created:', newEdit.timeline.tracks.length);
       console.log('🔍 Tracks structure:', newEdit.timeline.tracks);
       
+      setLoadedAssetsCount(newEdit.timeline.tracks.length);
+      setAssetLoadingStatus(`Loaded ${newEdit.timeline.tracks.length} asset tracks`);
+      
       // If no assets found, add a placeholder
       if (newEdit.timeline.tracks.length === 0) {
         console.log('⚠️ No blueprint assets found, adding placeholder...');
@@ -359,12 +374,52 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       if (newEdit.timeline.tracks.length > 0) {
         console.log('🔄 Loading new edit with your blueprint assets...');
         try {
-          await edit.loadEdit(newEdit);
-          console.log('✅ Editor updated with your blueprint assets!');
-          console.log('✅ Edit loaded successfully into Shotstack');
+          // Try the primary method first
+          if (typeof edit.loadEdit === 'function') {
+            await edit.loadEdit(newEdit);
+            console.log('✅ Editor updated with your blueprint assets!');
+            console.log('✅ Edit loaded successfully into Shotstack');
+          } else {
+            console.log('⚠️ edit.loadEdit is not a function, trying alternative approach...');
+            
+            // Alternative approach: try to add clips directly
+            newEdit.timeline.tracks.forEach((track, trackIndex) => {
+              track.clips.forEach((clip, clipIndex) => {
+                try {
+                  if (typeof edit.addClip === 'function') {
+                    edit.addClip(trackIndex, clip);
+                    console.log(`✅ Added clip ${clipIndex} to track ${trackIndex}`);
+                  } else {
+                    console.log(`⚠️ edit.addClip is not available for track ${trackIndex}, clip ${clipIndex}`);
+                  }
+                } catch (clipError) {
+                  console.error(`❌ Error adding clip ${clipIndex} to track ${trackIndex}:`, clipError);
+                }
+              });
+            });
+          }
         } catch (loadError) {
           console.error('❌ Error loading edit into Shotstack:', loadError);
-          throw loadError;
+          console.log('🔄 Attempting fallback asset loading...');
+          
+          // Fallback: try to add assets one by one
+          try {
+            newEdit.timeline.tracks.forEach((track, trackIndex) => {
+              track.clips.forEach((clip, clipIndex) => {
+                try {
+                  if (typeof edit.addClip === 'function') {
+                    edit.addClip(trackIndex, clip);
+                    console.log(`🔄 Fallback: Added clip ${clipIndex} to track ${trackIndex}`);
+                  }
+                } catch (clipError) {
+                  console.error(`❌ Fallback failed for clip ${clipIndex} to track ${trackIndex}:`, clipError);
+                }
+              });
+            });
+          } catch (fallbackError) {
+            console.error('❌ Fallback asset loading also failed:', fallbackError);
+            throw loadError; // Throw original error
+          }
         }
       } else {
         console.log('⚠️ No assets to load');
@@ -372,6 +427,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       console.log('🎉 ===== ASSET LOADING COMPLETE =====');
       console.log('🎉 Your blueprint assets loaded successfully!');
+      
+      setAssetLoadingStatus(`✅ Successfully loaded ${loadedAssetsCount} blueprint assets`);
     } catch (error) {
       console.error('❌ ===== ASSET LOADING ERROR =====');
       console.error('❌ Error loading your blueprint assets:', error);
@@ -381,6 +438,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         message: error.message,
         cause: error.cause
       });
+      
+      setAssetLoadingStatus(`❌ Error loading assets: ${error.message}`);
     }
   };
 
@@ -1239,19 +1298,31 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           )}
         </div>
 
-        {/* Success Message - Only show when loaded */}
+        {/* Asset Loading Status - Show when editor is loaded */}
         {!isLoading && !error && (
           <div style={{
-            background: '#10b981',
+            background: loadedAssetsCount > 0 ? '#10b981' : '#f59e0b',
             color: 'white',
             padding: '16px',
             borderRadius: '8px',
             textAlign: 'center'
           }}>
-            <h3 style={{ margin: '0 0 8px 0' }}>✅ Shotstack Studio Loaded Successfully!</h3>
-            <p style={{ margin: 0, fontSize: '14px' }}>
-              The video editor is now ready. You can interact with the canvas and timeline above.
+            <h3 style={{ margin: '0 0 8px 0' }}>
+              {loadedAssetsCount > 0 ? '✅' : '⚠️'} Shotstack Studio Loaded Successfully!
+            </h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
+              {assetLoadingStatus}
             </p>
+            {loadedAssetsCount > 0 && (
+              <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>
+                {loadedAssetsCount} blueprint asset{loadedAssetsCount !== 1 ? 's' : ''} loaded into editor
+              </p>
+            )}
+            {loadedAssetsCount === 0 && (
+              <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>
+                No blueprint assets found. Check console for debugging information.
+              </p>
+            )}
           </div>
         )}
 
