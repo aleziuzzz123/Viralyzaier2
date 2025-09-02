@@ -215,9 +215,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       await waitForHosts();
       console.log('✅ DOM elements ready');
 
-      // 1. Retrieve an edit from a template - EXACTLY like official docs
-      console.log('🔧 Loading base template...');
-      const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
+      // 1. Create custom template from project data
+      console.log('🔧 Creating custom template from project data...');
       
       let template: ShotstackEdit;
       
@@ -492,8 +491,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column',
-        padding: '20px',
-        gap: '20px'
+        padding: '40px 20px 20px 20px', // More top padding to clear navigation bar
+        gap: '20px',
+        marginTop: '10px' // Additional margin for better spacing
       }}>
         {/* Controls - Only show when not loading */}
         {!isLoading && !error && (
@@ -505,7 +505,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             background: 'rgba(255, 255, 255, 0.05)',
             padding: '16px',
             borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            margin: '0 10px' // Equal margins on both sides
           }}>
             <button
               onClick={() => editRef.current?.play()}
@@ -623,7 +624,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             minHeight: '60vh',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             opacity: isLoading ? 0.3 : 1,
-            transition: 'opacity 0.3s ease'
+            transition: 'opacity 0.3s ease',
+            margin: '0 10px' // Equal margins on both sides
           }}
         />
 
@@ -642,7 +644,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            margin: '0 10px' // Equal margins on both sides
           }}
         >
           {isLoading && (
