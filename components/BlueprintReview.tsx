@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Project, Script, Scene } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
@@ -18,15 +18,81 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [voiceoverProgress, setVoiceoverProgress] = useState<{ current: number; total: number } | null>(null);
+    const [selectedHookIndex, setSelectedHookIndex] = useState<number>(0);
+    const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
+    const [expandedScene, setExpandedScene] = useState<number | null>(null);
+    const [selectedMoodboardImage, setSelectedMoodboardImage] = useState<number | null>(null);
 
-    // Available voice options
+    // Available voice options with enhanced descriptions
     const voiceOptions = [
-        { id: 'pNInz6obpgDQGcFmaJgB', name: 'Sarah (Professional Female)', preview: 'A clear, professional female voice perfect for business content.' },
-        { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Josh (Friendly Male)', preview: 'A warm, friendly male voice great for casual content.' },
-        { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold (Deep Male)', preview: 'A deep, authoritative male voice perfect for dramatic content.' },
-        { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi (Energetic Female)', preview: 'An energetic, upbeat female voice great for dynamic content.' },
-        { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni (Smooth Male)', preview: 'A smooth, charismatic male voice perfect for lifestyle content.' }
+        { 
+            id: 'pNInz6obpgDQGcFmaJgB', 
+            name: 'Sarah', 
+            type: 'Professional Female',
+            description: 'Clear, professional female voice perfect for business content, educational videos, and corporate presentations.',
+            icon: '👩‍💼',
+            color: 'bg-blue-500'
+        },
+        { 
+            id: 'EXAVITQu4vr4xnSDxMaL', 
+            name: 'Josh', 
+            type: 'Friendly Male',
+            description: 'Warm, friendly male voice great for casual content, vlogs, and conversational videos.',
+            icon: '👨‍💻',
+            color: 'bg-green-500'
+        },
+        { 
+            id: 'VR6AewLTigWG4xSOukaG', 
+            name: 'Arnold', 
+            type: 'Deep Male',
+            description: 'Deep, authoritative male voice perfect for dramatic content, documentaries, and serious topics.',
+            icon: '🎭',
+            color: 'bg-purple-500'
+        },
+        { 
+            id: 'AZnzlk1XvdvUeBnXmlld', 
+            name: 'Domi', 
+            type: 'Energetic Female',
+            description: 'An energetic, upbeat female voice great for dynamic content, tutorials, and motivational videos.',
+            icon: '⚡',
+            color: 'bg-yellow-500'
+        },
+        { 
+            id: 'ErXwobaYiN019PkySvjV', 
+            name: 'Antoni', 
+            type: 'Smooth Male',
+            description: 'A smooth, charismatic male voice perfect for lifestyle content, reviews, and entertainment.',
+            icon: '🎤',
+            color: 'bg-indigo-500'
+        }
     ];
+
+    // Voice preview function
+    const previewVoice = useCallback(async (voiceId: string) => {
+        if (previewingVoice === voiceId) {
+            setPreviewingVoice(null);
+            return;
+        }
+        
+        setPreviewingVoice(voiceId);
+        try {
+            const sampleText = "This is a preview of how your voiceover will sound. Listen to the tone and style.";
+            const response = await invokeEdgeFunction('elevenlabs-proxy', {
+                type: 'tts',
+                text: sampleText,
+                voiceId
+            });
+            
+            if (response && (response as any).audioUrl) {
+                const audio = new Audio((response as any).audioUrl);
+                audio.play();
+                audio.onended = () => setPreviewingVoice(null);
+            }
+        } catch (error) {
+            console.error('Error previewing voice:', error);
+            setPreviewingVoice(null);
+        }
+    }, [previewingVoice]);
 
     useEffect(() => {
         if (project.script) {
@@ -54,22 +120,23 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
         setIsRegenerating(type);
         try {
             if (type === 'hook') {
-                // Regenerate hooks using OpenAI
+                // Regenerate hooks using OpenAI - FREE for users
                 const response = await invokeEdgeFunction('openai-proxy', {
                     type: 'generateContent',
                     params: {
                         model: 'gpt-4o',
-                        contents: `Generate 3 engaging hooks for a video about "${project.topic}". Each hook should be 1-2 sentences and designed to capture attention immediately. Make them diverse and compelling.`,
+                        contents: `Generate 5 engaging hooks for a video about "${project.topic}". Each hook should be 1-2 sentences and designed to capture attention immediately. Make them diverse, compelling, and viral-worthy.`,
                         config: {
-                            systemInstruction: 'You are a viral video expert. Generate hooks that are attention-grabbing, emotional, and designed to make viewers want to watch more. Return only the hooks, one per line.'
+                            systemInstruction: 'You are a viral video expert. Generate hooks that are attention-grabbing, emotional, and designed to make viewers want to watch more. Each hook should be unique and target different emotional triggers. Return only the hooks, one per line.'
                         }
                     }
                 });
 
                 if ((response as any).text) {
-                    const newHooks = (response as any).text.split('\n').filter((hook: string) => hook.trim()).slice(0, 3);
+                    const newHooks = (response as any).text.split('\n').filter((hook: string) => hook.trim()).slice(0, 5);
                     setEditedScript({ ...editedScript, hooks: newHooks });
-                    addToast('Hooks regenerated successfully!', 'success');
+                    setSelectedHookIndex(0); // Reset to first hook
+                    addToast('New hooks generated successfully! Choose your favorite.', 'success');
                 }
             } else if (type === 'moodboard') {
                 // Regenerate moodboard images
@@ -352,52 +419,91 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     }
 
     return (
-        <div className="text-center py-8 px-6 bg-gray-800/50 rounded-2xl max-w-5xl mx-auto space-y-6 animate-fade-in-up">
-            <h2 className="text-3xl font-bold text-white mb-2">Review Your Blueprint</h2>
-            <p className="text-gray-400 mb-4 max-w-xl mx-auto">Perfect your content before creating your video.</p>
+        <div className="min-h-screen bg-gray-900 py-8 px-6">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Professional Header */}
+                <div className="text-center space-y-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4">
+                        <SparklesIcon className="w-8 h-8 text-white" />
+                    </div>
+                    <h1 className="text-4xl font-bold text-white">Review Your Blueprint</h1>
+                    <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                        Perfect your content before creating your video. Make it viral-worthy.
+                    </p>
+                </div>
+
+                {/* Progress Indicator */}
+                <div className="flex justify-center">
+                    <div className="flex items-center space-x-4 bg-gray-800/50 rounded-2xl px-6 py-3 border border-gray-700">
+                        <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">3</span>
+                            </div>
+                            <span className="text-white font-semibold">Review & Edit</span>
+                        </div>
+                        <div className="w-px h-6 bg-gray-600"></div>
+                        <div className="flex space-x-1">
+                            {[1, 2, 3, 4, 5, 6].map((step) => (
+                                <div
+                                    key={step}
+                                    className={`w-2 h-2 rounded-full ${
+                                        step <= 3 ? 'bg-indigo-600' : 'bg-gray-600'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
             
-            <div className="space-y-6 text-left">
-                {/* Script Hooks - 3 Options */}
-                <div>
-                    <div className="flex justify-between items-center mb-3">
+                {/* Professional Hook Selection Section */}
+                <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="text-lg font-bold text-white">Choose Your Hook</h3>
-                            <p className="text-gray-400 text-sm">Select the best hook or regenerate new ones</p>
+                            <h2 className="text-2xl font-bold text-white mb-2">🎯 Choose Your Hook</h2>
+                            <p className="text-gray-300">Select the most compelling hook to grab your audience's attention</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('hook')}
                             disabled={isRegenerating === 'hook'}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                            className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
-                            <SparklesIcon className="w-4 h-4 mr-2" />
-                            {isRegenerating === 'hook' ? 'Generating...' : 'New Hooks (1 Credit)'}
+                            <SparklesIcon className="w-5 h-5 mr-2" />
+                            {isRegenerating === 'hook' ? 'Generating...' : 'Generate New Hooks (FREE)'}
                         </button>
                     </div>
-                    <div className="grid md:grid-cols-3 gap-3">
-                        {(editedScript.hooks || []).slice(0, 3).map((hook, index) => (
-                            <div key={index} className="bg-gray-700/50 p-3 rounded-lg border border-gray-600 hover:border-indigo-500 transition-colors">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs text-gray-400 font-semibold">Hook {index + 1}</span>
-                                    <div className="flex gap-1">
+                    
+                    {/* Hook Selection Grid */}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {(editedScript.hooks || []).map((hook, index) => (
+                            <div 
+                                key={index} 
+                                className={`relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                                    selectedHookIndex === index 
+                                        ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/20' 
+                                        : 'border-gray-600 bg-gray-700/30 hover:border-gray-500 hover:bg-gray-700/50'
+                                }`}
+                                onClick={() => setSelectedHookIndex(index)}
+                            >
+                                {/* Selection Indicator */}
+                                {selectedHookIndex === index && (
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-sm">✓</span>
+                                    </div>
+                                )}
+                                
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm font-semibold text-gray-300">Hook {index + 1}</span>
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 const newHooks = [...(editedScript.hooks || [])];
                                                 newHooks[index] = prompt('Edit hook:', hook) || hook;
                                                 handleScriptChange('hooks', newHooks);
                                             }}
-                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded"
+                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 transition-colors"
                                         >
                                             Edit
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                const newHooks = [...(editedScript.hooks || [])];
-                                                newHooks.splice(index, 1);
-                                                handleScriptChange('hooks', newHooks);
-                                            }}
-                                            className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded"
-                                        >
-                                            Delete
                                         </button>
                                     </div>
                                 </div>
@@ -405,179 +511,326 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                             </div>
                         ))}
                     </div>
+                    
+                    {/* Selected Hook Preview */}
+                    {editedScript.hooks && editedScript.hooks[selectedHookIndex] && (
+                        <div className="mt-6 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/30">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-indigo-400 font-semibold">Selected Hook:</span>
+                                <span className="text-white font-bold">#{selectedHookIndex + 1}</span>
+                            </div>
+                            <p className="text-white text-lg leading-relaxed">
+                                "{editedScript.hooks[selectedHookIndex]}"
+                            </p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Video Scenes - Compact View */}
-                <div>
-                    <div className="flex justify-between items-center mb-3">
+                {/* Professional Video Scenes Section */}
+                <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="text-lg font-bold text-white">Video Scenes</h3>
-                            <p className="text-gray-400 text-sm">Edit scenes or regenerate all</p>
+                            <h2 className="text-2xl font-bold text-white mb-2">🎬 Video Scenes</h2>
+                            <p className="text-gray-300">Review and edit your video scenes. Click storyboard images to regenerate them.</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('scene')}
                             disabled={isRegenerating === 'scene'}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                            className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
-                            <SparklesIcon className="w-4 h-4 mr-2" />
-                            {isRegenerating === 'scene' ? 'Regenerating...' : 'New Scenes (1 Credit)'}
+                            <SparklesIcon className="w-5 h-5 mr-2" />
+                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scenes (FREE)'}
                         </button>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    
+                    <div className="grid lg:grid-cols-2 gap-6">
                         {editedScript.scenes?.map((scene, index) => (
-                            <div key={index} className="bg-gray-700/50 p-4 rounded-lg">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                                        {index + 1}
+                            <div key={index} className="bg-gray-700/30 rounded-xl p-6 border border-gray-600 hover:border-gray-500 transition-all duration-300">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                                            {index + 1}
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white">Scene {index + 1}</h3>
                                     </div>
-                                    <h4 className="text-sm font-bold text-white">Scene {index + 1}</h4>
+                                    <button
+                                        onClick={() => setExpandedScene(expandedScene === index ? null : index)}
+                                        className="text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        {expandedScene === index ? '▼' : '▶'}
+                                    </button>
                                 </div>
                                 
-                                <div className="space-y-3">
+                                <div className="space-y-4">
+                                    {/* Storyboard Image - Clickable */}
+                                    {scene.storyboardImageUrl && (
+                                        <div className="relative group">
+                                            <label className="block text-gray-300 text-sm font-semibold mb-2">Storyboard</label>
+                                            <div 
+                                                className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg"
+                                                onClick={() => {
+                                                    // Regenerate this specific storyboard image
+                                                    regenerateContent('moodboard', index);
+                                                }}
+                                            >
+                                                <img 
+                                                    src={scene.storyboardImageUrl} 
+                                                    alt={`Scene ${index + 1} storyboard`}
+                                                    className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
+                                                />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <SparklesIcon className="w-6 h-6 text-white mx-auto mb-1" />
+                                                        <span className="text-white text-sm font-semibold">Click to Regenerate</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Visual Description */}
                                     <div>
-                                        <label className="block text-gray-300 text-xs font-semibold mb-1">Visual</label>
+                                        <label className="block text-gray-300 text-sm font-semibold mb-2">Visual Description</label>
                                         <textarea
                                             value={scene.visual}
                                             onChange={(e) => handleScriptChange('visual', e.target.value, index)}
-                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none text-sm"
-                                            rows={2}
-                                            placeholder="Visual description..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-gray-300 text-xs font-semibold mb-1">Voiceover</label>
-                                        <textarea
-                                            value={scene.voiceover}
-                                            onChange={(e) => handleScriptChange('voiceover', e.target.value, index)}
-                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none text-sm"
-                                            rows={2}
-                                            placeholder="Voiceover text..."
+                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                                            rows={3}
+                                            placeholder="Describe what viewers will see..."
                                         />
                                     </div>
                                     
-                                    {scene.storyboardImageUrl && (
-                                        <div>
-                                            <label className="block text-gray-300 text-xs font-semibold mb-1">Storyboard</label>
-                                            <img 
-                                                src={scene.storyboardImageUrl} 
-                                                alt={`Scene ${index + 1} storyboard`}
-                                                className="w-full h-24 object-cover rounded border border-gray-600"
-                                            />
-                                        </div>
-                                    )}
+                                    {/* Voiceover Text */}
+                                    <div>
+                                        <label className="block text-gray-300 text-sm font-semibold mb-2">Voiceover Text</label>
+                                        <textarea
+                                            value={scene.voiceover}
+                                            onChange={(e) => handleScriptChange('voiceover', e.target.value, index)}
+                                            className="w-full bg-gray-800/50 text-white placeholder-gray-400 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                                            rows={3}
+                                            placeholder="What will be said in this scene..."
+                                        />
+                                    </div>
+                                    
+                                    {/* Scene Actions */}
+                                    <div className="flex gap-2 pt-2">
+                                        <button
+                                            onClick={() => regenerateContent('scene', index)}
+                                            disabled={isRegenerating === 'scene'}
+                                            className="flex-1 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 font-medium rounded-lg transition-colors text-sm"
+                                        >
+                                            Regenerate Scene
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const newScenes = [...editedScript.scenes];
+                                                newScenes.splice(index, 1);
+                                                handleScriptChange('scenes', newScenes);
+                                            }}
+                                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium rounded-lg transition-colors text-sm"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Voiceover Selection - Compact */}
-                <div>
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold text-white">Choose Voice</h3>
+                {/* Professional Voice Selection Section */}
+                <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 shadow-2xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-2">🎤 Choose Your Voice</h2>
+                            <p className="text-gray-300">Select the perfect voice for your video. Click the play button to preview each voice.</p>
+                        </div>
                         {voiceoverProgress && (
-                            <div className="text-sm text-indigo-400">
-                                Generating voiceover {voiceoverProgress.current}/{voiceoverProgress.total}...
+                            <div className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-4 py-2">
+                                <div className="text-indigo-400 font-semibold text-sm">
+                                    Generating voiceover {voiceoverProgress.current}/{voiceoverProgress.total}...
+                                </div>
                             </div>
                         )}
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {voiceOptions.map((voice) => (
                             <div
                                 key={voice.id}
-                                onClick={() => handleVoiceChange(voice.id)}
-                                className={`cursor-pointer p-3 rounded-lg border transition-all ${
+                                className={`relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
                                     selectedVoiceId === voice.id 
-                                        ? 'bg-indigo-600 border-indigo-500' 
-                                        : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'
+                                        ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/20' 
+                                        : 'border-gray-600 bg-gray-700/30 hover:border-gray-500 hover:bg-gray-700/50'
                                 }`}
+                                onClick={() => handleVoiceChange(voice.id)}
                             >
-                                <div className="flex items-center gap-2 mb-1">
-                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${
-                                        selectedVoiceId === voice.id 
-                                            ? 'bg-indigo-500' 
-                                            : 'bg-gray-600'
-                                    }`}>
-                                        <span className="text-xs">🎵</span>
+                                {/* Selection Indicator */}
+                                {selectedVoiceId === voice.id && (
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-sm">✓</span>
                                     </div>
-                                    <div>
-                                        <h4 className="font-semibold text-white text-xs">{voice.name}</h4>
-                                        {selectedVoiceId === voice.id && (
-                                            <span className="text-indigo-300 text-xs">✓</span>
-                                        )}
+                                )}
+                                
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${voice.color}`}>
+                                        {voice.icon}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-white text-lg">{voice.name}</h3>
+                                        <p className="text-gray-400 text-sm">{voice.type}</p>
                                     </div>
                                 </div>
-                                <p className="text-gray-400 text-xs leading-tight">{voice.preview}</p>
+                                
+                                <p className="text-gray-300 text-sm leading-relaxed mb-4">
+                                    {voice.description}
+                                </p>
+                                
+                                {/* Preview Button */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        previewVoice(voice.id);
+                                    }}
+                                    disabled={previewingVoice === voice.id}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-600/50 hover:bg-gray-600/70 disabled:bg-gray-700/50 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    {previewingVoice === voice.id ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <span>Playing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>▶️</span>
+                                            <span>Preview Voice</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         ))}
                     </div>
+                    
+                    {/* Selected Voice Info */}
+                    {selectedVoiceId && (
+                        <div className="mt-6 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-sm">✓</span>
+                                </div>
+                                <div>
+                                    <span className="text-indigo-400 font-semibold">Selected Voice:</span>
+                                    <span className="text-white font-bold ml-2">
+                                        {voiceOptions.find(v => v.id === selectedVoiceId)?.name}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Moodboard - Compact */}
+                {/* Professional Moodboard Section */}
                 {project.moodboard && project.moodboard.length > 0 && (
-                    <div>
-                        <div className="flex justify-between items-center mb-3">
+                    <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-white">Moodboard</h3>
-                                <p className="text-gray-400 text-sm">Visual style reference</p>
+                                <h2 className="text-2xl font-bold text-white mb-2">🎨 Visual Style Reference</h2>
+                                <p className="text-gray-300">Click on any image to regenerate it. These images set the visual tone for your video.</p>
                             </div>
                             <button
                                 onClick={() => regenerateContent('moodboard')}
                                 disabled={isRegenerating === 'moodboard'}
-                                className="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                                className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                             >
-                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                <SparklesIcon className="w-5 h-5 mr-2" />
                                 {isRegenerating === 'moodboard' ? 'Generating...' : 'New Images (4 Credits)'}
                             </button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {project.moodboard.map((imageUrl, index) => (
-                                <div key={index} className="aspect-square rounded-lg overflow-hidden border border-gray-600">
-                                    <img 
-                                        src={imageUrl} 
-                                        alt={`Moodboard ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
+                                <div 
+                                    key={index} 
+                                    className="relative group cursor-pointer"
+                                    onClick={() => {
+                                        setSelectedMoodboardImage(index);
+                                        // Regenerate this specific image
+                                        regenerateContent('moodboard', index);
+                                    }}
+                                >
+                                    <div className="aspect-square rounded-xl overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg">
+                                        <img 
+                                            src={imageUrl} 
+                                            alt={`Moodboard ${index + 1}`}
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                            <div className="text-center">
+                                                <SparklesIcon className="w-6 h-6 text-white mx-auto mb-1" />
+                                                <span className="text-white text-sm font-semibold">Click to Regenerate</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center border border-gray-600">
+                                        <span className="text-gray-300 text-xs font-bold">{index + 1}</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
+                        
+                        <div className="mt-6 p-4 bg-gradient-to-r from-pink-500/10 to-rose-500/10 rounded-xl border border-pink-500/30">
+                            <div className="flex items-center gap-2">
+                                <span className="text-pink-400">💡</span>
+                                <span className="text-gray-300 text-sm">
+                                    <strong>Pro Tip:</strong> These images help AI understand your visual style. Choose images that match your brand and content tone.
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 )}
-            </div>
 
-            {/* Main Action Button - Compact */}
-            <div className="text-center pt-6">
-                <button 
-                    onClick={handleSaveAndContinue}
-                    disabled={isSaving}
-                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
-                >
-                    <SparklesIcon className="w-6 h-6 mr-3" />
-                    {isSaving ? 'Saving...' : 'Save & Continue to Studio →'}
-                </button>
-            </div>
-
-            {/* Footer Navigation - Compact */}
-            <div className="flex justify-between items-center pt-4">
-                <button 
-                    onClick={onBack}
-                    className="inline-flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
-                >
-                    <span className="mr-2">←</span>
-                    Back
-                </button>
-                
-                <div className="flex items-center gap-2 text-gray-400">
-                    <span className="text-sm">Stage 3 of 6</span>
-                    <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5, 6].map((step) => (
-                            <div
-                                key={step}
-                                className={`w-2 h-2 rounded-full ${
-                                    step <= 3 ? 'bg-indigo-600' : 'bg-gray-600'
-                                }`}
-                            />
-                        ))}
+                {/* Professional Action Section */}
+                <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 shadow-2xl">
+                    <div className="text-center space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-2">Ready to Create Your Video?</h2>
+                            <p className="text-gray-300">Your blueprint is ready! Click below to proceed to the Creative Studio.</p>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                            <button 
+                                onClick={onBack}
+                                className="inline-flex items-center justify-center px-8 py-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            >
+                                <span className="mr-2">←</span>
+                                Back to Blueprint
+                            </button>
+                            
+                            <button 
+                                onClick={handleSaveAndContinue}
+                                disabled={isSaving}
+                                className="inline-flex items-center justify-center px-12 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                            >
+                                <SparklesIcon className="w-6 h-6 mr-3" />
+                                {isSaving ? 'Saving...' : 'Continue to Creative Studio →'}
+                            </button>
+                        </div>
+                        
+                        {/* Progress Summary */}
+                        <div className="flex justify-center">
+                            <div className="flex items-center space-x-4 bg-gray-700/50 rounded-xl px-6 py-3 border border-gray-600">
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-xs">✓</span>
+                                    </div>
+                                    <span className="text-emerald-400 font-semibold text-sm">Blueprint Complete</span>
+                                </div>
+                                <div className="w-px h-4 bg-gray-600"></div>
+                                <div className="text-gray-400 text-sm">
+                                    Stage 3 of 6 • Ready for Creative Studio
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
