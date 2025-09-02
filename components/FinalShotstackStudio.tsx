@@ -20,6 +20,7 @@ interface ShotstackEdit {
 
 const FinalShotstackStudio: React.FC = () => {
   console.log('🎬 FinalShotstackStudio component loaded!');
+  console.log('🚀 FINAL SHOTSTACK STUDIO V2.0 - THIS IS THE NEW COMPONENT!');
   
   const canvasHost = useRef<HTMLDivElement>(null);
   const timelineHost = useRef<HTMLDivElement>(null);
@@ -289,7 +290,7 @@ const FinalShotstackStudio: React.FC = () => {
             🎬
           </div>
           <h1 style={{ color: 'white', margin: 0, fontSize: '18px', fontWeight: '600' }}>
-            Final Shotstack Studio
+            Final Shotstack Studio v2.0
           </h1>
         </div>
         <button
