@@ -150,49 +150,32 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       await waitForHosts();
       console.log('✅ DOM elements ready');
 
-      // 1. Load template from URL (working approach)
-      console.log('🔧 Loading template from URL...');
-      const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-      
-      let template: ShotstackEdit;
-      
-      try {
-        const response = await fetch(templateUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch template: ${response.status}`);
+      // 1. Use working template with accessible video
+      console.log('🔧 Creating working template...');
+      const template: ShotstackEdit = {
+        timeline: {
+          tracks: [
+            {
+              clips: [
+                {
+                  asset: {
+                    type: 'video',
+                    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                  },
+                  start: 0,
+                  length: 10
+                }
+              ]
+            }
+          ]
+        },
+        output: {
+          format: 'mp4',
+          resolution: 'hd',
+          size: { width: 1280, height: 720 }
         }
-        template = await response.json();
-        console.log('✅ Template loaded from URL:', template);
-      } catch (fetchError) {
-        console.error('❌ Template fetch failed:', fetchError);
-        console.log('🔧 Using fallback template...');
-        
-        // Fallback template
-        template = {
-          timeline: {
-            tracks: [
-              {
-                clips: [
-                  {
-                    asset: {
-                      type: 'video',
-                      src: 'https://shotstack-assets.s3.amazonaws.com/hello-world/earth.mp4'
-                    },
-                    start: 0,
-                    length: 5
-                  }
-                ]
-              }
-            ]
-          },
-          output: {
-            format: 'mp4',
-            resolution: 'hd',
-            size: { width: 1280, height: 720 }
-          }
-        };
-        console.log('✅ Fallback template created');
-      }
+      };
+      console.log('✅ Working template created');
 
       // 2. Initialize the edit with dimensions and background color - EXACTLY like official docs
       console.log('🔧 Creating Edit component...');
