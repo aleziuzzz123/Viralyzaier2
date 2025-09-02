@@ -29,6 +29,66 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   console.log('⏰ TIMESTAMP: ' + new Date().toISOString());
   console.log('📋 Project data received:', project);
   
+  // COMPREHENSIVE PROJECT DATA DEBUGGING
+  if (project) {
+    console.log('🔍 DETAILED PROJECT DATA ANALYSIS:');
+    console.log('📊 Project ID:', project.id);
+    console.log('📊 Project Name:', project.name);
+    console.log('📊 Workflow Step:', project.workflowStep);
+    console.log('📊 Project Status:', project.status);
+    
+    // Script Analysis
+    console.log('📝 SCRIPT ANALYSIS:');
+    console.log('📝 Script exists:', !!project.script);
+    if (project.script) {
+      console.log('📝 Script scenes count:', project.script.scenes?.length || 0);
+      console.log('📝 Script scenes:', project.script.scenes);
+      console.log('📝 Script hooks:', project.script.hooks);
+      console.log('📝 Script CTA:', project.script.cta);
+    }
+    
+    // Voiceover Analysis
+    console.log('🎤 VOICEOVER ANALYSIS:');
+    console.log('🎤 Voiceover URLs exist:', !!project.voiceoverUrls);
+    if (project.voiceoverUrls) {
+      console.log('🎤 Voiceover URLs count:', Object.keys(project.voiceoverUrls).length);
+      console.log('🎤 Voiceover URLs:', project.voiceoverUrls);
+    }
+    
+    // Moodboard Analysis
+    console.log('🖼️ MOODBOARD ANALYSIS:');
+    console.log('🖼️ Moodboard exists:', !!project.moodboard);
+    if (project.moodboard) {
+      console.log('🖼️ Moodboard count:', project.moodboard.length);
+      console.log('🖼️ Moodboard URLs:', project.moodboard);
+    }
+    
+    // Assets Analysis
+    console.log('🎬 ASSETS ANALYSIS:');
+    console.log('🎬 Assets exist:', !!project.assets);
+    if (project.assets) {
+      console.log('🎬 Assets keys:', Object.keys(project.assets));
+      console.log('🎬 Assets count:', Object.keys(project.assets).length);
+      Object.entries(project.assets).forEach(([key, sceneAssets], index) => {
+        console.log(`🎬 Scene ${index + 1} (${key}):`, sceneAssets);
+        console.log(`🎬 Scene ${index + 1} visualUrl:`, sceneAssets.visualUrl);
+        console.log(`🎬 Scene ${index + 1} voiceoverUrl:`, sceneAssets.voiceoverUrl);
+      });
+    }
+    
+    // Other Project Data
+    console.log('📊 OTHER PROJECT DATA:');
+    console.log('📊 Title:', project.title);
+    console.log('📊 Platform:', project.platform);
+    console.log('📊 Video Size:', project.videoSize);
+    console.log('📊 Analysis:', project.analysis);
+    console.log('📊 Competitor Analysis:', project.competitorAnalysis);
+    console.log('📊 Sound Design:', project.soundDesign);
+    console.log('📊 Launch Plan:', project.launchPlan);
+  } else {
+    console.log('⚠️ NO PROJECT DATA RECEIVED!');
+  }
+  
   const canvasHost = useRef<HTMLDivElement>(null);
   const timelineHost = useRef<HTMLDivElement>(null);
   
@@ -50,7 +110,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
   // Load project assets into the editor after it's initialized
   const loadProjectAssets = async (edit: any, projectData: Project) => {
+    console.log('🎨 ===== STARTING ASSET LOADING PROCESS =====');
     console.log('🎨 Loading ONLY your blueprint assets into editor:', projectData);
+    console.log('🎨 Edit instance:', edit);
     
     try {
       // Create a new edit with your blueprint assets
@@ -66,17 +128,34 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           size: { width: 1280, height: 720 }
         }
       };
+      
+      console.log('🔧 New edit structure created:', newEdit);
 
       // Add your script as text overlay
+      console.log('📝 ===== SCRIPT LOADING SECTION =====');
+      console.log('📝 Script exists:', !!projectData.script);
+      console.log('📝 Script scenes exist:', !!(projectData.script && projectData.script.scenes));
+      console.log('📝 Script scenes length:', projectData.script?.scenes?.length || 0);
+      
       if (projectData.script && projectData.script.scenes && projectData.script.scenes.length > 0) {
         console.log('📝 Adding your script scenes as text overlays...');
+        let scriptTracksAdded = 0;
+        
         projectData.script.scenes.forEach((scene, index) => {
+          console.log(`📝 Processing scene ${index + 1}:`, scene);
+          console.log(`📝 Scene visual:`, scene.visual);
+          console.log(`📝 Scene onScreenText:`, scene.onScreenText);
+          console.log(`📝 Scene voiceover:`, scene.voiceover);
+          
           if (scene.visual || scene.onScreenText) {
+            const textContent = scene.onScreenText || scene.visual;
+            console.log(`📝 Adding text track for scene ${index + 1} with content:`, textContent);
+            
             newEdit.timeline.tracks.push({
               clips: [{
                 asset: {
                   type: 'text',
-                  text: scene.onScreenText || scene.visual,
+                  text: textContent,
                   font: {
                     family: 'Clear Sans',
                     size: 48,
@@ -97,52 +176,105 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 length: 3
               }]
             });
+            scriptTracksAdded++;
+            console.log(`📝 ✅ Script track ${scriptTracksAdded} added for scene ${index + 1}`);
+          } else {
+            console.log(`📝 ⚠️ Scene ${index + 1} has no visual or onScreenText, skipping`);
           }
         });
-        console.log('✅ Script scenes added as text overlays');
+        console.log(`📝 ✅ Total script tracks added: ${scriptTracksAdded}`);
+      } else {
+        console.log('📝 ⚠️ No script scenes found to add');
       }
 
       // Add your voiceover as audio track
+      console.log('🎤 ===== VOICEOVER LOADING SECTION =====');
+      console.log('🎤 Voiceover URLs exist:', !!projectData.voiceoverUrls);
+      console.log('🎤 Voiceover URLs:', projectData.voiceoverUrls);
+      
       if (projectData.voiceoverUrls && Object.keys(projectData.voiceoverUrls).length > 0) {
         console.log('🎤 Adding your voiceover...');
-        const firstVoiceover = Object.values(projectData.voiceoverUrls)[0];
-        newEdit.timeline.tracks.push({
-          clips: [{
-            asset: {
-              type: 'audio',
-              src: firstVoiceover
-            },
-            start: 0,
-            length: 10
-          }]
+        const voiceoverEntries = Object.entries(projectData.voiceoverUrls);
+        console.log('🎤 Voiceover entries:', voiceoverEntries);
+        
+        voiceoverEntries.forEach(([key, url], index) => {
+          console.log(`🎤 Processing voiceover ${index + 1} (${key}):`, url);
+          
+          if (url && typeof url === 'string') {
+            newEdit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: 'audio',
+                  src: url
+                },
+                start: index * 10, // Stagger voiceovers
+                length: 10
+              }]
+            });
+            console.log(`🎤 ✅ Voiceover track ${index + 1} added:`, url);
+          } else {
+            console.log(`🎤 ⚠️ Invalid voiceover URL for ${key}:`, url);
+          }
         });
-        console.log('✅ Voiceover added:', firstVoiceover);
+        console.log(`🎤 ✅ Total voiceover tracks added: ${voiceoverEntries.length}`);
+      } else {
+        console.log('🎤 ⚠️ No voiceover URLs found to add');
       }
 
       // Add your moodboards as image assets
+      console.log('🖼️ ===== MOODBOARD LOADING SECTION =====');
+      console.log('🖼️ Moodboard exists:', !!projectData.moodboard);
+      console.log('🖼️ Moodboard is array:', Array.isArray(projectData.moodboard));
+      console.log('🖼️ Moodboard length:', projectData.moodboard?.length || 0);
+      console.log('🖼️ Moodboard content:', projectData.moodboard);
+      
       if (projectData.moodboard && Array.isArray(projectData.moodboard)) {
         console.log('🖼️ Adding your moodboards...');
+        let moodboardTracksAdded = 0;
+        
         projectData.moodboard.forEach((moodboard, index) => {
-          newEdit.timeline.tracks.push({
-            clips: [{
-              asset: {
-                type: 'image',
-                src: moodboard
-              },
-              start: index * 2, // Stagger them
-              length: 2,
-              fit: 'cover'
-            }]
-          });
+          console.log(`🖼️ Processing moodboard ${index + 1}:`, moodboard);
+          
+          if (moodboard && typeof moodboard === 'string') {
+            newEdit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: 'image',
+                  src: moodboard
+                },
+                start: index * 2, // Stagger them
+                length: 2,
+                fit: 'cover'
+              }]
+            });
+            moodboardTracksAdded++;
+            console.log(`🖼️ ✅ Moodboard track ${moodboardTracksAdded} added:`, moodboard);
+          } else {
+            console.log(`🖼️ ⚠️ Invalid moodboard URL at index ${index}:`, moodboard);
+          }
         });
-        console.log('✅ Moodboards added:', projectData.moodboard.length);
+        console.log(`🖼️ ✅ Total moodboard tracks added: ${moodboardTracksAdded}`);
+      } else {
+        console.log('🖼️ ⚠️ No moodboard found to add');
       }
 
       // Add assets from the assets object
+      console.log('🎬 ===== SCENE ASSETS LOADING SECTION =====');
+      console.log('🎬 Assets exist:', !!projectData.assets);
+      console.log('🎬 Assets keys:', projectData.assets ? Object.keys(projectData.assets) : 'None');
+      console.log('🎬 Assets count:', projectData.assets ? Object.keys(projectData.assets).length : 0);
+      console.log('🎬 Assets content:', projectData.assets);
+      
       if (projectData.assets && Object.keys(projectData.assets).length > 0) {
         console.log('🎬 Adding scene assets...');
-        Object.values(projectData.assets).forEach((sceneAssets, index) => {
-          if (sceneAssets.visualUrl) {
+        let sceneAssetsTracksAdded = 0;
+        
+        Object.entries(projectData.assets).forEach(([key, sceneAssets], index) => {
+          console.log(`🎬 Processing scene assets ${index + 1} (${key}):`, sceneAssets);
+          console.log(`🎬 Scene visualUrl:`, sceneAssets.visualUrl);
+          console.log(`🎬 Scene voiceoverUrl:`, sceneAssets.voiceoverUrl);
+          
+          if (sceneAssets.visualUrl && typeof sceneAssets.visualUrl === 'string') {
             newEdit.timeline.tracks.push({
               clips: [{
                 asset: {
@@ -154,8 +286,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 fit: 'cover'
               }]
             });
+            sceneAssetsTracksAdded++;
+            console.log(`🎬 ✅ Visual track ${sceneAssetsTracksAdded} added:`, sceneAssets.visualUrl);
+          } else {
+            console.log(`🎬 ⚠️ Invalid visualUrl for scene ${key}:`, sceneAssets.visualUrl);
           }
-          if (sceneAssets.voiceoverUrl) {
+          
+          if (sceneAssets.voiceoverUrl && typeof sceneAssets.voiceoverUrl === 'string') {
             newEdit.timeline.tracks.push({
               clips: [{
                 asset: {
@@ -166,13 +303,24 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 length: 5
               }]
             });
+            sceneAssetsTracksAdded++;
+            console.log(`🎬 ✅ Audio track ${sceneAssetsTracksAdded} added:`, sceneAssets.voiceoverUrl);
+          } else {
+            console.log(`🎬 ⚠️ Invalid voiceoverUrl for scene ${key}:`, sceneAssets.voiceoverUrl);
           }
         });
-        console.log('✅ Scene assets added');
+        console.log(`🎬 ✅ Total scene asset tracks added: ${sceneAssetsTracksAdded}`);
+      } else {
+        console.log('🎬 ⚠️ No scene assets found to add');
       }
 
+      // Check if we have any assets loaded
+      console.log('🔍 ===== ASSET LOADING SUMMARY =====');
+      console.log('🔍 Total tracks created:', newEdit.timeline.tracks.length);
+      console.log('🔍 Tracks structure:', newEdit.timeline.tracks);
+      
       // If no assets found, add a placeholder
-      if (!projectData.script?.scenes && !projectData.voiceoverUrls && !projectData.moodboard && !projectData.assets) {
+      if (newEdit.timeline.tracks.length === 0) {
         console.log('⚠️ No blueprint assets found, adding placeholder...');
         newEdit.timeline.tracks.push({
           clips: [{
@@ -199,20 +347,40 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             length: 5
           }]
         });
+        console.log('⚠️ Placeholder track added');
       }
 
       // Load the new edit with your assets
+      console.log('🔄 ===== LOADING EDIT INTO SHOTSTACK =====');
+      console.log('🔄 Final edit structure:', newEdit);
+      console.log('🔄 Edit instance:', edit);
+      console.log('🔄 Edit.loadEdit method exists:', typeof edit.loadEdit === 'function');
+      
       if (newEdit.timeline.tracks.length > 0) {
         console.log('🔄 Loading new edit with your blueprint assets...');
-        await edit.loadEdit(newEdit);
-        console.log('✅ Editor updated with your blueprint assets!');
+        try {
+          await edit.loadEdit(newEdit);
+          console.log('✅ Editor updated with your blueprint assets!');
+          console.log('✅ Edit loaded successfully into Shotstack');
+        } catch (loadError) {
+          console.error('❌ Error loading edit into Shotstack:', loadError);
+          throw loadError;
+        }
       } else {
         console.log('⚠️ No assets to load');
       }
 
+      console.log('🎉 ===== ASSET LOADING COMPLETE =====');
       console.log('🎉 Your blueprint assets loaded successfully!');
     } catch (error) {
+      console.error('❌ ===== ASSET LOADING ERROR =====');
       console.error('❌ Error loading your blueprint assets:', error);
+      console.error('❌ Error stack:', error.stack);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        cause: error.cause
+      });
     }
   };
 
@@ -395,6 +563,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       setIsLoading(false);
 
       // Load your project assets after editor is ready
+      console.log('📋 ===== PROJECT ASSET LOADING INITIATION =====');
       if (project) {
         console.log('📋 Loading your project assets:', project);
         console.log('📋 Project data details:', {
@@ -404,7 +573,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           assets: project.assets ? `${Object.keys(project.assets).length} scenes` : 'Missing',
           title: project.title || 'Missing'
         });
-        await loadProjectAssets(edit, project);
+        
+        console.log('📋 About to call loadProjectAssets...');
+        try {
+          await loadProjectAssets(edit, project);
+          console.log('📋 ✅ loadProjectAssets completed successfully');
+        } catch (assetError) {
+          console.error('📋 ❌ loadProjectAssets failed:', assetError);
+        }
       } else {
         console.log('⚠️ No project data received - cannot load blueprint assets');
       }
