@@ -21,20 +21,39 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
   };
 
   useEffect(() => {
+    if (initialized) return; // Prevent double initialization
+
     const initializeEditor = async () => {
       try {
         addLog('🚀 Starting Shotstack Studio initialization...');
+        setIsLoading(true);
+        setInitialized(true);
         
-        // Wait for DOM to be ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for DOM elements to be ready with proper dimensions
+        addLog('⏳ Waiting for DOM elements...');
+        for (let i = 0; i < 50; i++) {
+          if (canvasRef.current && timelineRef.current && 
+              canvasRef.current.clientWidth > 0 && timelineRef.current.clientWidth > 0) {
+            break;
+          }
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        }
         
         if (!canvasRef.current || !timelineRef.current) {
           throw new Error('DOM elements not ready');
         }
         
-        addLog('✅ DOM elements ready');
+        // Ensure elements have proper dimensions
+        if (!canvasRef.current.offsetHeight) {
+          canvasRef.current.style.minHeight = "400px";
+        }
+        if (!timelineRef.current.offsetHeight) {
+          timelineRef.current.style.minHeight = "300px";
+        }
         
-        // Create a simple template
+        addLog('✅ DOM elements ready with dimensions');
+        
+        // Create a valid template following Shotstack format
         const template = {
           timeline: {
             tracks: [
@@ -44,12 +63,17 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
                     asset: {
                       type: 'text',
                       text: 'Welcome to Shotstack Studio',
-                      style: 'future',
-                      color: '#ffffff',
-                      size: 'large'
+                      style: {
+                        fontFamily: 'Arial',
+                        fontSize: 48,
+                        fontWeight: 'bold',
+                        color: '#ffffff',
+                        textAlign: 'center'
+                      }
                     },
                     start: 0,
-                    length: 3
+                    length: 3,
+                    position: 'center'
                   }
                 ]
               }
@@ -62,68 +86,68 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
           }
         };
         
-        addLog('📄 Template created');
+        addLog('📄 Template created with valid structure');
         
-        // Create Edit instance
+        // 1. Initialize the edit with dimensions and background color (following official docs)
         addLog('🔧 Creating Edit instance...');
         const edit = new Edit(template.output.size, template.timeline.background);
         addLog('✅ Edit instance created');
         
-        // Load the edit
+        // 2. Load the edit
         addLog('⏳ Loading Edit...');
         await edit.load();
         addLog('✅ Edit loaded');
         
-        // Load template into edit
+        // 3. Create a canvas to display the edit (following official docs)
+        addLog('🎨 Creating Canvas...');
+        const canvas = new Canvas(template.output.size, edit);
+        await canvas.load(); // Renders to [data-shotstack-studio] element
+        addLog('✅ Canvas created and loaded');
+        
+        // 4. Load the template
         addLog('📄 Loading template into edit...');
         await edit.loadEdit(template);
         addLog('✅ Template loaded');
         
-        // Create Canvas
-        addLog('🎨 Creating Canvas...');
-        const canvas = new Canvas(edit, canvasRef.current);
-        await canvas.load();
-        addLog('✅ Canvas created and loaded');
-        
-        // Create Timeline
-        addLog('📊 Creating Timeline...');
-        const timeline = new Timeline(edit, timelineRef.current);
-        await timeline.load();
-        addLog('✅ Timeline created and loaded');
-        
-        // Create Controls
+        // 5. Add keyboard controls
         addLog('⌨️ Creating Controls...');
         const controls = new Controls(edit);
         await controls.load();
         addLog('✅ Controls created and loaded');
         
+        // 6. Add timeline for visual editing (following official docs)
+        addLog('📊 Creating Timeline...');
+        const timeline = new Timeline(edit, {
+          width: template.output.size.width,
+          height: 300
+        });
+        await timeline.load(); // Renders to [data-shotstack-timeline] element
+        addLog('✅ Timeline created and loaded');
+        
         // Set up event listeners
-        edit.events.on('play', () => {
-          addLog('▶️ Play event');
+        edit.events.on('clip:selected', (data: any) => {
+          addLog(`🎯 Clip selected: ${data.clipIndex} on track ${data.trackIndex}`);
         });
         
-        edit.events.on('pause', () => {
-          addLog('⏸️ Pause event');
-        });
-        
-        edit.events.on('stop', () => {
-          addLog('⏹️ Stop event');
+        edit.events.on('clip:updated', (data: any) => {
+          addLog(`✏️ Clip updated: ${data.clipIndex} on track ${data.trackIndex}`);
         });
         
         addLog('🎉 Shotstack Studio initialization complete!');
-        setInitialized(true);
         setIsLoading(false);
         
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         addLog(`❌ Initialization failed: ${errorMessage}`);
+        console.error('Full error details:', err);
         setError(errorMessage);
+        setInitialized(false); // Reset on error
         setIsLoading(false);
       }
     };
 
     initializeEditor();
-  }, [project]);
+  }, [initialized]);
 
   if (error) {
     return (
@@ -172,6 +196,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
             <h3 className="text-lg font-semibold mb-4">Canvas</h3>
             <div 
               ref={canvasRef}
+              data-shotstack-studio
               className="w-full h-full bg-black rounded border border-gray-600"
               style={{ minHeight: '400px' }}
             />
@@ -184,6 +209,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
             <h3 className="text-lg font-semibold mb-4">Timeline</h3>
             <div 
               ref={timelineRef}
+              data-shotstack-timeline
               className="w-full h-full bg-gray-700 rounded border border-gray-600"
               style={{ minHeight: '200px' }}
             />
