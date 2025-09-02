@@ -68,34 +68,38 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       };
 
       // Add your script as text overlay
-      if (projectData.script && projectData.script.content) {
-        console.log('📝 Adding your script as text overlay...');
-        newEdit.timeline.tracks.push({
-          clips: [{
-            asset: {
-              type: 'text',
-              text: projectData.script.content,
-              font: {
-                family: 'Clear Sans',
-                size: 48,
-                color: '#FFFFFF'
-              },
-              background: {
-                color: '#000000',
-                opacity: 0.7,
-                borderRadius: 10,
-                padding: 10
-              },
-              alignment: {
-                horizontal: 'center',
-                vertical: 'bottom'
-              }
-            },
-            start: 0,
-            length: 10
-          }]
+      if (projectData.script && projectData.script.scenes && projectData.script.scenes.length > 0) {
+        console.log('📝 Adding your script scenes as text overlays...');
+        projectData.script.scenes.forEach((scene, index) => {
+          if (scene.visual || scene.onScreenText) {
+            newEdit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: 'text',
+                  text: scene.onScreenText || scene.visual,
+                  font: {
+                    family: 'Clear Sans',
+                    size: 48,
+                    color: '#FFFFFF'
+                  },
+                  background: {
+                    color: '#000000',
+                    opacity: 0.7,
+                    borderRadius: 10,
+                    padding: 10
+                  },
+                  alignment: {
+                    horizontal: 'center',
+                    vertical: 'bottom'
+                  }
+                },
+                start: index * 3,
+                length: 3
+              }]
+            });
+          }
         });
-        console.log('✅ Script added as text overlay');
+        console.log('✅ Script scenes added as text overlays');
       }
 
       // Add your voiceover as audio track
@@ -138,16 +142,28 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       if (projectData.assets && Object.keys(projectData.assets).length > 0) {
         console.log('🎬 Adding scene assets...');
         Object.values(projectData.assets).forEach((sceneAssets, index) => {
-          if (sceneAssets.backgroundVideo) {
+          if (sceneAssets.visualUrl) {
             newEdit.timeline.tracks.push({
               clips: [{
                 asset: {
-                  type: 'video',
-                  src: sceneAssets.backgroundVideo
+                  type: 'image',
+                  src: sceneAssets.visualUrl
                 },
                 start: index * 5,
                 length: 5,
                 fit: 'cover'
+              }]
+            });
+          }
+          if (sceneAssets.voiceoverUrl) {
+            newEdit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: 'audio',
+                  src: sceneAssets.voiceoverUrl
+                },
+                start: index * 5,
+                length: 5
               }]
             });
           }
@@ -156,7 +172,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       }
 
       // If no assets found, add a placeholder
-      if (!projectData.script?.content && !projectData.voiceoverUrls && !projectData.moodboard && !projectData.assets) {
+      if (!projectData.script?.scenes && !projectData.voiceoverUrls && !projectData.moodboard && !projectData.assets) {
         console.log('⚠️ No blueprint assets found, adding placeholder...');
         newEdit.timeline.tracks.push({
           clips: [{
@@ -382,7 +398,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       if (project) {
         console.log('📋 Loading your project assets:', project);
         console.log('📋 Project data details:', {
-          script: project.script?.content ? 'Available' : 'Missing',
+          script: project.script?.scenes ? `${project.script.scenes.length} scenes` : 'Missing',
           voiceoverUrls: project.voiceoverUrls ? `${Object.keys(project.voiceoverUrls).length} files` : 'Missing',
           moodboard: project.moodboard ? `${project.moodboard.length} items` : 'Missing',
           assets: project.assets ? `${Object.keys(project.assets).length} scenes` : 'Missing',
@@ -558,9 +574,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         maxWidth: '100%', // Use full available width
         display: 'flex', 
         flexDirection: 'column',
-        padding: '20px', // Reduced padding to fit better
+        padding: '0', // Remove padding to prevent overlap
         gap: '20px',
-        margin: '0 auto' // Center with auto margins
+        margin: '0' // Remove margins to prevent overlap
       }}>
         {/* Professional Editor Toolbar - Matching App Theme */}
         {!isLoading && !error && (
@@ -647,7 +663,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
               {/* Right - Blueprint Status */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {project?.script?.content && (
+                {project?.script?.scenes && project.script.scenes.length > 0 && (
                   <span style={{ 
                     background: '#374151', // gray-700
                     color: '#D1D5DB', // gray-300
