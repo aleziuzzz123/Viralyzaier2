@@ -191,13 +191,45 @@ const FinalShotstackStudio: React.FC = () => {
 
       // 6. Add timeline for visual editing - EXACTLY like MinimalWorkingVideoEditor
       console.log('📊 Creating Timeline component...');
+      console.log('📊 Timeline host element:', timelineHost.current);
+      console.log('📊 Timeline host dimensions:', {
+        width: timelineHost.current?.clientWidth,
+        height: timelineHost.current?.clientHeight,
+        offsetWidth: timelineHost.current?.offsetWidth,
+        offsetHeight: timelineHost.current?.offsetHeight
+      });
+      
       const timelineWidth = timelineHost.current?.clientWidth || template.output.size.width;
+      console.log('📊 Using timeline width:', timelineWidth);
+      
       const timeline = new Timeline(edit, {
         width: timelineWidth,
         height: 300
       });
-      await timeline.load(); // Renders to [data-shotstack-timeline] element
-      console.log('✅ Timeline component loaded');
+      
+      console.log('📊 Timeline instance created:', timeline);
+      console.log('📊 About to load timeline...');
+      
+      try {
+        await timeline.load(); // Renders to [data-shotstack-timeline] element
+        console.log('✅ Timeline component loaded successfully');
+        console.log('📊 Timeline element after load:', document.querySelector('[data-shotstack-timeline]'));
+      } catch (timelineError) {
+        console.error('❌ Timeline loading failed:', timelineError);
+        console.log('📊 Attempting timeline retry after delay...');
+        
+        // Retry timeline loading after a short delay
+        setTimeout(async () => {
+          try {
+            console.log('📊 Retrying timeline load...');
+            await timeline.load();
+            console.log('✅ Timeline component loaded successfully on retry');
+          } catch (retryError) {
+            console.error('❌ Timeline retry also failed:', retryError);
+            // Continue without timeline - canvas should still work
+          }
+        }, 1000);
+      }
 
       // Set up event listeners - EXACTLY like MinimalWorkingVideoEditor
       edit.events.on("clip:selected", (data: any) => {
@@ -539,9 +571,23 @@ const FinalShotstackStudio: React.FC = () => {
             height: '300px',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             opacity: isLoading ? 0.3 : 1,
-            transition: 'opacity 0.3s ease'
+            transition: 'opacity 0.3s ease',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
-        />
+        >
+          {isLoading && (
+            <div style={{
+              color: 'white',
+              fontSize: '14px',
+              textAlign: 'center'
+            }}>
+              Loading Timeline...
+            </div>
+          )}
+        </div>
 
         {/* Success Message - Only show when loaded */}
         {!isLoading && !error && (
