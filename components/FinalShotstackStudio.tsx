@@ -388,16 +388,16 @@ const FinalShotstackStudio: React.FC = () => {
         </div>
       )}
 
-      {/* Main Editor */}
-      {!isLoading && !error && (
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column',
-          padding: '20px',
-          gap: '20px'
-        }}>
-          {/* Controls */}
+      {/* Main Editor - Always render DOM elements, even during loading */}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        padding: '20px',
+        gap: '20px'
+      }}>
+        {/* Controls - Only show when not loading */}
+        {!isLoading && !error && (
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -511,34 +511,40 @@ const FinalShotstackStudio: React.FC = () => {
               </span>
             </div>
           </div>
+        )}
 
-          {/* Canvas */}
-          <div
-            ref={canvasRefCallback}
-            data-shotstack-studio
-            style={{
-              width: '100%',
-              backgroundColor: '#000',
-              borderRadius: '8px',
-              minHeight: '60vh',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          />
+        {/* Canvas - Always render for ref callbacks */}
+        <div
+          ref={canvasRefCallback}
+          data-shotstack-studio
+          style={{
+            width: '100%',
+            backgroundColor: '#000',
+            borderRadius: '8px',
+            minHeight: '60vh',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            opacity: isLoading ? 0.3 : 1,
+            transition: 'opacity 0.3s ease'
+          }}
+        />
 
-          {/* Timeline */}
-          <div
-            ref={timelineRefCallback}
-            data-shotstack-timeline
-            style={{
-              width: '100%',
-              backgroundColor: '#1f2937',
-              borderRadius: '8px',
-              height: '300px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
-          />
+        {/* Timeline - Always render for ref callbacks */}
+        <div
+          ref={timelineRefCallback}
+          data-shotstack-timeline
+          style={{
+            width: '100%',
+            backgroundColor: '#1f2937',
+            borderRadius: '8px',
+            height: '300px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            opacity: isLoading ? 0.3 : 1,
+            transition: 'opacity 0.3s ease'
+          }}
+        />
 
-          {/* Success Message */}
+        {/* Success Message - Only show when loaded */}
+        {!isLoading && !error && (
           <div style={{
             background: '#10b981',
             color: 'white',
@@ -551,8 +557,8 @@ const FinalShotstackStudio: React.FC = () => {
               The video editor is now ready. You can interact with the canvas and timeline above.
             </p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <style>{`
         @keyframes spin {
