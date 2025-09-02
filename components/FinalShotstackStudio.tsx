@@ -4,6 +4,39 @@ import { Project, ShotstackEditJson } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { useAppContext } from '../contexts/AppContext';
 import KeyboardShortcuts from './KeyboardShortcuts';
+import { 
+  VideoCameraIcon, 
+  FilmIcon, 
+  MicrophoneIcon, 
+  ImageIcon, 
+  DocumentTextIcon, 
+  CubeIcon, 
+  ArrowDownTrayIcon, 
+  Cog6ToothIcon, 
+  BeakerIcon,
+  AutopilotIcon,
+  IdeaIcon,
+  ScriptingIcon,
+  RenderingIcon,
+  ScheduledIcon,
+  PublishedIcon,
+  FailedIcon
+} from './Icons';
+
+// Dashboard Theme Colors - Exact match with your dashboard
+const DASHBOARD_COLORS = {
+  autopilot: '#4B0082',    // Dark purple
+  idea: '#34495E',         // Dark blue
+  scripting: '#8B4513',    // Dark orange/brown
+  rendering: '#8B008B',    // Dark pink/magenta
+  scheduled: '#008B8B',    // Dark blue/teal
+  published: '#2F4F4F',    // Dark forest green
+  failed: '#8B0000',       // Dark red
+  background: '#1A1A2E',   // Main dark background
+  card: '#2C2C3E',         // Card background
+  text: '#FFFFFF',         // White text
+  textSecondary: '#A0A0A0' // Light gray text
+};
 
 // Utility function for debouncing
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
@@ -1019,7 +1052,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   }
 
   return (
-    <div className="w-full h-full bg-gray-900 flex flex-col animate-fade-in-up">
+    <div className="w-full h-full flex flex-col animate-fade-in-up" style={{ backgroundColor: DASHBOARD_COLORS.background }}>
       <KeyboardShortcuts 
         onPlay={() => {
           if (editRef.current) {
@@ -1053,31 +1086,46 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       <div className="w-full max-w-full flex flex-col space-y-6">
         {/* Video Rendering Progress */}
         {isRendering && (
-          <div className="bg-gray-800/90 border border-emerald-500/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+          <div 
+            className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2"
+            style={{ 
+              backgroundColor: DASHBOARD_COLORS.card,
+              borderColor: DASHBOARD_COLORS.rendering
+            }}
+          >
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center space-x-3">
-                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                <h3 className="text-xl font-bold text-white">Rendering Your Video</h3>
+                <RenderingIcon className="w-8 h-8 animate-spin" style={{ color: DASHBOARD_COLORS.rendering }} />
+                <h3 className="text-xl font-bold" style={{ color: DASHBOARD_COLORS.text }}>Rendering Your Video</h3>
               </div>
-              <p className="text-gray-300">{renderStatus}</p>
+              <p style={{ color: DASHBOARD_COLORS.textSecondary }}>{renderStatus}</p>
               {renderProgress && (
-                <div className="w-full bg-gray-700 rounded-full h-3">
+                <div className="w-full rounded-full h-3" style={{ backgroundColor: DASHBOARD_COLORS.background }}>
                   <div 
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${renderProgress.current}%` }}
+                    className="h-3 rounded-full transition-all duration-500"
+                    style={{ 
+                      width: `${renderProgress.current}%`,
+                      backgroundColor: DASHBOARD_COLORS.rendering
+                    }}
                   ></div>
                 </div>
               )}
-              <p className="text-sm text-gray-400">
+              <p className="text-sm" style={{ color: DASHBOARD_COLORS.textSecondary }}>
                 This may take a few minutes. You can continue editing while your video renders.
               </p>
             </div>
           </div>
         )}
 
-        {/* Professional Editor Toolbar - Matching App Theme */}
+        {/* Professional Editor Toolbar - Matching Dashboard Theme */}
         {!isLoading && !error && (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+          <div 
+            className="rounded-2xl p-6 backdrop-blur-sm shadow-2xl border-2"
+            style={{ 
+              backgroundColor: DASHBOARD_COLORS.card,
+              borderColor: DASHBOARD_COLORS.scripting
+            }}
+          >
             {/* Top Row - Playback Controls & Status */}
             <div className="flex justify-between items-center mb-6">
               {/* Left - Enhanced Playback Controls */}
@@ -1091,24 +1139,22 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                       editRef.current?.play();
                     }
                   }}
-                  className={`inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold text-white transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg min-w-[140px] ${
-                    isPlaying 
-                      ? 'bg-red-500 hover:bg-red-600 shadow-red-500/25' 
-                      : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'
-                  }`}
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold text-white transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg min-w-[140px]"
+                  style={{ 
+                    backgroundColor: isPlaying ? DASHBOARD_COLORS.failed : DASHBOARD_COLORS.idea
+                  }}
                 >
-                  <span className="text-xl mr-2">
-                    {isPlaying ? '⏸️' : '▶️'}
-                  </span>
+                  <VideoCameraIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
                   {isPlaying ? 'Pause' : 'Play'}
                 </button>
                 
                 {/* Stop Button - Enhanced */}
                 <button
                   onClick={() => editRef.current?.stop()}
-                  className="inline-flex items-center justify-center px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                  className="inline-flex items-center justify-center px-4 py-3 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                  style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
                 >
-                  <span className="text-xl mr-2">⏹️</span>
+                  <FilmIcon className="w-5 h-5 mr-2" style={{ color: DASHBOARD_COLORS.text }} />
                   Stop
                 </button>
                 
@@ -1116,19 +1162,34 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
                 
                 {/* Time Display - Enhanced */}
-                <div className="flex items-center space-x-4 bg-gray-800/80 px-4 py-3 rounded-xl border border-gray-700">
+                <div 
+                  className="flex items-center space-x-4 px-4 py-3 rounded-xl border-2"
+                  style={{ 
+                    backgroundColor: DASHBOARD_COLORS.background,
+                    borderColor: DASHBOARD_COLORS.scripting
+                  }}
+                >
                   <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'}`}></div>
-                    <span className={`text-sm font-bold ${isPlaying ? 'text-emerald-400' : 'text-gray-400'}`}>
+                    <div 
+                      className="w-2 h-2 rounded-full"
+                      style={{ 
+                        backgroundColor: isPlaying ? DASHBOARD_COLORS.published : DASHBOARD_COLORS.textSecondary,
+                        animation: isPlaying ? 'pulse 2s infinite' : 'none'
+                      }}
+                    ></div>
+                    <span 
+                      className="text-sm font-bold"
+                      style={{ color: isPlaying ? DASHBOARD_COLORS.published : DASHBOARD_COLORS.textSecondary }}
+                    >
                       {isPlaying ? 'PLAYING' : 'READY'}
                     </span>
                   </div>
                   
                   <div className="flex items-center space-x-2 font-mono text-sm">
-                    <span className="text-indigo-400">⏱️</span>
-                    <span className="text-white">{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
-                    <span className="text-gray-500">/</span>
-                    <span className="text-gray-400">{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
+                    <Cog6ToothIcon className="w-4 h-4" style={{ color: DASHBOARD_COLORS.idea }} />
+                    <span style={{ color: DASHBOARD_COLORS.text }}>{Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
+                    <span style={{ color: DASHBOARD_COLORS.textSecondary }}>/</span>
+                    <span style={{ color: DASHBOARD_COLORS.textSecondary }}>{Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
                   </div>
                 </div>
               </div>
@@ -1136,30 +1197,68 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
               {/* Right - Blueprint Status */}
               <div className="flex items-center space-x-2">
                 {project?.script?.scenes && project.script.scenes.length > 0 && (
-                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
-                    📝 Script
+                  <span 
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
+                    style={{ 
+                      backgroundColor: DASHBOARD_COLORS.scripting,
+                      color: DASHBOARD_COLORS.text,
+                      borderColor: DASHBOARD_COLORS.scripting
+                    }}
+                  >
+                    <DocumentTextIcon className="w-3 h-3 mr-1" />
+                    Script
                   </span>
                 )}
                 {project?.voiceoverUrls && Object.keys(project.voiceoverUrls).length > 0 && (
-                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
-                    🎤 Voice
+                  <span 
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
+                    style={{ 
+                      backgroundColor: DASHBOARD_COLORS.autopilot,
+                      color: DASHBOARD_COLORS.text,
+                      borderColor: DASHBOARD_COLORS.autopilot
+                    }}
+                  >
+                    <MicrophoneIcon className="w-3 h-3 mr-1" />
+                    Voice
                   </span>
                 )}
                 {project?.assets && Object.keys(project.assets).length > 0 && (
-                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
-                    🎬 Assets
+                  <span 
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
+                    style={{ 
+                      backgroundColor: DASHBOARD_COLORS.rendering,
+                      color: DASHBOARD_COLORS.text,
+                      borderColor: DASHBOARD_COLORS.rendering
+                    }}
+                  >
+                    <VideoCameraIcon className="w-3 h-3 mr-1" />
+                    Assets
                   </span>
                 )}
                 {project?.moodboard && project.moodboard.length > 0 && (
-                  <span className="inline-flex items-center px-3 py-1 bg-gray-700 text-gray-300 text-xs font-medium rounded-full border border-gray-600">
-                    🖼️ {project.moodboard.length} Images
+                  <span 
+                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border-2"
+                    style={{ 
+                      backgroundColor: DASHBOARD_COLORS.published,
+                      color: DASHBOARD_COLORS.text,
+                      borderColor: DASHBOARD_COLORS.published
+                    }}
+                  >
+                    <ImageIcon className="w-3 h-3 mr-1" />
+                    {project.moodboard.length} Images
                   </span>
                 )}
               </div>
             </div>
 
             {/* Middle Row - Timeline Controls */}
-            <div className="flex justify-between items-center mb-6 p-4 bg-gray-800/60 rounded-xl border border-gray-700">
+            <div 
+              className="flex justify-between items-center mb-6 p-4 rounded-xl border-2"
+              style={{ 
+                backgroundColor: DASHBOARD_COLORS.background,
+                borderColor: DASHBOARD_COLORS.idea
+              }}
+            >
               {/* Left - Timeline Navigation */}
               <div className="flex items-center space-x-3">
                 <span className="text-gray-300 text-sm font-medium">Timeline:</span>
@@ -1339,9 +1438,11 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={addSampleClip}
-                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                    className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                    style={{ backgroundColor: DASHBOARD_COLORS.scheduled }}
                   >
-                    🎬 Sample
+                    <BeakerIcon className="w-4 h-4 mr-2 inline" />
+                    Sample
                   </button>
                   <button
                     onClick={() => {
@@ -1349,20 +1450,33 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                         editRef.current.clearTracks();
                       }
                     }}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                    className="px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                    style={{ backgroundColor: DASHBOARD_COLORS.failed }}
                   >
-                    🗑️ Clear
+                    <FailedIcon className="w-4 h-4 mr-2 inline" />
+                    Clear
                   </button>
                   <button
                     onClick={handleVideoRender}
                     disabled={isRendering}
                     className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg ${
-                      isRendering 
-                        ? 'bg-gray-600 cursor-not-allowed' 
-                        : 'bg-emerald-600 hover:bg-emerald-700'
+                      isRendering ? 'cursor-not-allowed' : ''
                     }`}
+                    style={{ 
+                      backgroundColor: isRendering ? DASHBOARD_COLORS.textSecondary : DASHBOARD_COLORS.published
+                    }}
                   >
-                    {isRendering ? '🎬 Rendering...' : '📤 Export Video'}
+                    {isRendering ? (
+                      <>
+                        <RenderingIcon className="w-4 h-4 mr-2 inline animate-spin" />
+                        Rendering...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDownTrayIcon className="w-4 h-4 mr-2 inline" />
+                        Export Video
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => {
@@ -1406,9 +1520,18 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           
           {/* Canvas Overlay Info */}
           {!isLoading && (
-            <div className="absolute top-4 left-4 bg-gray-800/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700">
-              <div className="flex items-center space-x-2 text-sm text-gray-300">
-                <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
+            <div 
+              className="absolute top-4 left-4 backdrop-blur-sm px-4 py-2 rounded-xl border-2"
+              style={{ 
+                backgroundColor: DASHBOARD_COLORS.card,
+                borderColor: DASHBOARD_COLORS.published
+              }}
+            >
+              <div className="flex items-center space-x-2 text-sm" style={{ color: DASHBOARD_COLORS.text }}>
+                <div 
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: DASHBOARD_COLORS.published }}
+                ></div>
                 <span>Video Canvas Ready</span>
               </div>
             </div>
@@ -1416,37 +1539,77 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         </div>
 
         {/* Enhanced Timeline Container */}
-        <div className="w-full bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-2 border-gray-700 shadow-2xl overflow-hidden relative">
+        <div 
+          className="w-full rounded-2xl border-2 shadow-2xl overflow-hidden relative"
+          style={{ 
+            backgroundColor: DASHBOARD_COLORS.card,
+            borderColor: DASHBOARD_COLORS.rendering
+          }}
+        >
           {/* Timeline Header */}
-          <div className="bg-gradient-to-r from-gray-700 to-gray-600 px-6 py-4 border-b border-gray-600 flex justify-between items-center">
+          <div 
+            className="px-6 py-4 border-b-2 flex justify-between items-center"
+            style={{ 
+              backgroundColor: DASHBOARD_COLORS.background,
+              borderColor: DASHBOARD_COLORS.rendering
+            }}
+          >
             <div className="flex items-center space-x-4">
-              <h3 className="text-white text-lg font-bold flex items-center space-x-2">
-                <span>🎬</span>
+              <h3 className="text-lg font-bold flex items-center space-x-2" style={{ color: DASHBOARD_COLORS.text }}>
+                <FilmIcon className="w-5 h-5" style={{ color: DASHBOARD_COLORS.rendering }} />
                 <span>Timeline</span>
               </h3>
-              <div className="bg-gray-800/50 text-gray-300 px-3 py-1 rounded-lg text-sm font-medium border border-gray-600 flex items-center space-x-2">
+              <div 
+                className="px-3 py-1 rounded-lg text-sm font-medium border-2 flex items-center space-x-2"
+                style={{ 
+                  backgroundColor: DASHBOARD_COLORS.card,
+                  color: DASHBOARD_COLORS.text,
+                  borderColor: DASHBOARD_COLORS.scripting
+                }}
+              >
                 <span>Zoom:</span>
-                <span className="text-emerald-400 font-semibold">{Math.round(timelineZoom * 100)}%</span>
+                <span className="font-semibold" style={{ color: DASHBOARD_COLORS.published }}>{Math.round(timelineZoom * 100)}%</span>
               </div>
             </div>
             
             <div className="flex items-center space-x-3">
-              <span className="text-gray-300 text-sm">Assets:</span>
-              <span className="inline-flex items-center px-3 py-1 bg-emerald-500/20 text-emerald-400 text-sm font-semibold rounded-full border border-emerald-500/30">
+              <span className="text-sm" style={{ color: DASHBOARD_COLORS.textSecondary }}>Assets:</span>
+              <span 
+                className="inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border-2"
+                style={{ 
+                  backgroundColor: DASHBOARD_COLORS.published + '20',
+                  color: DASHBOARD_COLORS.published,
+                  borderColor: DASHBOARD_COLORS.published + '30'
+                }}
+              >
                 {loadedAssetsCount} loaded
               </span>
             </div>
           </div>
           
           {/* Timeline Ruler */}
-          <div className="bg-gray-900 px-6 py-3 border-b border-gray-700 flex items-center space-x-5 font-mono text-xs text-gray-400">
-            <span className="text-indigo-400 font-semibold">⏱️ Time Ruler:</span>
+          <div 
+            className="px-6 py-3 border-b-2 flex items-center space-x-5 font-mono text-xs"
+            style={{ 
+              backgroundColor: DASHBOARD_COLORS.background,
+              borderColor: DASHBOARD_COLORS.rendering,
+              color: DASHBOARD_COLORS.textSecondary
+            }}
+          >
+            <span className="font-semibold flex items-center space-x-1" style={{ color: DASHBOARD_COLORS.idea }}>
+              <Cog6ToothIcon className="w-3 h-3" />
+              <span>Time Ruler:</span>
+            </span>
             {[0, 5, 10, 15, 20, 25, 30].map(time => (
-              <span key={time} className={`px-2 py-1 rounded ${
-                time === Math.floor(currentTime) 
-                  ? 'text-emerald-400 font-bold bg-emerald-500/20' 
-                  : 'text-gray-500 font-medium'
-              }`}>
+              <span 
+                key={time} 
+                className="px-2 py-1 rounded font-medium"
+                style={{
+                  color: time === Math.floor(currentTime) ? DASHBOARD_COLORS.published : DASHBOARD_COLORS.textSecondary,
+                  backgroundColor: time === Math.floor(currentTime) ? DASHBOARD_COLORS.published + '20' : 'transparent',
+                  fontWeight: time === Math.floor(currentTime) ? 'bold' : 'normal'
+                }}
+              >
                 {time}s
               </span>
             ))}
@@ -1456,14 +1619,14 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           <div
             ref={timelineRefCallback}
             data-shotstack-timeline
-            className={`w-full h-80 bg-gray-900 overflow-hidden relative flex items-center justify-center min-h-80 transition-all duration-300 ${
+            className={`w-full h-80 overflow-hidden relative flex items-center justify-center min-h-80 transition-all duration-300 ${
               isLoading ? 'opacity-30' : 'opacity-100'
             }`}
             style={{
               background: `
-                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%),
-                linear-gradient(0deg, transparent 0%, transparent 49%, rgba(55, 65, 81, 0.3) 50%, rgba(55, 65, 81, 0.3) 51%, transparent 52%, transparent 100%),
-                #111827
+                linear-gradient(90deg, transparent 0%, transparent 49%, rgba(52, 73, 94, 0.3) 50%, rgba(52, 73, 94, 0.3) 51%, transparent 52%, transparent 100%),
+                linear-gradient(0deg, transparent 0%, transparent 49%, rgba(52, 73, 94, 0.3) 50%, rgba(52, 73, 94, 0.3) 51%, transparent 52%, transparent 100%),
+                ${DASHBOARD_COLORS.background}
               `,
               backgroundSize: '40px 40px, 40px 40px, 100% 100%'
             }}
@@ -1476,8 +1639,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 top: '0',
                 bottom: '0',
                 width: '2px',
-                background: 'linear-gradient(to bottom, #EF4444, #DC2626)',
-                boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                background: `linear-gradient(to bottom, ${DASHBOARD_COLORS.idea}, ${DASHBOARD_COLORS.scripting})`,
+                boxShadow: `0 0 8px ${DASHBOARD_COLORS.idea}60`,
                 zIndex: 10,
                 transition: 'left 0.1s ease'
               }}>
@@ -1487,9 +1650,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                   left: '-6px',
                   width: '14px',
                   height: '14px',
-                  background: '#EF4444',
+                  background: DASHBOARD_COLORS.idea,
                   borderRadius: '50%',
-                  border: '2px solid #111827',
+                  border: `2px solid ${DASHBOARD_COLORS.background}`,
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)'
                 }}></div>
               </div>
@@ -1531,9 +1694,9 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <span style={{ fontSize: '18px' }}>🎬</span>
-                <span>Professional Timeline Ready</span>
-                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                <FilmIcon className="w-8 h-8" style={{ color: DASHBOARD_COLORS.rendering }} />
+                <span style={{ color: DASHBOARD_COLORS.text }}>Professional Timeline Ready</span>
+                <span style={{ fontSize: '12px', color: DASHBOARD_COLORS.textSecondary }}>
                   Shotstack Studio will render your assets here
                 </span>
               </div>
@@ -1541,24 +1704,31 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
           </div>
           
           {/* Timeline Footer */}
-          <div className="bg-gray-900 px-6 py-3 border-t border-gray-700 flex justify-between items-center text-xs text-gray-400">
+          <div 
+            className="px-6 py-3 border-t-2 flex justify-between items-center text-xs"
+            style={{ 
+              backgroundColor: DASHBOARD_COLORS.background,
+              borderColor: DASHBOARD_COLORS.rendering,
+              color: DASHBOARD_COLORS.textSecondary
+            }}
+          >
             <div className="flex items-center space-x-4">
               <span className="flex items-center space-x-1">
-                <span>🎵</span>
+                <MicrophoneIcon className="w-3 h-3" style={{ color: DASHBOARD_COLORS.autopilot }} />
                 <span>Audio Tracks</span>
               </span>
               <span className="flex items-center space-x-1">
-                <span>🎬</span>
+                <VideoCameraIcon className="w-3 h-3" style={{ color: DASHBOARD_COLORS.rendering }} />
                 <span>Video Tracks</span>
               </span>
               <span className="flex items-center space-x-1">
-                <span>📝</span>
+                <DocumentTextIcon className="w-3 h-3" style={{ color: DASHBOARD_COLORS.scripting }} />
                 <span>Text Tracks</span>
               </span>
             </div>
             <div className="flex items-center space-x-3 font-mono">
               <span>Duration: {Math.floor(duration / 60)}:{(duration % 60).toFixed(1).padStart(4, '0')}</span>
-              <span className="text-gray-600">•</span>
+              <span style={{ color: DASHBOARD_COLORS.textSecondary }}>•</span>
               <span>Position: {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(1).padStart(4, '0')}</span>
             </div>
           </div>
