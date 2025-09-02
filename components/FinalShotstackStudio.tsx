@@ -458,13 +458,15 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       fontFamily: 'Arial, sans-serif'
     }}>
 
-      {/* Main Editor Area - Full Width and Centered */}
+      {/* Main Editor Area - Properly Centered */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         padding: '20px',
         gap: '20px',
+        maxWidth: '1400px',
+        margin: '0 auto',
         width: '100%'
       }}>
 
