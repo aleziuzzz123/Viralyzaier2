@@ -50,27 +50,20 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
     
     try {
       // Clear existing tracks first
-      console.log('🧹 Clearing existing sample assets...');
+      console.log('🧹 Clearing existing tracks...');
+      edit.clearTracks();
       
-      // Create new timeline with only your assets
-      const newTimeline = {
-        tracks: []
-      };
-
       // Add your background video as the main track
       if (projectData.backgroundVideo) {
         console.log('🎥 Adding your background video...');
-        newTimeline.tracks.push({
-          clips: [
-            {
-              asset: {
-                type: 'video',
-                src: projectData.backgroundVideo
-              },
-              start: 0,
-              length: 10
-            }
-          ]
+        edit.addClip(0, {
+          asset: {
+            type: 'video',
+            src: projectData.backgroundVideo
+          },
+          start: 0,
+          length: 10,
+          fit: 'cover'
         });
         console.log('✅ Background video added:', projectData.backgroundVideo);
       }
@@ -78,17 +71,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       // Add your voiceover as audio track
       if (projectData.voiceoverUrl) {
         console.log('🎤 Adding your voiceover...');
-        newTimeline.tracks.push({
-          clips: [
-            {
-              asset: {
-                type: 'audio',
-                src: projectData.voiceoverUrl
-              },
-              start: 0,
-              length: 10
-            }
-          ]
+        edit.addClip(1, {
+          asset: {
+            type: 'audio',
+            src: projectData.voiceoverUrl
+          },
+          start: 0,
+          length: 10
         });
         console.log('✅ Voiceover added:', projectData.voiceoverUrl);
       }
@@ -96,20 +85,28 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       // Add your script as text overlay
       if (projectData.script) {
         console.log('📝 Adding your script as text overlay...');
-        newTimeline.tracks.push({
-          clips: [
-            {
-              asset: {
-                type: 'text',
-                text: projectData.script,
-                style: 'future',
-                color: '#ffffff',
-                size: 'large'
-              },
-              start: 0,
-              length: 10
+        edit.addClip(2, {
+          asset: {
+            type: 'text',
+            text: projectData.script,
+            font: {
+              family: 'Clear Sans',
+              size: 48,
+              color: '#FFFFFF'
+            },
+            background: {
+              color: '#000000',
+              opacity: 0.7,
+              borderRadius: 10,
+              padding: 10
+            },
+            alignment: {
+              horizontal: 'center',
+              vertical: 'bottom'
             }
-          ]
+          },
+          start: 0,
+          length: 10
         });
         console.log('✅ Script added as text overlay');
       }
@@ -118,29 +115,45 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
       if (projectData.moodboards && Array.isArray(projectData.moodboards)) {
         console.log('🖼️ Adding your moodboards...');
         projectData.moodboards.forEach((moodboard, index) => {
-          newTimeline.tracks.push({
-            clips: [
-              {
-                asset: {
-                  type: 'image',
-                  src: moodboard
-                },
-                start: index * 2, // Stagger them
-                length: 2
-              }
-            ]
+          edit.addClip(3 + index, {
+            asset: {
+              type: 'image',
+              src: moodboard
+            },
+            start: index * 2, // Stagger them
+            length: 2,
+            fit: 'cover'
           });
         });
         console.log('✅ Moodboards added:', projectData.moodboards.length);
       }
 
-      // Update the edit with your assets only
-      if (newTimeline.tracks.length > 0) {
-        console.log('🔄 Updating editor with your blueprint assets...');
-        // This would update the edit timeline with your assets
-        console.log('✅ Editor updated with your assets only!');
-      } else {
-        console.log('⚠️ No blueprint assets found to load');
+      // If no assets found, add a placeholder
+      if (!projectData.backgroundVideo && !projectData.voiceoverUrl && !projectData.script && !projectData.moodboards) {
+        console.log('⚠️ No blueprint assets found, adding placeholder...');
+        edit.addClip(0, {
+          asset: {
+            type: 'text',
+            text: 'Your Blueprint Assets Will Appear Here',
+            font: {
+              family: 'Clear Sans',
+              size: 36,
+              color: '#FFFFFF'
+            },
+            background: {
+              color: '#0066CC',
+              opacity: 0.8,
+              borderRadius: 15,
+              padding: 20
+            },
+            alignment: {
+              horizontal: 'center',
+              vertical: 'center'
+            }
+          },
+          start: 0,
+          length: 5
+        });
       }
 
       console.log('🎉 Your blueprint assets loaded successfully!');
@@ -462,120 +475,179 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         gap: '20px',
         marginTop: '10px' // Additional margin for better spacing
       }}>
-        {/* Controls - Only show when not loading */}
+        {/* Professional Controls Bar */}
         {!isLoading && !error && (
           <div style={{
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '16px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            padding: '16px',
+            padding: '15px 20px',
+            background: 'linear-gradient(135deg, #1a2332 0%, #2d3748 100%)',
             borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            // No margins needed in full-width layout
+            border: '1px solid #4a5568',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
           }}>
-            <button
-              onClick={() => editRef.current?.play()}
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-              disabled={!editRef.current}
-            >
-              <span>▶️</span>
-              Play
-            </button>
-            
-            <button
-              onClick={() => editRef.current?.pause()}
-              style={{
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                border: 'none',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-              disabled={!editRef.current}
-            >
-              <span>⏸️</span>
-              Pause
-            </button>
-            
-            <button
-              onClick={() => editRef.current?.stop()}
-              style={{
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                border: 'none',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-              disabled={!editRef.current}
-            >
-              <span>⏹️</span>
-              Stop
-            </button>
-            
-            <button
-              onClick={addSampleClip}
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                border: 'none',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-              disabled={!editRef.current}
-            >
-              <span>➕</span>
-              Add Sample Video
-            </button>
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '6px'
-            }}>
+            {/* Left Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <button
+                onClick={() => editRef.current?.play()}
+                style={{
+                  background: isPlaying ? '#FF6B35' : '#0066CC',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isPlaying ? '⏸️' : '▶️'} {isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button
+                onClick={() => editRef.current?.stop()}
+                style={{
+                  background: '#DC2626',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                ⏹️ Stop
+              </button>
               <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: isPlaying ? '#10b981' : '#6b7280'
+                width: '1px',
+                height: '30px',
+                background: '#4a5568',
+                margin: '0 10px'
               }}></div>
-              <span style={{ fontSize: '14px', color: 'white' }}>
-                {isPlaying ? 'Playing' : 'Paused'}
+              <span style={{ color: '#a0aec0', fontSize: '14px', fontWeight: '500' }}>
+                {isPlaying ? 'Playing...' : 'Ready'}
               </span>
+            </div>
+
+            {/* Center - Asset Tools */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  if (editRef.current) {
+                    editRef.current.addClip(2, {
+                      asset: {
+                        type: 'text',
+                        text: 'New Text Overlay',
+                        font: { family: 'Clear Sans', size: 36, color: '#FFFFFF' },
+                        background: { color: '#000000', opacity: 0.7, borderRadius: 8, padding: 8 },
+                        alignment: { horizontal: 'center', vertical: 'center' }
+                      },
+                      start: 0,
+                      length: 5
+                    });
+                  }
+                }}
+                style={{
+                  background: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}
+              >
+                📝 Add Text
+              </button>
+              <button
+                onClick={() => {
+                  if (editRef.current) {
+                    editRef.current.addClip(3, {
+                      asset: {
+                        type: 'shape',
+                        shape: 'rectangle',
+                        rectangle: { width: 200, height: 100 },
+                        fill: { color: '#0066CC', opacity: 0.8 }
+                      },
+                      start: 0,
+                      length: 5
+                    });
+                  }
+                }}
+                style={{
+                  background: '#7C3AED',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}
+              >
+                🔷 Add Shape
+              </button>
+            </div>
+
+            {/* Right - Blueprint Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {project?.script && (
+                <span style={{ 
+                  background: '#059669', 
+                  color: 'white', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '11px',
+                  fontWeight: '500'
+                }}>
+                  📝 Script
+                </span>
+              )}
+              {project?.voiceoverUrl && (
+                <span style={{ 
+                  background: '#DC2626', 
+                  color: 'white', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '11px',
+                  fontWeight: '500'
+                }}>
+                  🎤 Voice
+                </span>
+              )}
+              {project?.backgroundVideo && (
+                <span style={{ 
+                  background: '#0066CC', 
+                  color: 'white', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '11px',
+                  fontWeight: '500'
+                }}>
+                  🎥 Video
+                </span>
+              )}
+              {project?.moodboards && project.moodboards.length > 0 && (
+                <span style={{ 
+                  background: '#7C3AED', 
+                  color: 'white', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '11px',
+                  fontWeight: '500'
+                }}>
+                  🖼️ {project.moodboards.length} Images
+                </span>
+              )}
             </div>
           </div>
         )}
