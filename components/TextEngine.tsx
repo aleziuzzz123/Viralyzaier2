@@ -22,7 +22,7 @@ const TextEngine: React.FC<TextEngineProps> = ({ studio, selection }) => {
     }, []);
 
     useEffect(() => {
-        if (selection?.clip.asset.type === 'title') {
+        if (selection?.clip.asset.type === 'text') {
             const asset = selection.clip.asset;
             setText(asset.text || '');
             setFontFamily(asset.fontFamily || 'Inter');
@@ -41,8 +41,8 @@ const TextEngine: React.FC<TextEngineProps> = ({ studio, selection }) => {
         }
     };
 
-    if (!selection || (selection.clip.asset.type !== 'title' && selection.clip.asset.type !== 'subtitle')) {
-        return <div className="p-4 text-center text-gray-500">Select a text or subtitle clip on the timeline to edit its style.</div>;
+    if (!selection || selection.clip.asset.type !== 'text') {
+        return <div className="p-4 text-center text-gray-500">Select a text clip on the timeline to edit its style.</div>;
     }
 
     return (

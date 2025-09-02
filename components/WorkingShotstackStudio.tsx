@@ -42,7 +42,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
                 clips: [
                   {
                     asset: {
-                      type: 'title',
+                      type: 'text',
                       text: 'Welcome to Shotstack Studio',
                       style: 'future',
                       color: '#ffffff',
