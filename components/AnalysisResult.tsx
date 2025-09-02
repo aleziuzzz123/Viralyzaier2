@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Analysis } from '../types';
 import {
   CheckCircleIcon,
@@ -12,9 +12,11 @@ import {
   GoldenNuggetIcon,
   InfoIcon,
   RocketLaunchIcon,
-  PhotoIcon
+  PhotoIcon,
+  SparklesIcon
 } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
+import { getScoreImprovementSuggestions } from '../services/geminiService';
 
 interface AnalysisResultProps {
   result: Analysis | null;
@@ -175,7 +177,28 @@ const ImprovementItem: React.FC<ImprovementItemProps> = ({ suggestion, reason, t
 );
 
 const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onReset, videoPreviewUrl, onProceedToLaunchpad }) => {
-  const { t } = useAppContext();
+  const { t, project, addToast } = useAppContext();
+  const [improvementSuggestions, setImprovementSuggestions] = useState<any>(null);
+  const [isLoadingImprovements, setIsLoadingImprovements] = useState(false);
+
+  const handleGetImprovements = async () => {
+    if (!result || !project) return;
+    
+    setIsLoadingImprovements(true);
+    try {
+      const suggestions = await getScoreImprovementSuggestions(
+        project.script!,
+        project.title || project.topic,
+        project.platform,
+        result.scores
+      );
+      setImprovementSuggestions(suggestions);
+    } catch (error) {
+      addToast('Failed to get improvement suggestions', 'error');
+    } finally {
+      setIsLoadingImprovements(false);
+    }
+  };
   
   if (!result) {
     return (
@@ -265,6 +288,81 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onReset, videoP
             </div>
           </div>
         </div>
+
+        {/* Improvement Suggestions Section */}
+        {overallScore < 80 && (
+          <div className="bg-gray-800/50 rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-700 animate-fade-in-up stagger-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-white">🚀 Boost Your Viral Potential</h3>
+              <button
+                onClick={handleGetImprovements}
+                disabled={isLoadingImprovements}
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+              >
+                <SparklesIcon className="w-4 h-4 mr-2" />
+                {isLoadingImprovements ? 'Analyzing...' : 'Get Improvements'}
+              </button>
+            </div>
+            
+            {improvementSuggestions && (
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-indigo-400 font-semibold">Viral Potential After Improvements:</span>
+                    <span className="text-white font-bold text-lg">{improvementSuggestions.viralPotential}/100</span>
+                  </div>
+                  <p className="text-gray-300 text-sm">
+                    Implementing these improvements could boost your viral potential significantly!
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  {improvementSuggestions.improvements.map((improvement: any, index: number) => (
+                    <div key={index} className="p-4 bg-gray-700/30 rounded-xl border border-gray-600">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            improvement.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                            improvement.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-green-500/20 text-green-400'
+                          }`}>
+                            {improvement.priority.toUpperCase()} PRIORITY
+                          </span>
+                          <span className="text-white font-semibold capitalize">{improvement.category}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-400 text-sm">{improvement.currentScore} → </span>
+                          <span className="text-emerald-400 font-bold">{improvement.targetScore}</span>
+                        </div>
+                      </div>
+                      <p className="text-gray-200 mb-2">{improvement.suggestion}</p>
+                      <p className="text-indigo-400 text-sm mb-2">{improvement.reason}</p>
+                      <div className="p-3 bg-gray-800/50 rounded-lg">
+                        <p className="text-gray-300 text-sm">
+                          <strong>Example:</strong> {improvement.example}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {improvementSuggestions.nextSteps && (
+                  <div className="p-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl border border-emerald-500/30">
+                    <h4 className="text-emerald-400 font-semibold mb-2">Next Steps:</h4>
+                    <ul className="space-y-1">
+                      {improvementSuggestions.nextSteps.map((step: string, index: number) => (
+                        <li key={index} className="text-gray-300 text-sm flex items-start">
+                          <span className="text-emerald-400 mr-2">{index + 1}.</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <div className="mt-8 text-center animate-fade-in-up flex flex-col items-center justify-center gap-4" style={{animationDelay: '0.6s'}}>
           {/* Workflow Progress Indicator */}

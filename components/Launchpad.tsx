@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Project, LaunchPlan } from '../types';
 import { generateSeo, analyzeAndGenerateThumbnails, getSchedulingSuggestion, repurposeProject } from '../services/geminiService';
-import { publishVideo } from '../services/youtubeService';
+import { publishVideo, publishToMultiplePlatforms, getOptimalPublishingTimes } from '../services/youtubeService';
 import { SparklesIcon, ClipboardCopyIcon, DownloadIcon, YouTubeIcon, CheckCircleIcon, CalendarIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 import { getErrorMessage } from '../utils';
@@ -16,6 +16,9 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [scheduleSuggestion, setScheduleSuggestion] = useState<string | null>(null);
+    const [selectedPlatforms, setSelectedPlatforms] = useState<Array<'youtube_long' | 'youtube_short' | 'tiktok' | 'instagram'>>(['youtube_long']);
+    const [publishingResults, setPublishingResults] = useState<Array<{ platform: string; videoUrl: string; status: string; error?: string }> | null>(null);
+    const [optimalTimes, setOptimalTimes] = useState<any>(null);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -85,31 +88,61 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
         }
     });
 
-    const handlePublishToYouTube = () => lockAndExecute(async () => {
+    const handlePublishToPlatforms = () => lockAndExecute(async () => {
         if (!project.finalVideoUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title) {
             addToast("Missing video file, SEO, or thumbnail for publishing.", 'error');
             return;
         }
+        
+        if (selectedPlatforms.length === 0) {
+            addToast("Please select at least one platform to publish to.", 'error');
+            return;
+        }
+
         setIsPublishing(true);
+        setPublishingResults(null);
+        
         try {
-            const videoUrl = await publishVideo(
+            const results = await publishToMultiplePlatforms(
                 project.finalVideoUrl,
                 project.title,
                 project.launchPlan.seo.description,
                 project.launchPlan.seo.tags,
-                project.launchPlan.thumbnails[0]
+                project.launchPlan.thumbnails[0],
+                selectedPlatforms
             );
             
-            await handleUpdateProject(project.id, {
-                status: 'Published',
-                publishedUrl: videoUrl,
-            });
-
-            addToast("Video successfully published to YouTube!", 'success');
+            setPublishingResults(results);
+            
+            const successfulPublishes = results.filter(r => r.status === 'success');
+            const failedPublishes = results.filter(r => r.status === 'failed');
+            
+            if (successfulPublishes.length > 0) {
+                await handleUpdateProject(project.id, {
+                    status: 'Published',
+                    publishedUrl: successfulPublishes[0].videoUrl, // Use first successful URL as primary
+                });
+                
+                addToast(`Successfully published to ${successfulPublishes.length} platform(s)!`, 'success');
+            }
+            
+            if (failedPublishes.length > 0) {
+                addToast(`Failed to publish to ${failedPublishes.length} platform(s). Check results below.`, 'error');
+            }
+            
         } catch (e) {
-            addToast(`YouTube publish failed: ${getErrorMessage(e)}`, 'error');
+            addToast(`Publishing failed: ${getErrorMessage(e)}`, 'error');
         } finally {
             setIsPublishing(false);
+        }
+    });
+
+    const handleGetOptimalTimes = () => lockAndExecute(async () => {
+        try {
+            const times = await getOptimalPublishingTimes(project.platform);
+            setOptimalTimes(times);
+        } catch (e) {
+            addToast(`Failed to get optimal times: ${getErrorMessage(e)}`, 'error');
         }
     });
     
@@ -135,7 +168,7 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
         }
     });
 
-    const isPublishingDisabled = isPublishing || !project.finalVideoUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title;
+    const isPublishingDisabled = isPublishing || !project.finalVideoUrl || !project.launchPlan?.thumbnails?.[0] || !project.launchPlan?.seo || !project.title || selectedPlatforms.length === 0;
 
 
     return (
@@ -161,6 +194,92 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
             </header>
 
             {error && <p className="text-red-400 text-center">{error}</p>}
+
+            {/* Platform Selection */}
+            <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 shadow-2xl">
+                <h3 className="text-xl font-bold text-white mb-4">🎯 Select Publishing Platforms</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                        { id: 'youtube_long', name: 'YouTube Long', icon: '📺', description: 'Long-form videos' },
+                        { id: 'youtube_short', name: 'YouTube Shorts', icon: '📱', description: 'Short vertical videos' },
+                        { id: 'tiktok', name: 'TikTok', icon: '🎵', description: 'Short viral videos' },
+                        { id: 'instagram', name: 'Instagram', icon: '📸', description: 'Reels & Stories' }
+                    ].map((platform) => (
+                        <label key={platform.id} className="cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={selectedPlatforms.includes(platform.id as any)}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setSelectedPlatforms([...selectedPlatforms, platform.id as any]);
+                                    } else {
+                                        setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform.id));
+                                    }
+                                }}
+                                className="sr-only"
+                            />
+                            <div className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                                selectedPlatforms.includes(platform.id as any)
+                                    ? 'border-indigo-500 bg-indigo-500/10'
+                                    : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                            }`}>
+                                <div className="text-2xl mb-2">{platform.icon}</div>
+                                <h4 className="font-semibold text-white text-sm">{platform.name}</h4>
+                                <p className="text-gray-400 text-xs">{platform.description}</p>
+                            </div>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            {/* Publishing Results */}
+            {publishingResults && (
+                <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 shadow-2xl">
+                    <h3 className="text-xl font-bold text-white mb-4">📊 Publishing Results</h3>
+                    <div className="space-y-4">
+                        {publishingResults.map((result, index) => (
+                            <div key={index} className={`p-4 rounded-xl border-2 ${
+                                result.status === 'success' 
+                                    ? 'border-green-500 bg-green-500/10' 
+                                    : 'border-red-500 bg-red-500/10'
+                            }`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-2xl">
+                                            {result.platform === 'youtube_long' ? '📺' :
+                                             result.platform === 'youtube_short' ? '📱' :
+                                             result.platform === 'tiktok' ? '🎵' : '📸'}
+                                        </span>
+                                        <div>
+                                            <h4 className="font-semibold text-white capitalize">
+                                                {result.platform.replace('_', ' ')}
+                                            </h4>
+                                            <p className={`text-sm ${
+                                                result.status === 'success' ? 'text-green-400' : 'text-red-400'
+                                            }`}>
+                                                {result.status === 'success' ? 'Published Successfully' : 'Failed to Publish'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {result.status === 'success' && result.videoUrl && (
+                                        <a 
+                                            href={result.videoUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors"
+                                        >
+                                            View Video
+                                        </a>
+                                    )}
+                                </div>
+                                {result.error && (
+                                    <p className="text-red-400 text-sm mt-2">{result.error}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* SEO & Promotion */}
@@ -264,9 +383,9 @@ const Launchpad: React.FC<LaunchpadProps> = ({ project }) => {
                                 </div>
                             ) : (
                                 <div className="flex gap-2">
-                                    <button onClick={handlePublishToYouTube} disabled={isPublishingDisabled} className="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed" title={isPublishingDisabled ? "Assemble video, generate SEO & Thumbnails to enable" : ""}>
+                                    <button onClick={handlePublishToPlatforms} disabled={isPublishingDisabled} className="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed" title={isPublishingDisabled ? "Assemble video, generate SEO & Thumbnails to enable" : ""}>
                                         <YouTubeIcon className="w-5 h-5 mr-2" />
-                                        {isPublishing ? "Publishing..." : "Publish"}
+                                        {isPublishing ? "Publishing..." : `Publish to ${selectedPlatforms.length} Platform${selectedPlatforms.length > 1 ? 's' : ''}`}
                                     </button>
                                      <button onClick={() => openScheduleModal(project.id)} className="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-colors">
                                         <CalendarIcon className="w-5 h-5 mr-2" />

@@ -1,6 +1,6 @@
 import { Type } from "@google/genai";
-import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset, JamendoTrack, GiphyAsset } from '../types.ts';
-import * as supabase from './supabaseService.ts';
+import { Analysis, Blueprint, CompetitorAnalysisResult, Platform, Script, TitleAnalysis, ContentGapSuggestion, VideoPerformance, PerformanceReview, SceneAssets, SoundDesign, LaunchPlan, ChannelAudit, Opportunity, ScriptOptimization, ScriptGoal, Subtitle, BrandIdentity, VideoStyle, Scene, StockAsset, SubtitleWord, NormalizedStockAsset, JamendoTrack, GiphyAsset } from '../types';
+import * as supabase from './supabaseService';
 
 const parseGeminiJson = <T>(res: { text: string | null | undefined }, fallback: T | null = null): T => {
     try {
@@ -291,18 +291,40 @@ Your output must be a single JSON object with the following structure.
 
 export const analyzeVideoConcept = async (script: Script, title: string, platform: Platform): Promise<Analysis> => {
     const scriptSummary = script.scenes.map(s => s.voiceover).filter(Boolean).join(' ').substring(0, 2000);
+    const hookText = script.hooks?.[0] || script.hook || '';
+    const ctaText = script.cta || '';
 
-    const textPrompt = `You are a viral video expert. Analyze the following video *concept* for the ${platform} platform. Your analysis should be based on the script's content and the video's title, not on any visual execution.
+    const textPrompt = `You are a world-class viral video expert with deep knowledge of what makes content go viral on ${platform}. Analyze this video concept with extreme precision and provide actionable insights.
 
-**Title:** "${title}"
-**Script Summary:** "${scriptSummary}"
+**Video Details:**
+- Title: "${title}"
+- Hook: "${hookText}"
+- Script Summary: "${scriptSummary}"
+- Call-to-Action: "${ctaText}"
+- Platform: ${platform}
+
+**Analysis Framework:**
+Use these proven viral factors for scoring (1-100):
+- Hook Quality: First 3 seconds impact, curiosity gap, emotional trigger
+- Pacing: Scene transitions, information density, retention curve
+- Audio Strategy: Voiceover clarity, emotional delivery, sound design potential
+- CTA Effectiveness: Clear action, urgency, value proposition
+- Overall Virality: Weighted combination considering platform-specific algorithms
+
+**Scoring Guidelines:**
+- 90-100: Viral contender (top 1% potential)
+- 80-89: Strong viral potential (top 5% potential)
+- 70-79: Good viral potential (top 15% potential)
+- 60-69: Decent potential (top 30% potential)
+- 50-59: Average potential (top 50% potential)
+- Below 50: Needs significant improvement
 
 Your output must be a JSON object with:
-- scores: An object containing 'overall', 'hook', 'pacing', 'audio', and 'cta' scores, ALL from 1 to 100. The hook score is based on the script's opening. Pacing is judged by the script's flow. Audio and CTA are judged by their clarity and impact within the script. 'overall' is a weighted summary.
-- summary: A concise summary of your findings on the script's potential.
-- goldenNugget: The single most important script-related tip.
-- strengths: 3 things the script does well.
-- improvements: 3 actionable script improvements with clear reasons explaining WHY they matter.`;
+- scores: Object with 'overall', 'hook', 'pacing', 'audio', 'cta' scores (1-100)
+- summary: Concise analysis of viral potential with specific platform insights
+- goldenNugget: The #1 most impactful change that could make this go viral
+- strengths: 3 specific things that align with viral content patterns
+- improvements: 3 actionable improvements with detailed explanations of WHY they matter for virality, including specific examples and platform-specific tactics`;
     
     const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
         type: 'generateContent',
@@ -316,6 +338,73 @@ Your output must be a JSON object with:
     });
     
     return parseGeminiJson<Analysis>(response);
+};
+
+// Enhanced function for real-time score improvements
+export const getScoreImprovementSuggestions = async (
+    script: Script, 
+    title: string, 
+    platform: Platform, 
+    currentScores: { overall: number; hook: number; pacing: number; audio: number; cta: number }
+): Promise<{
+    improvements: Array<{
+        category: 'hook' | 'pacing' | 'audio' | 'cta' | 'overall';
+        currentScore: number;
+        targetScore: number;
+        suggestion: string;
+        reason: string;
+        example: string;
+        priority: 'high' | 'medium' | 'low';
+    }>;
+    viralPotential: number;
+    nextSteps: string[];
+}> => {
+    const scriptSummary = script.scenes.map(s => s.voiceover).filter(Boolean).join(' ').substring(0, 2000);
+    const hookText = script.hooks?.[0] || script.hook || '';
+    const ctaText = script.cta || '';
+
+    const textPrompt = `You are a viral video optimization expert. Analyze the current scores and provide specific, actionable improvements to boost virality.
+
+**Current Content:**
+- Title: "${title}"
+- Hook: "${hookText}"
+- Script: "${scriptSummary}"
+- CTA: "${ctaText}"
+- Platform: ${platform}
+
+**Current Scores:**
+- Overall: ${currentScores.overall}/100
+- Hook: ${currentScores.hook}/100
+- Pacing: ${currentScores.pacing}/100
+- Audio: ${currentScores.audio}/100
+- CTA: ${currentScores.cta}/100
+
+**Task:** Provide specific improvements for each category that scored below 80. Focus on the highest-impact changes that could push scores to 85+.
+
+Your output must be a JSON object with:
+- improvements: Array of improvement objects for categories scoring below 80, each with:
+  - category: The score category to improve
+  - currentScore: Current score for this category
+  - targetScore: Realistic target score (85-95)
+  - suggestion: Specific, actionable improvement
+  - reason: Why this improvement will boost virality
+  - example: Concrete example of the improvement
+  - priority: 'high', 'medium', or 'low' based on impact
+- viralPotential: Overall viral potential score (1-100) after improvements
+- nextSteps: 3 specific next steps to implement the improvements`;
+
+    const response = await supabase.invokeEdgeFunction<{ text: string }>('openai-proxy', {
+        type: 'generateContent',
+        params: {
+            model: 'gpt-4o',
+            contents: textPrompt,
+            config: {
+                responseMimeType: 'application/json'
+            }
+        }
+    });
+
+    return parseGeminiJson(response);
 };
 
 export const analyzeTitles = async (topic: string, titles: string[], platform: Platform): Promise<{ analysis: TitleAnalysis[], suggestions: string[] }> => {

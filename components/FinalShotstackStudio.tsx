@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
 import { Project, ShotstackEditJson } from '../types';
+import { invokeEdgeFunction } from '../services/supabaseService';
+import { useAppContext } from '../contexts/AppContext';
+import KeyboardShortcuts from './KeyboardShortcuts';
 
 // Utility function for debouncing
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
@@ -37,6 +40,8 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   console.log('🚀 FINAL SHOTSTACK STUDIO V2.0 - THIS IS THE NEW COMPONENT!');
   console.log('⏰ TIMESTAMP: ' + new Date().toISOString());
   console.log('📋 Project data received:', project);
+
+  const { handleUpdateProject, addToast } = useAppContext();
   
   // COMPREHENSIVE PROJECT DATA DEBUGGING
   if (project) {
@@ -126,6 +131,134 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
   const [timelinePosition, setTimelinePosition] = useState<number>(0);
   const [isSeeking, setIsSeeking] = useState<boolean>(false);
   
+  // Video rendering states
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+  const [renderProgress, setRenderProgress] = useState<{ current: number; total: number } | null>(null);
+  const [renderStatus, setRenderStatus] = useState<string>('');
+  const [renderId, setRenderId] = useState<string | null>(null);
+  
+  // Video rendering function
+  const handleVideoRender = useCallback(async () => {
+    if (!editRef.current || !project) {
+      addToast('No video content to render', 'error');
+      return;
+    }
+
+    setIsRendering(true);
+    setRenderStatus('Preparing video for rendering...');
+    setRenderProgress({ current: 0, total: 100 });
+
+    try {
+      // Get the current edit state from Shotstack Studio
+      const editState = editRef.current.getEdit?.() || editRef.current;
+      console.log('🎬 Starting video render with edit state:', editState);
+
+      setRenderStatus('Submitting render job...');
+      setRenderProgress({ current: 20, total: 100 });
+
+      // Call the shotstack-render Supabase function
+      const renderResponse = await invokeEdgeFunction('shotstack-render', {
+        projectId: project.id,
+        edit: editState
+      });
+
+      if (renderResponse && (renderResponse as any).renderId) {
+        const newRenderId = (renderResponse as any).renderId;
+        setRenderId(newRenderId);
+        setRenderStatus('Video rendering in progress...');
+        setRenderProgress({ current: 40, total: 100 });
+
+        // Update project with render ID
+        await handleUpdateProject(project.id, {
+          shotstackRenderId: newRenderId,
+          status: 'Rendering'
+        });
+
+        // Start polling for render status
+        pollRenderStatus(newRenderId);
+      } else {
+        throw new Error('Failed to start video rendering');
+      }
+    } catch (error) {
+      console.error('Video rendering error:', error);
+      addToast(`Video rendering failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      setIsRendering(false);
+      setRenderStatus('');
+      setRenderProgress(null);
+    }
+  }, [project, handleUpdateProject, addToast]);
+
+  // Poll render status
+  const pollRenderStatus = useCallback(async (renderId: string) => {
+    const maxAttempts = 60; // 5 minutes max
+    let attempts = 0;
+
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setRenderStatus('Render timeout - please try again');
+        setIsRendering(false);
+        setRenderProgress(null);
+        return;
+      }
+
+      try {
+        const statusResponse = await invokeEdgeFunction('shotstack-status', {
+          renderId: renderId
+        });
+
+        if (statusResponse && (statusResponse as any).status) {
+          const status = (statusResponse as any).status;
+          const progress = (statusResponse as any).progress || 0;
+
+          setRenderProgress({ current: 40 + (progress * 0.6), total: 100 });
+          setRenderStatus(`Rendering... ${Math.round(progress)}%`);
+
+          if (status === 'done') {
+            const videoUrl = (statusResponse as any).url;
+            if (videoUrl) {
+              setRenderStatus('Video rendered successfully!');
+              setRenderProgress({ current: 100, total: 100 });
+              
+              // Update project with final video URL
+              await handleUpdateProject(project!.id, {
+                finalVideoUrl: videoUrl,
+                status: 'Rendered'
+              });
+
+              addToast('Video rendered successfully!', 'success');
+              
+              // Move to analysis step
+              setTimeout(() => {
+                handleUpdateProject(project!.id, {
+                  workflowStep: 5
+                });
+              }, 2000);
+            } else {
+              throw new Error('No video URL returned');
+            }
+            setIsRendering(false);
+          } else if (status === 'failed') {
+            throw new Error('Video rendering failed');
+          } else {
+            // Continue polling
+            attempts++;
+            setTimeout(poll, 5000); // Poll every 5 seconds
+          }
+        } else {
+          throw new Error('Invalid status response');
+        }
+      } catch (error) {
+        console.error('Status polling error:', error);
+        setRenderStatus('Render failed - please try again');
+        setIsRendering(false);
+        setRenderProgress(null);
+        addToast('Video rendering failed', 'error');
+      }
+    };
+
+    poll();
+  }, [project, handleUpdateProject, addToast]);
+
   // Debounced functions for performance
   const debouncedSeek = useCallback(
     debounce((time: number) => {
@@ -887,6 +1020,21 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
   return (
     <div className="w-full h-full bg-gray-900 flex flex-col animate-fade-in-up">
+      <KeyboardShortcuts 
+        onPlay={() => {
+          if (editRef.current) {
+            editRef.current.play?.();
+            setIsPlaying(true);
+          }
+        }}
+        onPause={() => {
+          if (editRef.current) {
+            editRef.current.pause?.();
+            setIsPlaying(false);
+          }
+        }}
+        onSave={handleVideoRender}
+      />
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col p-6 space-y-6">
 
@@ -903,6 +1051,30 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       {/* Main Editor - Always render DOM elements, even during loading */}
       <div className="w-full max-w-full flex flex-col space-y-6">
+        {/* Video Rendering Progress */}
+        {isRendering && (
+          <div className="bg-gray-800/90 border border-emerald-500/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center space-x-3">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <h3 className="text-xl font-bold text-white">Rendering Your Video</h3>
+              </div>
+              <p className="text-gray-300">{renderStatus}</p>
+              {renderProgress && (
+                <div className="w-full bg-gray-700 rounded-full h-3">
+                  <div 
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${renderProgress.current}%` }}
+                  ></div>
+                </div>
+              )}
+              <p className="text-sm text-gray-400">
+                This may take a few minutes. You can continue editing while your video renders.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Professional Editor Toolbar - Matching App Theme */}
         {!isLoading && !error && (
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6 backdrop-blur-sm shadow-2xl">
@@ -1182,21 +1354,15 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
                     🗑️ Clear
                   </button>
                   <button
-                    onClick={() => {
-                      if (editRef.current) {
-                        console.log('🎬 Exporting video...');
-                        // Get the current edit state
-                        const editState = editRef.current.getEdit?.() || editRef.current;
-                        console.log('📋 Current edit state:', editState);
-                        
-                        // Create a download link for the video
-                        // This would normally call the Shotstack API to render the video
-                        alert('Export functionality will render your video using Shotstack API. Check console for edit data.');
-                      }
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                    onClick={handleVideoRender}
+                    disabled={isRendering}
+                    className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg ${
+                      isRendering 
+                        ? 'bg-gray-600 cursor-not-allowed' 
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                    }`}
                   >
-                    📤 Export
+                    {isRendering ? '🎬 Rendering...' : '📤 Export Video'}
                   </button>
                   <button
                     onClick={() => {

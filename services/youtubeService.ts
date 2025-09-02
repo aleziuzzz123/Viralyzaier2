@@ -124,14 +124,87 @@ export const publishVideo = async (
     title: string,
     description: string,
     tags: string[],
-    thumbnailUrl: string
-): Promise<string> => {
-    const { videoUrl } = await invokeEdgeFunction<{ videoUrl: string }>('youtube-publish', {
+    thumbnailUrl: string,
+    platform: 'youtube_long' | 'youtube_short' | 'tiktok' | 'instagram' = 'youtube_long'
+): Promise<{ videoUrl: string; platform: string; status: string }> => {
+    try {
+        const response = await invokeEdgeFunction<{ 
+            videoUrl: string; 
+            platform: string; 
+            status: string;
+            error?: string;
+        }>('youtube-publish', {
         videoFileUrl,
         title,
         description,
         tags,
         thumbnailUrl,
+            platform,
+            publishOptions: {
+                privacyStatus: 'public',
+                categoryId: platform === 'youtube_short' ? '22' : '28', // People & Blogs for shorts, Science & Technology for long-form
+                defaultLanguage: 'en',
+                defaultAudioLanguage: 'en'
+            }
+        });
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        return {
+            videoUrl: response.videoUrl,
+            platform: response.platform,
+            status: response.status
+        };
+    } catch (error) {
+        console.error('Publishing error:', error);
+        throw new Error(`Failed to publish video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+};
+
+/**
+ * Publishes to multiple platforms simultaneously
+ */
+export const publishToMultiplePlatforms = async (
+    videoFileUrl: string,
+    title: string,
+    description: string,
+    tags: string[],
+    thumbnailUrl: string,
+    platforms: Array<'youtube_long' | 'youtube_short' | 'tiktok' | 'instagram'>
+): Promise<Array<{ platform: string; videoUrl: string; status: string; error?: string }>> => {
+    const publishPromises = platforms.map(async (platform) => {
+        try {
+            const result = await publishVideo(videoFileUrl, title, description, tags, thumbnailUrl, platform);
+            return { ...result, error: undefined };
+        } catch (error) {
+            return {
+                platform,
+                videoUrl: '',
+                status: 'failed',
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
     });
-    return videoUrl;
+
+    return Promise.all(publishPromises);
+};
+
+/**
+ * Get optimal publishing times based on platform and audience
+ */
+export const getOptimalPublishingTimes = async (platform: string): Promise<{
+    bestTimes: Array<{ day: string; time: string; reason: string }>;
+    timezone: string;
+}> => {
+    const response = await invokeEdgeFunction<{
+        bestTimes: Array<{ day: string; time: string; reason: string }>;
+        timezone: string;
+    }>('publishing-optimizer', {
+        platform,
+        action: 'getOptimalTimes'
+    });
+
+    return response;
 };

@@ -4,6 +4,7 @@ import { Project, Script, Scene } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
 import { supabase } from '../services/supabaseClient';
 import { SparklesIcon } from './Icons';
+import KeyboardShortcuts from './KeyboardShortcuts';
 
 interface BlueprintReviewProps {
     project: Project;
@@ -22,6 +23,40 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
     const [expandedScene, setExpandedScene] = useState<number | null>(null);
     const [selectedMoodboardImage, setSelectedMoodboardImage] = useState<number | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!hasUnsavedChanges || !project) return;
+    
+    try {
+      setIsSaving(true);
+      await handleUpdateProject(project.id, {
+        script: project.script,
+        moodboard: project.moodboard,
+        voiceoverUrls: project.voiceoverUrls,
+        assets: project.assets
+      });
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [hasUnsavedChanges, project, handleUpdateProject]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(autoSave, 30000);
+    return () => clearInterval(interval);
+  }, [autoSave]);
+
+  // Mark changes when user makes edits
+  const markAsChanged = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
 
     // Available voice options with enhanced descriptions
     const voiceOptions = [
@@ -420,6 +455,11 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
 
     return (
         <div className="min-h-screen bg-gray-900 py-8 px-6">
+            <KeyboardShortcuts 
+                onSave={autoSave}
+                onNext={onApprove}
+                onPrevious={onBack}
+            />
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Professional Header */}
                 <div className="text-center space-y-4">
@@ -430,6 +470,19 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                         Perfect your content before creating your video. Make it viral-worthy.
                     </p>
+                    {/* Auto-save status */}
+                    <div className="flex items-center justify-center gap-2 text-sm">
+                        {isSaving ? (
+                            <span className="text-yellow-400 flex items-center gap-1">
+                                <div className="w-3 h-3 border border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                                Saving...
+                            </span>
+                        ) : hasUnsavedChanges ? (
+                            <span className="text-orange-400">● Unsaved changes</span>
+                        ) : lastSaved ? (
+                            <span className="text-green-400">✓ Saved {lastSaved.toLocaleTimeString()}</span>
+                        ) : null}
+                    </div>
                 </div>
 
                 {/* Progress Indicator */}
