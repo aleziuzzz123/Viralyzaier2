@@ -22,6 +22,7 @@ import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
 import FinalShotstackStudio from './components/FinalShotstackStudio';
+import SimpleShotstackStudio from './components/SimpleShotstackStudio';
 
 
 type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
@@ -184,7 +185,7 @@ const MainApp = () => {
             if (window.self !== window.top) {
                 // We're inside an iframe, render the StudioPage component directly
                 console.log('🎬 Rendering StudioPage component (inside iframe)');
-                return <FinalShotstackStudio />;
+                return <SimpleShotstackStudio />;
             } else {
                 // We're in the main window, render the CreativeStudio component
                 console.log('🎬 Rendering CreativeStudio component (main window)');
