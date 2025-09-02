@@ -2541,6 +2541,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
             </div>
           </div>
         </div>
+      </div>
     </div>
   );
 };
