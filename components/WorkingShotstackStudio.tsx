@@ -189,7 +189,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col">
         {/* Canvas Area */}
         <div className="flex-1 p-4">
           <div className="bg-gray-800 rounded-lg p-4 h-full">
@@ -204,7 +204,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         </div>
 
         {/* Timeline Area */}
-        <div className="w-1/3 p-4">
+        <div className="h-80 p-4">
           <div className="bg-gray-800 rounded-lg p-4 h-full">
             <h3 className="text-lg font-semibold mb-4">Timeline</h3>
             <div 
