@@ -107,14 +107,64 @@ const FinalShotstackStudio: React.FC = () => {
       // 1. Retrieve an edit from a template - EXACTLY like official docs
       console.log('🔧 Loading base template...');
       const templateUrl = "https://shotstack-assets.s3.amazonaws.com/templates/hello-world/hello.json";
-      const response = await fetch(templateUrl);
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch template: ${response.status}`);
+      let template: ShotstackEdit;
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const response = await fetch(templateUrl, { 
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch template: ${response.status} - ${response.statusText}`);
+        }
+        
+        template = await response.json();
+        console.log('✅ Base template loaded:', template);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('❌ Template fetch failed:', fetchError);
+        
+        // Create fallback template immediately
+        console.log('🔧 Creating fallback template...');
+        template = {
+          output: {
+            size: { width: 1920, height: 1080 },
+            format: 'mp4',
+            fps: 30
+          },
+          timeline: {
+            background: '#000000',
+            tracks: [
+              {
+                type: 'video',
+                clips: [
+                  {
+                    asset: {
+                      type: 'video',
+                      src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+                    },
+                    start: 0,
+                    length: 10,
+                    fit: 'cover'
+                  }
+                ]
+              }
+            ]
+          }
+        };
+        console.log('✅ Fallback template created:', template);
       }
-      
-      const template: ShotstackEdit = await response.json();
-      console.log('✅ Base template loaded:', template);
 
       // 2. Initialize the edit with dimensions and background color - EXACTLY like official docs
       console.log('🔧 Creating Edit component...');
