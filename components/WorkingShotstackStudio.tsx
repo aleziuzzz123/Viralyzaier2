@@ -174,44 +174,44 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
       {/* Header */}
-      <div className="bg-gray-800 p-4 border-b border-gray-700">
+      <div className="bg-gray-900 p-6 border-b border-gray-700">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold">Working Shotstack Studio</h1>
-            <p className="text-gray-400">
+            <h1 className="text-2xl font-bold text-white">Working Shotstack Studio</h1>
+            <p className="text-gray-300 mt-1">
               Status: {isLoading ? 'Loading...' : initialized ? 'Ready' : 'Initializing...'}
             </p>
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-400 bg-gray-800 px-3 py-2 rounded-lg">
             {logs.length > 0 && logs[logs.length - 1]}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4">
+      <div className="flex-1 flex flex-col">
         {/* Canvas Area */}
-        <div className="flex-1 p-4">
-          <div className="bg-gray-800 rounded-lg p-4 h-full max-w-6xl mx-auto">
-            <h3 className="text-lg font-semibold mb-4 text-center">Canvas</h3>
+        <div className="flex-1 p-6">
+          <div className="bg-gray-900 rounded-xl p-6 h-full">
+            <h3 className="text-xl font-bold mb-6 text-white">Canvas</h3>
             <div 
               ref={canvasRef}
               data-shotstack-studio
-              className="w-full h-full bg-black rounded border border-gray-600 mx-auto"
-              style={{ minHeight: '400px', maxWidth: '100%' }}
+              className="w-full h-full bg-black rounded-lg border-2 border-gray-700"
+              style={{ minHeight: '500px' }}
             />
           </div>
         </div>
 
         {/* Timeline Area */}
-        <div className="h-80 p-4">
-          <div className="bg-gray-800 rounded-lg p-4 h-full max-w-6xl mx-auto">
-            <h3 className="text-lg font-semibold mb-4 text-center">Timeline</h3>
+        <div className="h-96 p-6">
+          <div className="bg-gray-900 rounded-xl p-6 h-full">
+            <h3 className="text-xl font-bold mb-6 text-white">Timeline</h3>
             <div 
               ref={timelineRef}
               data-shotstack-timeline
-              className="w-full h-full bg-gray-700 rounded border border-gray-600 mx-auto"
-              style={{ minHeight: '200px', maxWidth: '100%' }}
+              className="w-full h-full bg-gray-800 rounded-lg border-2 border-gray-700"
+              style={{ minHeight: '300px' }}
             />
           </div>
         </div>
@@ -219,11 +219,11 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
 
       {/* Debug Logs */}
       {logs.length > 0 && (
-        <div className="bg-gray-800 border-t border-gray-700 p-4">
-          <h3 className="text-sm font-semibold mb-2">Recent Logs:</h3>
-          <div className="bg-black rounded p-2 h-20 overflow-y-auto font-mono text-xs">
+        <div className="bg-gray-900 border-t border-gray-700 p-6">
+          <h3 className="text-sm font-semibold mb-3 text-white">Recent Logs:</h3>
+          <div className="bg-gray-800 rounded-lg p-4 h-24 overflow-y-auto font-mono text-xs border border-gray-700">
             {logs.slice(-5).map((log, index) => (
-              <div key={index} className="mb-1">{log}</div>
+              <div key={index} className="mb-1 text-gray-300">{log}</div>
             ))}
           </div>
         </div>
