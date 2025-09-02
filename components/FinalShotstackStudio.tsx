@@ -505,15 +505,13 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
 
       {/* Main Editor - Always render DOM elements, even during loading */}
       <div style={{ 
-        flex: 1, 
+        width: '100%',
+        maxWidth: '100%', // Use full available width
         display: 'flex', 
         flexDirection: 'column',
-        padding: '40px 20px 20px 20px', // More top padding to clear navigation bar
+        padding: '20px', // Reduced padding to fit better
         gap: '20px',
-        marginTop: '10px', // Additional margin for better spacing
-        maxWidth: '1200px', // Smaller width to prevent overlap
-        margin: '10px auto 0 auto', // Center horizontally with proper margins
-        width: '100%' // Ensure it takes available width within maxWidth
+        margin: '0 auto' // Center with auto margins
       }}>
         {/* Professional Editor Header */}
         {!isLoading && !error && (
