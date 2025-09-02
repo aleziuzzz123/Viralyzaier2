@@ -474,7 +474,7 @@ const FinalShotstackStudio: React.FC<FinalShotstackStudioProps> = ({ project }) 
         padding: '40px 20px 20px 20px', // More top padding to clear navigation bar
         gap: '20px',
         marginTop: '10px', // Additional margin for better spacing
-        maxWidth: '1400px', // Limit width to prevent overlap
+        maxWidth: '1200px', // Smaller width to prevent overlap
         margin: '10px auto 0 auto', // Center horizontally with proper margins
         width: '100%' // Ensure it takes available width within maxWidth
       }}>
