@@ -147,34 +147,60 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
 
     // One-click improvement functions
     const handleImproveScript = () => lockAndExecute(async () => {
-        if (!script || !await consumeCredits(2)) return;
+        if (!script || !await consumeCredits(1)) return; // Reduced from 2 to 1 credit
         
         setIsAnalyzing(true);
         try {
-            // Regenerate script with viral optimization
-            const improvedBlueprint = await generateVideoBlueprint(
-                project.topic,
-                videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
-                'High-Energy Viral', // Force viral style
-                (message) => setProgressMessage(message),
-                Math.min(videoLength, 60), // Optimize for shorter length
-                selectedBrand,
-                true, // Always generate moodboard
-                isNarratorEnabled
-            );
-            
-            const success = await handleUpdateProject(project.id, {
-                script: improvedBlueprint.script,
-                moodboard: improvedBlueprint.moodboard,
-                workflowStep: 3
+            // Use AI to improve the existing script instead of regenerating
+            const improvementPrompt = `You are a viral video expert. Improve this video script for maximum viral potential on ${project.platform || 'social media'}.
+
+Current Script:
+Title: ${project.title || 'Untitled'}
+Hook: ${script.hook || 'No hook'}
+Scenes: ${script.scenes.map((s, i) => `${i + 1}. ${s.voiceover || s.visual || 'No content'}`).join('\n')}
+CTA: ${script.cta || 'No CTA'}
+
+Improve this script by:
+1. Making the hook more compelling and attention-grabbing
+2. Adding viral elements to scenes (emotions, surprises, relatability)
+3. Creating a stronger call-to-action
+4. Optimizing for ${project.platform || 'social media'} algorithms
+
+Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
+
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: improvementPrompt,
+                    config: {
+                        responseMimeType: 'application/json'
+                    }
+                }
             });
-            
-            if (success) {
-                // Update local script state to reflect changes
-                setScript(improvedBlueprint.script);
-                addToast("Script improved for viral potential! 🚀", "success");
+
+            if ((response as any).text) {
+                const improvedData = JSON.parse((response as any).text);
+                const improvedScript = {
+                    ...script,
+                    hook: improvedData.hook || script.hook,
+                    scenes: improvedData.scenes || script.scenes,
+                    cta: improvedData.cta || script.cta
+                };
+                
+                const success = await handleUpdateProject(project.id, {
+                    script: improvedScript,
+                    workflowStep: 3
+                });
+                
+                if (success) {
+                    setScript(improvedScript);
+                    addToast("Script improved with AI analysis! 🚀", "success");
+                } else {
+                    addToast("Failed to save improved script. Please try again.", "error");
+                }
             } else {
-                addToast("Failed to save improved script. Please try again.", "error");
+                throw new Error('No improvement data received');
             }
         } catch (error) {
             console.error("Script improvement error:", error);
@@ -189,63 +215,56 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         
         setIsAnalyzing(true);
         try {
-            // Optimize current script for viral potential
-            const optimizedScript = { ...script };
-            let improvementsMade: string[] = [];
-            
-            // Enhance hook with viral elements
-            if (optimizedScript.hook) {
-                const originalHook = optimizedScript.hook;
-                if (!originalHook.includes('!') && !originalHook.includes('?')) {
-                    optimizedScript.hook = originalHook + " This will blow your mind!";
-                    improvementsMade.push("Enhanced hook with viral element");
-                }
-            }
-            
-            // Enhance title (update project title)
-            if (project.title) {
-                const originalTitle = project.title;
-                if (!originalTitle.includes('!') && !originalTitle.includes('?')) {
-                    await handleUpdateProject(project.id, {
-                        title: originalTitle.replace(/[.!]$/, '') + "!"
-                    });
-                    improvementsMade.push("Added viral punctuation to title");
-                }
-            }
-            
-            // Add viral elements to scenes (more sophisticated)
-            optimizedScript.scenes.forEach((scene, index) => {
-                if (scene.voiceover && !scene.voiceover.includes('!') && !scene.voiceover.includes('amazing') && !scene.voiceover.includes('incredible')) {
-                    const viralAdditions = [
-                        " This is absolutely incredible!",
-                        " You won't believe this!",
-                        " This will shock you!",
-                        " This is mind-blowing!"
-                    ];
-                    const randomAddition = viralAdditions[index % viralAdditions.length];
-                    scene.voiceover = scene.voiceover + randomAddition;
+            // Use AI to optimize for viral potential
+            const viralOptimizationPrompt = `You are a viral content strategist. Optimize this video script specifically for viral potential on ${project.platform || 'social media'}.
+
+Current Script:
+Title: ${project.title || 'Untitled'}
+Hook: ${script.hook || 'No hook'}
+Scenes: ${script.scenes.map((s, i) => `${i + 1}. ${s.voiceover || s.visual || 'No content'}`).join('\n')}
+CTA: ${script.cta || 'No CTA'}
+
+Apply viral optimization techniques:
+1. Hook: Make it irresistible, create curiosity gap, add emotional trigger
+2. Scenes: Add viral elements (shock, surprise, relatability, controversy, humor)
+3. CTA: Make it urgent and action-oriented
+4. Platform-specific: Optimize for ${project.platform || 'social media'} algorithm preferences
+
+Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
+
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: viralOptimizationPrompt,
+                    config: {
+                        responseMimeType: 'application/json'
+                    }
                 }
             });
-            
-            if (improvementsMade.length > 0) {
-                improvementsMade.push("Added viral elements to scenes");
-            }
-            
-            const success = await handleUpdateProject(project.id, {
-                script: optimizedScript,
-                workflowStep: 3
-            });
-            
-            if (success) {
-                // Update local script state to reflect changes
-                setScript(optimizedScript);
-                const improvementText = improvementsMade.length > 0 
-                    ? `Script optimized! Improvements: ${improvementsMade.join(', ')} 🔥`
-                    : "Script already optimized for viral potential! 🎯";
+
+            if ((response as any).text) {
+                const optimizedData = JSON.parse((response as any).text);
+                const optimizedScript = {
+                    ...script,
+                    hook: optimizedData.hook || script.hook,
+                    scenes: optimizedData.scenes || script.scenes,
+                    cta: optimizedData.cta || script.cta
+                };
                 
-                addToast(improvementText, "success");
+                const success = await handleUpdateProject(project.id, {
+                    script: optimizedScript,
+                    workflowStep: 3
+                });
+                
+                if (success) {
+                    setScript(optimizedScript);
+                    addToast("Script optimized for viral potential! 🔥", "success");
+                } else {
+                    addToast("Failed to save optimized script. Please try again.", "error");
+                }
             } else {
-                addToast("Failed to save optimized script. Please try again.", "error");
+                throw new Error('No optimization data received');
             }
         } catch (error) {
             console.error("Viral optimization error:", error);

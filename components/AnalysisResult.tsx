@@ -291,56 +291,78 @@ const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onReset, videoP
 
         {/* Improvement Suggestions Section */}
         {overallScore < 80 && (
-          <div className="bg-gray-800/50 rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-700 animate-fade-in-up stagger-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-white">🚀 Boost Your Viral Potential</h3>
+          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-2xl p-6 shadow-2xl border border-gray-600/50 backdrop-blur-sm">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white mb-2">🚀 Boost Your Viral Potential</h3>
+              <p className="text-gray-400 text-sm">Get AI-powered suggestions to maximize your video's viral potential</p>
+            </div>
+            
+            <div className="flex justify-center">
               <button
                 onClick={handleGetImprovements}
                 disabled={isLoadingImprovements}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-300"
+                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:transform-none disabled:cursor-not-allowed"
               >
-                <SparklesIcon className="w-4 h-4 mr-2" />
-                {isLoadingImprovements ? 'Analyzing...' : 'Get Improvements'}
+                {isLoadingImprovements ? (
+                  <>
+                    <div className="w-5 h-5 mr-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="w-5 h-5 mr-3" />
+                    Get Improvements
+                  </>
+                )}
               </button>
             </div>
             
             {improvementSuggestions && (
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-indigo-400 font-semibold">Viral Potential After Improvements:</span>
-                    <span className="text-white font-bold text-lg">{improvementSuggestions.viralPotential}/100</span>
+              <div className="mt-8 space-y-6">
+                <div className="p-6 bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 rounded-xl border border-emerald-500/30 text-center">
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <span className="text-emerald-400 font-semibold text-lg">Viral Potential After Improvements:</span>
+                    <span className="text-white font-bold text-2xl">{improvementSuggestions.viralPotential}/100</span>
                   </div>
-                  <p className="text-gray-300 text-sm">
-                    Implementing these improvements could boost your viral potential significantly!
+                  <p className="text-gray-300">
+                    🎯 Implementing these improvements could boost your viral potential significantly!
                   </p>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="grid gap-6">
                   {improvementSuggestions.improvements.map((improvement: any, index: number) => (
-                    <div key={index} className="p-4 bg-gray-700/30 rounded-xl border border-gray-600">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            improvement.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                            improvement.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-green-500/20 text-green-400'
+                    <div key={index} className="p-6 bg-gradient-to-br from-gray-700/40 to-gray-800/40 rounded-xl border border-gray-600/50 backdrop-blur-sm hover:border-indigo-500/50 transition-all duration-300">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            improvement.priority === 'high' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                            improvement.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                            'bg-green-500/20 text-green-400 border border-green-500/30'
                           }`}>
                             {improvement.priority.toUpperCase()} PRIORITY
                           </span>
-                          <span className="text-white font-semibold capitalize">{improvement.category}</span>
+                          <span className="text-white font-bold text-lg capitalize">{improvement.category}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-gray-400 text-sm">{improvement.currentScore} → </span>
-                          <span className="text-emerald-400 font-bold">{improvement.targetScore}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 text-sm">{improvement.currentScore}</span>
+                            <span className="text-gray-500">→</span>
+                            <span className="text-emerald-400 font-bold text-lg">{improvement.targetScore}</span>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-gray-200 mb-2">{improvement.suggestion}</p>
-                      <p className="text-indigo-400 text-sm mb-2">{improvement.reason}</p>
-                      <div className="p-3 bg-gray-800/50 rounded-lg">
-                        <p className="text-gray-300 text-sm">
-                          <strong>Example:</strong> {improvement.example}
-                        </p>
+                      
+                      <div className="space-y-4">
+                        <p className="text-gray-100 text-lg leading-relaxed">{improvement.suggestion}</p>
+                        <div className="p-4 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                          <p className="text-indigo-300 text-sm font-medium mb-2">💡 Why this matters:</p>
+                          <p className="text-indigo-200">{improvement.reason}</p>
+                        </div>
+                        <div className="p-4 bg-gray-800/60 rounded-lg border border-gray-600/30">
+                          <p className="text-gray-300 text-sm">
+                            <span className="text-emerald-400 font-semibold">Example:</span> {improvement.example}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}

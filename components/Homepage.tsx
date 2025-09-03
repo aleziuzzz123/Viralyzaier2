@@ -152,8 +152,18 @@ export const LandingPage: React.FC = () => {
             </main>
             
             <footer className="py-8 border-t border-gray-800">
-                <div className="container mx-auto text-center text-gray-500">
-                    <p>{t('homepage.footer_text', { year })}</p>
+                <div className="container mx-auto px-4">
+                    <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                        <div className="text-gray-500 text-sm">
+                            <p>{t('homepage.footer_text', { year })}</p>
+                        </div>
+                        <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+                            <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+                            <a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a>
+                            <a href="/cookies" className="text-gray-400 hover:text-white transition-colors">Cookie Policy</a>
+                            <a href="/refund" className="text-gray-400 hover:text-white transition-colors">Refund Policy</a>
+                        </div>
+                    </div>
                 </div>
             </footer>
 

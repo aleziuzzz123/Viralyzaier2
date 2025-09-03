@@ -21,6 +21,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
+import LegalPages from './components/LegalPages';
 
 // import FinalShotstackStudio from './components/FinalShotstackStudio'; // Temporarily disabled
 import SimpleShotstackStudio from './components/SimpleShotstackStudio';
@@ -28,7 +29,7 @@ import MinimalShotstackTest from './components/MinimalShotstackTest';
 import WorkingShotstackStudio from './components/WorkingShotstackStudio';
 
 
-type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
+type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff' | 'privacy' | 'terms' | 'cookies' | 'refund';
 
 const BackendErrorModal: React.FC = () => {
     const { backendError, clearBackendError, t } = useAppContext();
@@ -146,7 +147,17 @@ const MainApp = () => {
         const isStudioRoute = window.location.pathname === '/studio-editor';
         setIsStudioEditor(isStudioRoute);
         
-        if(activeProjectId) {
+        // Handle legal page routes
+        const path = window.location.pathname;
+        if (path === '/privacy') {
+            setCurrentView('privacy');
+        } else if (path === '/terms') {
+            setCurrentView('terms');
+        } else if (path === '/cookies') {
+            setCurrentView('cookies');
+        } else if (path === '/refund') {
+            setCurrentView('refund');
+        } else if (activeProjectId) {
             setCurrentView('project');
         } else {
             if(currentView === 'project') {
@@ -220,6 +231,14 @@ const MainApp = () => {
                 return <Autopilot />;
             case 'settings':
                 return <Settings />;
+            case 'privacy':
+                return <LegalPages page="privacy" />;
+            case 'terms':
+                return <LegalPages page="terms" />;
+            case 'cookies':
+                return <LegalPages page="cookies" />;
+            case 'refund':
+                return <LegalPages page="refund" />;
 
             case 'dashboard':
             default:
