@@ -6,18 +6,56 @@ interface LegalPagesProps {
 }
 
 const LegalPages: React.FC<LegalPagesProps> = ({ page }) => {
-  const { t } = useAppContext();
+  const { t, user } = useAppContext();
+
+  const renderNavigation = () => (
+    <div className="mb-6 flex justify-between items-center">
+      <button 
+        onClick={() => window.location.href = '/'} 
+        className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2"
+      >
+        ← Back to Home
+      </button>
+      <div className="flex items-center space-x-4">
+        {user && (
+          <button 
+            onClick={() => window.location.href = '/dashboard'} 
+            className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+          >
+            Dashboard
+          </button>
+        )}
+        <button 
+          onClick={() => window.location.href = '/privacy'} 
+          className={`transition-colors ${page === 'privacy' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          Privacy
+        </button>
+        <button 
+          onClick={() => window.location.href = '/terms'} 
+          className={`transition-colors ${page === 'terms' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          Terms
+        </button>
+        <button 
+          onClick={() => window.location.href = '/cookies'} 
+          className={`transition-colors ${page === 'cookies' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          Cookies
+        </button>
+        <button 
+          onClick={() => window.location.href = '/refund'} 
+          className={`transition-colors ${page === 'refund' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          Refund
+        </button>
+      </div>
+    </div>
+  );
 
   const renderPrivacyPolicy = () => (
     <div className="max-w-4xl mx-auto p-8 bg-gray-900 text-white">
-      <div className="mb-6">
-        <button 
-          onClick={() => window.location.href = '/'} 
-          className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      {renderNavigation()}
       <h1 className="text-3xl font-bold mb-8">Privacy Policy</h1>
       <p className="text-gray-400 mb-6">Last updated: {new Date().toLocaleDateString()}</p>
       
@@ -100,14 +138,7 @@ const LegalPages: React.FC<LegalPagesProps> = ({ page }) => {
 
   const renderTermsOfService = () => (
     <div className="max-w-4xl mx-auto p-8 bg-gray-900 text-white">
-      <div className="mb-6">
-        <button 
-          onClick={() => window.location.href = '/'} 
-          className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      {renderNavigation()}
       <h1 className="text-3xl font-bold mb-8">Terms of Service</h1>
       <p className="text-gray-400 mb-6">Last updated: {new Date().toLocaleDateString()}</p>
       
@@ -223,14 +254,7 @@ const LegalPages: React.FC<LegalPagesProps> = ({ page }) => {
 
   const renderCookiePolicy = () => (
     <div className="max-w-4xl mx-auto p-8 bg-gray-900 text-white">
-      <div className="mb-6">
-        <button 
-          onClick={() => window.location.href = '/'} 
-          className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      {renderNavigation()}
       <h1 className="text-3xl font-bold mb-8">Cookie Policy</h1>
       <p className="text-gray-400 mb-6">Last updated: {new Date().toLocaleDateString()}</p>
       
@@ -272,14 +296,7 @@ const LegalPages: React.FC<LegalPagesProps> = ({ page }) => {
 
   const renderRefundPolicy = () => (
     <div className="max-w-4xl mx-auto p-8 bg-gray-900 text-white">
-      <div className="mb-6">
-        <button 
-          onClick={() => window.location.href = '/'} 
-          className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      {renderNavigation()}
       <h1 className="text-3xl font-bold mb-8">Refund Policy</h1>
       <p className="text-gray-400 mb-6">Last updated: {new Date().toLocaleDateString()}</p>
       

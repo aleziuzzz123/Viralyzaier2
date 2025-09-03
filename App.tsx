@@ -157,6 +157,8 @@ const MainApp = () => {
             setCurrentView('cookies');
         } else if (path === '/refund') {
             setCurrentView('refund');
+        } else if (path === '/dashboard') {
+            setCurrentView('dashboard');
         } else if (activeProjectId) {
             setCurrentView('project');
         } else if (currentView === 'project') {
@@ -176,6 +178,8 @@ const MainApp = () => {
                 setCurrentView('cookies');
             } else if (path === '/refund') {
                 setCurrentView('refund');
+            } else if (path === '/dashboard') {
+                setCurrentView('dashboard');
             } else if (path === '/studio-editor') {
                 setIsStudioEditor(true);
             } else {
@@ -208,6 +212,8 @@ const MainApp = () => {
             } else if (view === 'refund') {
                 window.history.pushState({}, '', '/refund');
             } else if (view === 'dashboard') {
+                window.history.pushState({}, '', '/dashboard');
+            } else if (view === 'dashboard' && window.location.pathname === '/') {
                 window.history.pushState({}, '', '/');
             }
         }
