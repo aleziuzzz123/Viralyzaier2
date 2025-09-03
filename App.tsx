@@ -159,18 +159,57 @@ const MainApp = () => {
             setCurrentView('refund');
         } else if (activeProjectId) {
             setCurrentView('project');
-        } else {
-            if(currentView === 'project') {
-                setCurrentView('dashboard');
-            }
+        } else if (currentView === 'project') {
+            setCurrentView('dashboard');
         }
     }, [activeProjectId, currentView]);
+
+    // Listen for URL changes (for browser back/forward buttons)
+    useEffect(() => {
+        const handlePopState = () => {
+            const path = window.location.pathname;
+            if (path === '/privacy') {
+                setCurrentView('privacy');
+            } else if (path === '/terms') {
+                setCurrentView('terms');
+            } else if (path === '/cookies') {
+                setCurrentView('cookies');
+            } else if (path === '/refund') {
+                setCurrentView('refund');
+            } else if (path === '/studio-editor') {
+                setIsStudioEditor(true);
+            } else {
+                setIsStudioEditor(false);
+                if (activeProjectId) {
+                    setCurrentView('project');
+                } else {
+                    setCurrentView('dashboard');
+                }
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [activeProjectId]);
 
     const handleSetView = (view: View) => {
         if (view === 'pricing' && currentView === 'project') {
             // Do nothing to prevent navigation away from pricing when modal closes
         } else {
             setCurrentView(view);
+            
+            // Update URL for legal pages
+            if (view === 'privacy') {
+                window.history.pushState({}, '', '/privacy');
+            } else if (view === 'terms') {
+                window.history.pushState({}, '', '/terms');
+            } else if (view === 'cookies') {
+                window.history.pushState({}, '', '/cookies');
+            } else if (view === 'refund') {
+                window.history.pushState({}, '', '/refund');
+            } else if (view === 'dashboard') {
+                window.history.pushState({}, '', '/');
+            }
         }
         if (view !== 'project' && view !== 'kickoff') {
             setActiveProjectId(null);
@@ -186,7 +225,10 @@ const MainApp = () => {
     };
 
     const renderCurrentView = () => {
-        if (!user) return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading_user')}</div>;
+        // Allow legal pages to be accessible without authentication
+        if (!user && !['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
+            return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading_user')}</div>;
+        }
         
         // If we're on the studio-editor route, show the full-screen editor
         if (isStudioEditor) {
@@ -249,9 +291,18 @@ const MainApp = () => {
         }
     };
     
-    // Show landing page for logged out users
-    if (!user) {
+    // Show landing page for logged out users, except for legal pages
+    if (!user && !['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
         return <LandingPage />;
+    }
+    
+    // For legal pages without authentication, show minimal layout
+    if (!user && ['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
+        return (
+            <div className="min-h-screen bg-gray-900 text-white">
+                <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
+            </div>
+        );
     }
     
     return (

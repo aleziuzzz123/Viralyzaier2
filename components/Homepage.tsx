@@ -158,10 +158,10 @@ export const LandingPage: React.FC = () => {
                             <p>{t('homepage.footer_text', { year })}</p>
                         </div>
                         <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
-                            <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
-                            <a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a>
-                            <a href="/cookies" className="text-gray-400 hover:text-white transition-colors">Cookie Policy</a>
-                            <a href="/refund" className="text-gray-400 hover:text-white transition-colors">Refund Policy</a>
+                            <button onClick={() => window.location.href = '/privacy'} className="text-gray-400 hover:text-white transition-colors">Privacy Policy</button>
+                            <button onClick={() => window.location.href = '/terms'} className="text-gray-400 hover:text-white transition-colors">Terms of Service</button>
+                            <button onClick={() => window.location.href = '/cookies'} className="text-gray-400 hover:text-white transition-colors">Cookie Policy</button>
+                            <button onClick={() => window.location.href = '/refund'} className="text-gray-400 hover:text-white transition-colors">Refund Policy</button>
                         </div>
                     </div>
                 </div>
