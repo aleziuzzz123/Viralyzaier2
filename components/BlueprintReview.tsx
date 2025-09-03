@@ -26,6 +26,11 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>('modern');
     const [editingHookIndex, setEditingHookIndex] = useState<number | null>(null);
     const [editingHookText, setEditingHookText] = useState('');
+    const [processingStyle, setProcessingStyle] = useState<string | null>(null);
+    const [styleApplicationMode, setStyleApplicationMode] = useState<'all' | 'specific'>('all');
+    const [selectedSceneForStyle, setSelectedSceneForStyle] = useState<number | null>(null);
+    const [showStoryboardModal, setShowStoryboardModal] = useState<{ sceneIndex: number; imageUrl: string } | null>(null);
+    const [hoveredStoryboard, setHoveredStoryboard] = useState<{ sceneIndex: number; imageUrl: string; x: number; y: number } | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -557,19 +562,19 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     
                     // Generate storyboards for each scene
                     const imagePromises = editedScript.scenes?.map((scene, index) => 
-                        invokeEdgeFunction('openai-proxy', {
-                            type: 'generateImages',
-                            params: {
+                    invokeEdgeFunction('openai-proxy', {
+                        type: 'generateImages',
+                        params: {
                                 prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${selectedStyle?.description || 'Clean and modern visuals'}. Aspect ratio: 16:9.`,
-                                config: {
-                                    numberOfImages: 1,
-                                    aspectRatio: '16:9'
-                                }
+                            config: {
+                                numberOfImages: 1,
+                                aspectRatio: '16:9'
                             }
-                        })
+                        }
+                    })
                     ) || [];
 
-                    const imageResponses = await Promise.all(imagePromises);
+                const imageResponses = await Promise.all(imagePromises);
                     
                     // Update each scene with its new storyboard
                     const updatedScenes = [...editedScript.scenes];
@@ -578,19 +583,19 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         if ((response as any).generatedImages && (response as any).generatedImages[0]) {
                             const base64Data = (response as any).generatedImages[0].image.imageBytes;
                             const fileName = `storyboard-${Date.now()}-${i}.png`;
-                            const filePath = `${project.userId}/${project.id}/${fileName}`;
+                        const filePath = `${project.userId}/${project.id}/${fileName}`;
                         
-                            const { data, error } = await supabase.storage
+                        const { data, error } = await supabase.storage
+                            .from('assets')
+                            .upload(filePath, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
+                                contentType: 'image/png',
+                                upsert: true
+                            });
+                        
+                        if (!error && data) {
+                            const { data: urlData } = supabase.storage
                                 .from('assets')
-                                .upload(filePath, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
-                                    contentType: 'image/png',
-                                    upsert: true
-                                });
-                            
-                            if (!error && data) {
-                                const { data: urlData } = supabase.storage
-                                    .from('assets')
-                                    .getPublicUrl(filePath);
+                                .getPublicUrl(filePath);
                                 
                                 // Update the specific scene's storyboard
                                 updatedScenes[i] = {
@@ -1004,6 +1009,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             >
                                 <SparklesIcon className="w-4 h-4 mr-2" />
                                 {isAnalyzing ? 'Improving...' : 'Improve Blueprint'}
+                                <span className="ml-2 text-xs bg-blue-500/30 px-2 py-1 rounded-full">2 Credits</span>
                             </button>
                             
                             <button
@@ -1013,6 +1019,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             >
                                 <SparklesIcon className="w-4 h-4 mr-2" />
                                 {isAnalyzing ? 'Optimizing...' : 'Optimize for Viral'}
+                                <span className="ml-2 text-xs bg-purple-500/30 px-2 py-1 rounded-full">3 Credits</span>
                             </button>
                         </div>
                         
@@ -1208,30 +1215,107 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     </div>
 
                     {/* Global Visual Style Selection */}
-                    <div className="mb-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700">
+                    <div className={`mb-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700 relative ${processingStyle ? 'opacity-75' : ''}`}>
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-lg font-semibold text-white">🎨 Choose Your Visual Style</h3>
-                            <span className="text-sm text-gray-400">This style will apply to all scenes</span>
+                            <div className="flex items-center gap-2">
+                                {processingStyle && (
+                                    <div className="flex items-center gap-2 text-indigo-400">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b border-indigo-400"></div>
+                                        <span className="text-sm">Applying style...</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Application Mode Selection */}
+                        <div className="mb-4">
+                            <div className="flex items-center gap-4 mb-3">
+                                <span className="text-sm text-gray-300">Apply to:</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setStyleApplicationMode('all')}
+                                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                                            styleApplicationMode === 'all'
+                                                ? 'bg-indigo-500 text-white'
+                                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                        }`}
+                                    >
+                                        All Scenes
+                                    </button>
+                                    <button
+                                        onClick={() => setStyleApplicationMode('specific')}
+                                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                                            styleApplicationMode === 'specific'
+                                                ? 'bg-indigo-500 text-white'
+                                                : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                        }`}
+                                    >
+                                        Specific Scene
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {styleApplicationMode === 'specific' && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-300">Select scene:</span>
+                                    <select
+                                        value={selectedSceneForStyle || ''}
+                                        onChange={(e) => setSelectedSceneForStyle(parseInt(e.target.value))}
+                                        className="px-3 py-1 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">Choose scene...</option>
+                                        {editedScript.scenes?.map((_, index) => (
+                                            <option key={index} value={index}>
+                                                Scene {index + 1}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             {visualStyles.map((style) => (
                                 <button
                                     key={style.id}
-                                    onClick={() => {
+                                    onClick={async () => {
+                                        if (styleApplicationMode === 'specific' && selectedSceneForStyle === null) {
+                                            addToast('Please select a scene first', 'error');
+                                            return;
+                                        }
+                                        
+                                        setProcessingStyle(style.id);
                                         setSelectedVisualStyle(style.id);
-                                        // Regenerate all storyboards with new style
-                                        regenerateContent('moodboard', undefined, style.id);
+                                        
+                                        if (styleApplicationMode === 'all') {
+                                            // Regenerate all storyboards with new style
+                                            await regenerateContent('moodboard', undefined, style.id);
+                                        } else {
+                                            // Regenerate specific scene storyboard
+                                            await regenerateContent('moodboard', selectedSceneForStyle, style.id);
+                                        }
+                                        
+                                        setProcessingStyle(null);
                                     }}
-                                    disabled={isRegenerating === 'moodboard'}
+                                    disabled={isRegenerating === 'moodboard' || processingStyle !== null}
                                     className={`p-3 rounded-lg border transition-all duration-300 text-left disabled:opacity-50 ${
                                         selectedVisualStyle === style.id
                                             ? 'border-indigo-500 bg-indigo-500/20 shadow-lg'
                                             : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
                                     }`}
                                 >
-                                    <div className="text-xl mb-2">{style.emoji}</div>
-                                    <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
-                                    <div className="text-xs text-gray-400 leading-tight">{style.description}</div>
+                                    {processingStyle === style.id ? (
+                                        <div className="flex flex-col items-center justify-center py-2">
+                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400 mb-2"></div>
+                                            <div className="text-sm font-semibold text-indigo-400">Processing...</div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="text-xl mb-2">{style.emoji}</div>
+                                            <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
+                                            <div className="text-xs text-gray-400 leading-tight">{style.description}</div>
+                                        </>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -1259,13 +1343,41 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     {/* Storyboard Image - 16:9 Aspect Ratio */}
                                     {scene.storyboardImageUrl && (
                                         <div className="relative group">
-                                            <label className="block text-gray-300 text-sm font-semibold mb-2">Storyboard</label>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block text-gray-300 text-sm font-semibold">Storyboard</label>
+                                                <button
+                                                    onClick={() => regenerateContent('moodboard', index)}
+                                                    disabled={isRegenerating === 'moodboard'}
+                                                    className="p-1 text-gray-400 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                                                    title="Regenerate storyboard image"
+                                                >
+                                                    {isRegenerating === 'moodboard' ? (
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b border-indigo-400"></div>
+                                                    ) : (
+                                                        <SparklesIcon className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                            
                                             <div 
                                                 className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg"
                                                 onClick={() => {
-                                                    // Regenerate this specific storyboard image
-                                                    regenerateContent('moodboard', index);
+                                                    setShowStoryboardModal({ 
+                                                        sceneIndex: index, 
+                                                        imageUrl: scene.storyboardImageUrl 
+                                                    });
                                                 }}
+                                                onMouseEnter={(e) => {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    setHoveredStoryboard({
+                                                        sceneIndex: index,
+                                                        imageUrl: scene.storyboardImageUrl,
+                                                        x: rect.left + rect.width / 2,
+                                                        y: rect.top - 10
+                                                    });
+                                                }}
+                                                onMouseLeave={() => setHoveredStoryboard(null)}
+                                                title="Click to view full size"
                                             >
                                                 <img 
                                                     src={scene.storyboardImageUrl} 
@@ -1274,8 +1386,10 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                 />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                                     <div className="text-center">
-                                                        <SparklesIcon className="w-6 h-6 text-white mx-auto mb-1" />
-                                                        <span className="text-white text-sm font-semibold">Click to Regenerate</span>
+                                                        <svg className="w-6 h-6 text-white mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                                        </svg>
+                                                        <span className="text-white text-sm font-semibold">Click to View Full</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1499,6 +1613,94 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     </div>
                 </div>
             </div>
+            
+            {/* Hover Preview Tooltip */}
+            {hoveredStoryboard && (
+                <div 
+                    className="fixed z-40 pointer-events-none"
+                    style={{
+                        left: `${hoveredStoryboard.x}px`,
+                        top: `${hoveredStoryboard.y}px`,
+                        transform: 'translateX(-50%)'
+                    }}
+                >
+                    <div className="bg-gray-800 rounded-lg shadow-2xl border border-gray-600 p-2 max-w-sm">
+                        <img 
+                            src={hoveredStoryboard.imageUrl} 
+                            alt={`Scene ${hoveredStoryboard.sceneIndex + 1} preview`}
+                            className="w-64 h-36 object-cover rounded"
+                        />
+                        <div className="text-center mt-2">
+                            <p className="text-white text-sm font-semibold">Scene {hoveredStoryboard.sceneIndex + 1}</p>
+                            <p className="text-gray-400 text-xs">Click to view full size</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Fullscreen Storyboard Modal */}
+            {showStoryboardModal && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="relative max-w-4xl max-h-[90vh] w-full">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowStoryboardModal(null)}
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                        >
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        
+                        {/* Image Container */}
+                        <div className="bg-gray-800 rounded-xl overflow-hidden shadow-2xl">
+                            <div className="p-4 border-b border-gray-700">
+                                <h3 className="text-xl font-bold text-white">Scene {showStoryboardModal.sceneIndex + 1} Storyboard</h3>
+                                <p className="text-gray-400 text-sm">Click regenerate to create a new storyboard image</p>
+                            </div>
+                            
+                            <div className="p-4">
+                                <img 
+                                    src={showStoryboardModal.imageUrl} 
+                                    alt={`Scene ${showStoryboardModal.sceneIndex + 1} storyboard`}
+                                    className="w-full max-h-[60vh] object-contain rounded-lg"
+                                />
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="p-4 border-t border-gray-700 flex gap-3">
+                                <button
+                                    onClick={async () => {
+                                        await regenerateContent('moodboard', showStoryboardModal.sceneIndex);
+                                        setShowStoryboardModal(null);
+                                    }}
+                                    disabled={isRegenerating === 'moodboard'}
+                                    className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {isRegenerating === 'moodboard' ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                                            Regenerating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SparklesIcon className="w-4 h-4" />
+                                            Regenerate Storyboard
+                                        </>
+                                    )}
+                                </button>
+                                
+                                <button
+                                    onClick={() => setShowStoryboardModal(null)}
+                                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
