@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Edit, Canvas, Controls, Timeline } from "@shotstack/shotstack-studio";
+import { SparklesIcon } from './Icons';
 
 interface WorkingShotstackStudioProps {
   project?: any;
+  onProceedToAnalysis?: () => void;
 }
 
-const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project }) => {
+const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project, onProceedToAnalysis }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -376,6 +378,23 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
           </div>
         </div>
       </div>
+
+      {/* Proceed Button */}
+      {onProceedToAnalysis && (
+        <div className="bg-gray-900 border-t border-gray-700 p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-center">
+              <button 
+                onClick={onProceedToAnalysis}
+                className="inline-flex items-center justify-center px-12 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+              >
+                <SparklesIcon className="w-6 h-6 mr-3" />
+                Proceed to Analysis & Report →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Debug Logs */}
       {logs.length > 0 && (
