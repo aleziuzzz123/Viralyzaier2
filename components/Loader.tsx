@@ -32,8 +32,8 @@ const Loader: React.FC = () => {
   }, [loadingSteps.length]);
 
   useEffect(() => {
-    // Smoothly update progress
-    const newProgress = Math.min(((currentStep + 1) / loadingSteps.length) * 100, 99);
+    // Smoothly update progress - allow 100% completion
+    const newProgress = ((currentStep + 1) / loadingSteps.length) * 100;
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev < newProgress) {
