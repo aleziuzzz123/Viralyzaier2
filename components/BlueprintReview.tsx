@@ -389,12 +389,12 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
         if (project.script) {
             setEditedScript(project.script);
             
-            // Auto-generate hooks if they don't exist
-            if (!project.script.hooks || project.script.hooks.length === 0) {
+            // Auto-generate hooks if they don't exist and we're on the blueprint review stage
+            if ((!project.script.hooks || project.script.hooks.length === 0) && project.workflowStep === 3) {
                 generateInitialHooks();
             }
         }
-    }, [project.script]);
+    }, [project.script, project.workflowStep]);
 
     // Auto-generate hooks when component loads
     const generateInitialHooks = async () => {

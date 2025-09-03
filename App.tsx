@@ -176,6 +176,13 @@ const MainApp = () => {
         }
     }, [activeProjectId, currentView]);
 
+    // Switch to project view when project details are loaded
+    useEffect(() => {
+        if (activeProjectId && activeProjectDetails && !isProjectDetailsLoading) {
+            setCurrentView('project');
+        }
+    }, [activeProjectId, activeProjectDetails, isProjectDetailsLoading]);
+
     // Listen for URL changes (for browser back/forward buttons)
     useEffect(() => {
         const handlePopState = () => {
@@ -252,7 +259,8 @@ const MainApp = () => {
 
     const handleSelectProject = (projectId: string) => {
         setActiveProjectId(projectId);
-        setCurrentView('project');
+        // Don't immediately switch to project view - let the useEffect handle it
+        // when activeProjectDetails is loaded
     };
     
     const handleNewProject = () => {
