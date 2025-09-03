@@ -178,7 +178,9 @@ const MainApp = () => {
 
     // Switch to project view when project details are loaded
     useEffect(() => {
+        console.log('🔄 Project view check:', { activeProjectId, hasActiveProjectDetails: !!activeProjectDetails, isProjectDetailsLoading });
         if (activeProjectId && activeProjectDetails && !isProjectDetailsLoading) {
+            console.log('✅ Switching to project view');
             setCurrentView('project');
         }
     }, [activeProjectId, activeProjectDetails, isProjectDetailsLoading]);
@@ -258,6 +260,7 @@ const MainApp = () => {
     };
 
     const handleSelectProject = (projectId: string) => {
+        console.log('🎯 Project selected:', projectId);
         setActiveProjectId(projectId);
         // Don't immediately switch to project view - let the useEffect handle it
         // when activeProjectDetails is loaded

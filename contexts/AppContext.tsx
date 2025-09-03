@@ -158,14 +158,18 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     useEffect(() => {
         const fetchDetails = async () => {
             if (!activeProjectId) {
+                console.log('🔄 No activeProjectId, clearing project details');
                 setActiveProjectDetails(null);
                 return;
             }
+            console.log('🔄 Loading project details for:', activeProjectId);
             setIsProjectDetailsLoading(true);
             try {
                 const details = await supabaseService.getProjectDetails(activeProjectId);
+                console.log('✅ Project details loaded:', details);
                 setActiveProjectDetails(details);
             } catch (e) {
+                console.error('❌ Error loading project details:', e);
                 addToast(t('toast.failed_fetch_projects'), 'error');
             } finally {
                 setIsProjectDetailsLoading(false);
