@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Project, Script, Scene, VideoStyle, BrandIdentity, ClonedVoice } from '../types';
 import { CheckBadgeIcon, MagicWandIcon, SparklesIcon, PlusIcon, TrashIcon, CheckCircleIcon, PhotoIcon, FilmIcon, TypeIcon, PaintBrushIcon, ScriptIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
@@ -45,7 +45,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     
     // Quality analysis function
     const analyzeScriptQuality = (script: Script) => {
-        if (!script || !script.scenes) return null;
+        if (!script || !script.scenes || script.scenes.length === 0) return null;
         
         let scriptScore = 0;
         let visualScore = 0;
@@ -56,14 +56,23 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         const totalScenes = script.scenes.length;
         const hasHook = script.hook && script.hook.length > 0;
         const hasCTA = script.cta && script.cta.length > 0;
-        const avgSceneLength = script.scenes.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / totalScenes;
         
-        // Script scoring (0-10)
+        // Calculate average scene length safely
+        const scenesWithVoiceover = script.scenes.filter(scene => scene.voiceover && scene.voiceover.length > 0);
+        const avgSceneLength = scenesWithVoiceover.length > 0 
+            ? scenesWithVoiceover.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / scenesWithVoiceover.length
+            : 0;
+        
+        // Script scoring (0-10) - More sophisticated scoring
         if (hasHook) scriptScore += 3;
         if (hasCTA) scriptScore += 2;
         if (totalScenes >= 3 && totalScenes <= 8) scriptScore += 2;
         if (avgSceneLength >= 10 && avgSceneLength <= 30) scriptScore += 2;
         if (project.title && project.title.length > 0) scriptScore += 1;
+        
+        // Additional quality checks
+        if (hasHook && script.hook.length > 20) scriptScore += 1; // Detailed hook
+        if (hasCTA && script.cta.length > 10) scriptScore += 1; // Detailed CTA
         
         // Visual scoring (0-10)
         const hasVisuals = script.scenes.some(scene => scene.visual && scene.visual.length > 0);
@@ -80,16 +89,19 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         if (videoLength <= 60) viralScore += 2;
         if (hasCTA) viralScore += 1;
         
-        // Generate suggestions
-        if (!hasHook) suggestions.push("Add a strong hook in the first 3 seconds");
-        if (!hasCTA) suggestions.push("Add a clear call-to-action at the end");
-        if (totalScenes < 3) suggestions.push("Add more scenes for better engagement");
-        if (totalScenes > 8) suggestions.push("Consider reducing scenes for better focus");
-        if (avgSceneLength < 10) suggestions.push("Make scenes more detailed and engaging");
-        if (avgSceneLength > 30) suggestions.push("Keep scenes concise for better retention");
-        if (!hasVisuals) suggestions.push("Add visual descriptions to each scene");
-        if (!hasMoodboard) suggestions.push("Generate moodboard for visual consistency");
-        if (videoLength > 90) suggestions.push("Consider shorter length for better viral potential");
+        // Generate more specific and actionable suggestions
+        if (!hasHook) suggestions.push("🎯 Add a compelling hook in the first 3 seconds to grab attention");
+        if (hasHook && script.hook.length < 20) suggestions.push("💡 Expand your hook with more details to increase engagement");
+        if (!hasCTA) suggestions.push("📢 Add a clear call-to-action at the end to drive engagement");
+        if (hasCTA && script.cta.length < 10) suggestions.push("🎯 Make your CTA more specific and actionable");
+        if (totalScenes < 3) suggestions.push("📈 Add 2-3 more scenes for better story structure");
+        if (totalScenes > 8) suggestions.push("✂️ Consider combining similar scenes for better focus");
+        if (avgSceneLength < 10 && avgSceneLength > 0) suggestions.push("📝 Add more detail to scenes for better engagement");
+        if (avgSceneLength > 30) suggestions.push("⚡ Keep scenes under 30 words for better retention");
+        if (!hasVisuals) suggestions.push("🎨 Add visual descriptions to each scene for better storytelling");
+        if (!hasMoodboard) suggestions.push("🖼️ Generate a moodboard for consistent visual style");
+        if (videoLength > 90) suggestions.push("⏱️ Consider 60-90 seconds for better viral potential");
+        if (scenesWithVoiceover.length === 0) suggestions.push("🎤 Add voiceover content to make your video more engaging");
         
         const overallScore = Math.round((scriptScore + visualScore + viralScore) / 3);
         
@@ -102,21 +114,27 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         };
     };
     
+    // Memoize quality analysis to prevent unnecessary recalculations
+    const qualityAnalysis = useMemo(() => {
+        if (!project.script) return null;
+        return analyzeScriptQuality(project.script);
+    }, [project.script, project.title, project.moodboard, videoStyle, videoLength]);
+    
     useEffect(() => {
         setScript(project.script);
-        if (project.script) {
-            const analysis = analyzeScriptQuality(project.script);
-            if (analysis) {
-                setQualityScores({
-                    script: analysis.script,
-                    visual: analysis.visual,
-                    viral: analysis.viral,
-                    overall: analysis.overall
-                });
-                setImprovementSuggestions(analysis.suggestions);
-            }
+        if (qualityAnalysis) {
+            setQualityScores({
+                script: qualityAnalysis.script,
+                visual: qualityAnalysis.visual,
+                viral: qualityAnalysis.viral,
+                overall: qualityAnalysis.overall
+            });
+            setImprovementSuggestions(qualityAnalysis.suggestions);
+        } else {
+            setQualityScores(null);
+            setImprovementSuggestions([]);
         }
-    }, [project.script]);
+    }, [qualityAnalysis]);
 
     // One-click improvement functions
     const handleImproveScript = () => lockAndExecute(async () => {
@@ -157,32 +175,56 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         try {
             // Optimize current script for viral potential
             const optimizedScript = { ...script };
+            let improvementsMade: string[] = [];
             
-            // Enhance hook
+            // Enhance hook with viral elements
             if (optimizedScript.hook) {
-                optimizedScript.hook = optimizedScript.hook + " This will blow your mind!";
+                const originalHook = optimizedScript.hook;
+                if (!originalHook.includes('!') && !originalHook.includes('?')) {
+                    optimizedScript.hook = originalHook + " This will blow your mind!";
+                    improvementsMade.push("Enhanced hook with viral element");
+                }
             }
             
             // Enhance title (update project title)
             if (project.title) {
-                await handleUpdateProject(project.id, {
-                    title: project.title.replace(/[.!]$/, '') + "!"
-                });
+                const originalTitle = project.title;
+                if (!originalTitle.includes('!') && !originalTitle.includes('?')) {
+                    await handleUpdateProject(project.id, {
+                        title: originalTitle.replace(/[.!]$/, '') + "!"
+                    });
+                    improvementsMade.push("Added viral punctuation to title");
+                }
             }
             
-            // Add viral elements
+            // Add viral elements to scenes (more sophisticated)
             optimizedScript.scenes.forEach((scene, index) => {
-                if (scene.voiceover && !scene.voiceover.includes('!')) {
-                    scene.voiceover = scene.voiceover + " This is incredible!";
+                if (scene.voiceover && !scene.voiceover.includes('!') && !scene.voiceover.includes('amazing') && !scene.voiceover.includes('incredible')) {
+                    const viralAdditions = [
+                        " This is absolutely incredible!",
+                        " You won't believe this!",
+                        " This will shock you!",
+                        " This is mind-blowing!"
+                    ];
+                    const randomAddition = viralAdditions[index % viralAdditions.length];
+                    scene.voiceover = scene.voiceover + randomAddition;
                 }
             });
+            
+            if (improvementsMade.length > 0) {
+                improvementsMade.push("Added viral elements to scenes");
+            }
             
             await handleUpdateProject(project.id, {
                 script: optimizedScript,
                 workflowStep: 3
             });
             
-            addToast("Script optimized for viral potential! 🔥", "success");
+            const improvementText = improvementsMade.length > 0 
+                ? `Script optimized! Improvements: ${improvementsMade.join(', ')} 🔥`
+                : "Script already optimized for viral potential! 🎯";
+            
+            addToast(improvementText, "success");
         } catch (error) {
             addToast("Failed to optimize script. Please try again.", "error");
         } finally {
@@ -651,8 +693,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                             disabled={isAnalyzing}
                             className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <MagicWandIcon className="w-4 h-4 mr-2" />
-                            {isAnalyzing ? 'Improving...' : 'Improve Script (2 Credits)'}
+                            {isAnalyzing ? (
+                                <>
+                                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Improving...
+                                </>
+                            ) : (
+                                <>
+                                    <MagicWandIcon className="w-4 h-4 mr-2" />
+                                    Improve Script (2 Credits)
+                                </>
+                            )}
                         </button>
                         
                         <button
@@ -660,8 +711,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                             disabled={isAnalyzing}
                             className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <SparklesIcon className="w-4 h-4 mr-2" />
-                            {isAnalyzing ? 'Optimizing...' : 'Optimize for Viral (1 Credit)'}
+                            {isAnalyzing ? (
+                                <>
+                                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Optimizing...
+                                </>
+                            ) : (
+                                <>
+                                    <SparklesIcon className="w-4 h-4 mr-2" />
+                                    Optimize for Viral (1 Credit)
+                                </>
+                            )}
                         </button>
                     </div>
                     

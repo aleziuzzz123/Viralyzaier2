@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { Project, Script, Scene } from '../types';
 import { invokeEdgeFunction } from '../services/supabaseService';
@@ -39,7 +39,7 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
 
   // Quality analysis function
   const analyzeBlueprintQuality = (script: Script) => {
-    if (!script || !script.scenes) return null;
+    if (!script || !script.scenes || script.scenes.length === 0) return null;
     
     let scriptScore = 0;
     let visualScore = 0;
@@ -50,14 +50,23 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const totalScenes = script.scenes.length;
     const hasHook = script.hook && script.hook.length > 0;
     const hasCTA = script.cta && script.cta.length > 0;
-    const avgSceneLength = script.scenes.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / totalScenes;
     
-    // Script scoring (0-10)
+    // Calculate average scene length safely
+    const scenesWithVoiceover = script.scenes.filter(scene => scene.voiceover && scene.voiceover.length > 0);
+    const avgSceneLength = scenesWithVoiceover.length > 0 
+      ? scenesWithVoiceover.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / scenesWithVoiceover.length
+      : 0;
+    
+    // Script scoring (0-10) - More sophisticated scoring
     if (hasHook) scriptScore += 3;
     if (hasCTA) scriptScore += 2;
     if (totalScenes >= 3 && totalScenes <= 8) scriptScore += 2;
     if (avgSceneLength >= 10 && avgSceneLength <= 30) scriptScore += 2;
     if (project.title && project.title.length > 0) scriptScore += 1;
+    
+    // Additional quality checks
+    if (hasHook && script.hook.length > 20) scriptScore += 1; // Detailed hook
+    if (hasCTA && script.cta.length > 10) scriptScore += 1; // Detailed CTA
     
     // Visual scoring (0-10)
     const hasVisuals = script.scenes.some(scene => scene.visual && scene.visual.length > 0);
@@ -74,16 +83,19 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     if (project.videoSize === '9:16') viralScore += 2;
     if (hasCTA) viralScore += 1;
     
-    // Generate suggestions
-    if (!hasHook) suggestions.push("Add a strong hook in the first 3 seconds");
-    if (!hasCTA) suggestions.push("Add a clear call-to-action at the end");
-    if (totalScenes < 3) suggestions.push("Add more scenes for better engagement");
-    if (totalScenes > 8) suggestions.push("Consider reducing scenes for better focus");
-    if (avgSceneLength < 10) suggestions.push("Make scenes more detailed and engaging");
-    if (avgSceneLength > 30) suggestions.push("Keep scenes concise for better retention");
-    if (!hasVisuals) suggestions.push("Add visual descriptions to each scene");
-    if (!hasMoodboard) suggestions.push("Generate moodboard for visual consistency");
-    if (project.videoSize === '16:9' && project.platform === 'youtube_short') suggestions.push("Consider 9:16 format for better mobile viewing");
+    // Generate more specific and actionable suggestions
+    if (!hasHook) suggestions.push("🎯 Add a compelling hook in the first 3 seconds to grab attention");
+    if (hasHook && script.hook.length < 20) suggestions.push("💡 Expand your hook with more details to increase engagement");
+    if (!hasCTA) suggestions.push("📢 Add a clear call-to-action at the end to drive engagement");
+    if (hasCTA && script.cta.length < 10) suggestions.push("🎯 Make your CTA more specific and actionable");
+    if (totalScenes < 3) suggestions.push("📈 Add 2-3 more scenes for better story structure");
+    if (totalScenes > 8) suggestions.push("✂️ Consider combining similar scenes for better focus");
+    if (avgSceneLength < 10 && avgSceneLength > 0) suggestions.push("📝 Add more detail to scenes for better engagement");
+    if (avgSceneLength > 30) suggestions.push("⚡ Keep scenes under 30 words for better retention");
+    if (!hasVisuals) suggestions.push("🎨 Add visual descriptions to each scene for better storytelling");
+    if (!hasMoodboard) suggestions.push("🖼️ Generate a moodboard for consistent visual style");
+    if (project.videoSize === '16:9' && project.platform === 'youtube_short') suggestions.push("📱 Consider 9:16 format for better mobile viewing");
+    if (scenesWithVoiceover.length === 0) suggestions.push("🎤 Add voiceover content to make your video more engaging");
     
     const overallScore = Math.round((scriptScore + visualScore + viralScore) / 3);
     
@@ -176,21 +188,27 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     }
   };
 
-  // Update quality scores when script changes
-  useEffect(() => {
-    if (editedScript) {
-      const analysis = analyzeBlueprintQuality(editedScript);
-      if (analysis) {
-        setQualityScores({
-          script: analysis.script,
-          visual: analysis.visual,
-          viral: analysis.viral,
-          overall: analysis.overall
-        });
-        setImprovementSuggestions(analysis.suggestions);
-      }
-    }
+  // Memoize quality analysis to prevent unnecessary recalculations
+  const qualityAnalysis = useMemo(() => {
+    if (!editedScript) return null;
+    return analyzeBlueprintQuality(editedScript);
   }, [editedScript, selectedVisualStyle, project.moodboard, project.videoSize, project.platform]);
+
+  // Update quality scores when analysis changes
+  useEffect(() => {
+    if (qualityAnalysis) {
+      setQualityScores({
+        script: qualityAnalysis.script,
+        visual: qualityAnalysis.visual,
+        viral: qualityAnalysis.viral,
+        overall: qualityAnalysis.overall
+      });
+      setImprovementSuggestions(qualityAnalysis.suggestions);
+    } else {
+      setQualityScores(null);
+      setImprovementSuggestions([]);
+    }
+  }, [qualityAnalysis]);
 
   // Visual Style Options
   const visualStyles = [
