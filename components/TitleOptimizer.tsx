@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { analyzeTitles } from '../services/geminiService';
+2import { analyzeTitles } from '../services/geminiService';
 import { TitleAnalysis, Platform, Project } from '../types';
 import { PlusIcon, TrashIcon, MagicWandIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';

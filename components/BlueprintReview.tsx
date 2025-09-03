@@ -23,8 +23,19 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
     const [expandedScene, setExpandedScene] = useState<number | null>(null);
     const [selectedMoodboardImage, setSelectedMoodboardImage] = useState<number | null>(null);
+    const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>('modern');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Visual Style Options
+  const visualStyles = [
+    { id: 'modern', name: 'Modern & Clean', description: 'Sleek, contemporary visuals with clean lines', emoji: '✨' },
+    { id: 'cinematic', name: 'Cinematic', description: 'Dramatic, movie-like visuals with depth', emoji: '🎬' },
+    { id: 'vibrant', name: 'Vibrant & Colorful', description: 'Bright, energetic colors and dynamic compositions', emoji: '🌈' },
+    { id: 'minimalist', name: 'Minimalist', description: 'Simple, clean designs with focus on content', emoji: '⚪' },
+    { id: 'corporate', name: 'Corporate', description: 'Professional, business-focused imagery', emoji: '💼' },
+    { id: 'artistic', name: 'Artistic', description: 'Creative, expressive visuals with artistic flair', emoji: '🎨' }
+  ];
 
   // Auto-save functionality
   const autoSave = useCallback(async () => {
@@ -174,12 +185,16 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                     addToast('New hooks generated successfully! Choose your favorite.', 'success');
                 }
             } else if (type === 'moodboard') {
-                // Regenerate moodboard images
+                // Get selected style details
+                const selectedStyle = visualStyles.find(style => style.id === selectedVisualStyle);
+                const styleName = selectedStyle?.name || 'Modern & Clean';
+                
+                // Regenerate moodboard images with selected style
                 const imagePromises = Array.from({ length: 4 }, (_, index) => 
                     invokeEdgeFunction('openai-proxy', {
                         type: 'generateImages',
                         params: {
-                            prompt: `Create a vibrant, engaging visual for a video about "${project.topic}". Style: modern, colorful, dynamic. Aspect ratio: 16:9.`,
+                            prompt: `Create a ${selectedVisualStyle} visual for a video about "${project.topic}". Style: ${styleName.toLowerCase()}, engaging, professional. Aspect ratio: 16:9.`,
                             config: {
                                 numberOfImages: 1,
                                 aspectRatio: '16:9'
@@ -799,6 +814,28 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                                 {isRegenerating === 'moodboard' ? 'Generating...' : 'New Images (4 Credits)'}
                             </button>
                         </div>
+
+                        {/* Visual Style Selection */}
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-white mb-4">Choose Your Visual Style</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                {visualStyles.map((style) => (
+                                    <button
+                                        key={style.id}
+                                        onClick={() => setSelectedVisualStyle(style.id)}
+                                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+                                            selectedVisualStyle === style.id
+                                                ? 'border-indigo-500 bg-indigo-500/20 shadow-lg'
+                                                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
+                                        }`}
+                                    >
+                                        <div className="text-2xl mb-2">{style.emoji}</div>
+                                        <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
+                                        <div className="text-xs text-gray-400 leading-tight">{style.description}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {project.moodboard.map((imageUrl, index) => (
@@ -807,7 +844,7 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                                     className="relative group cursor-pointer"
                                     onClick={() => {
                                         setSelectedMoodboardImage(index);
-                                        // Regenerate this specific image
+                                        // Regenerate this specific image with selected style
                                         regenerateContent('moodboard', index);
                                     }}
                                 >

@@ -20,6 +20,127 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
     setLogs(prev => [...prev.slice(-9), logMessage]); // Keep last 10 logs
   };
 
+  // Function to load blueprint assets into the editor
+  const loadBlueprintAssets = async (edit: any, project: any) => {
+    try {
+      addLog('🎬 Starting blueprint asset loading...');
+      
+      // Clear existing tracks first
+      edit.timeline.tracks = [];
+      
+      let currentTime = 0;
+      
+      // Add script scenes as video tracks with storyboard images
+      if (project.script?.scenes) {
+        addLog(`📝 Processing ${project.script.scenes.length} script scenes...`);
+        
+        project.script.scenes.forEach((scene: any, index: number) => {
+          if (scene.storyboardImageUrl) {
+            addLog(`🖼️ Adding scene ${index + 1} with image: ${scene.storyboardImageUrl}`);
+            
+            // Add video track with storyboard image
+            edit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: "image",
+                  src: scene.storyboardImageUrl
+                },
+                start: currentTime,
+                length: 3, // 3 seconds per scene
+                fit: "cover"
+              }]
+            });
+          }
+          
+          // Add text overlay for scene content
+          if (scene.voiceover || scene.visual) {
+            edit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: "text",
+                  text: scene.voiceover || scene.visual || `Scene ${index + 1}`,
+                  font: {
+                    family: 'Arial',
+                    size: 24,
+                    weight: 600,
+                    color: '#ffffff'
+                  },
+                  alignment: {
+                    horizontal: 'center',
+                    vertical: 'center'
+                  }
+                },
+                start: currentTime,
+                length: 3
+              }]
+            });
+          }
+          
+          currentTime += 3;
+        });
+      }
+      
+      // Add moodboard images as additional video tracks
+      if (project.moodboard && project.moodboard.length > 0) {
+        addLog(`🎨 Adding ${project.moodboard.length} moodboard images...`);
+        
+        project.moodboard.forEach((imageUrl: string, index: number) => {
+          edit.timeline.tracks.push({
+            clips: [{
+              asset: {
+                type: "image",
+                src: imageUrl
+              },
+              start: index * 2, // Stagger moodboard images
+              length: 2,
+              fit: "cover"
+            }]
+          });
+        });
+      }
+      
+      // Add voiceover audio tracks
+      if (project.voiceoverUrls) {
+        addLog(`🎵 Processing voiceover URLs...`);
+        
+        Object.entries(project.voiceoverUrls).forEach(([sceneIndex, voiceoverUrl]) => {
+          if (voiceoverUrl) {
+            addLog(`🎤 Adding voiceover for scene ${sceneIndex}: ${voiceoverUrl}`);
+            
+            edit.timeline.tracks.push({
+              clips: [{
+                asset: {
+                  type: "audio",
+                  src: voiceoverUrl
+                },
+                start: parseInt(sceneIndex) * 3,
+                length: 3
+              }]
+            });
+          }
+        });
+      }
+      
+      // Reload the edit with new assets
+      await edit.loadEdit({
+        timeline: {
+          tracks: edit.timeline.tracks,
+          background: '#000000'
+        },
+        output: {
+          size: { width: 1280, height: 720 },
+          format: 'mp4'
+        }
+      });
+      
+      addLog(`✅ Successfully loaded ${edit.timeline.tracks.length} tracks with blueprint assets`);
+      
+    } catch (error) {
+      addLog(`❌ Error loading blueprint assets: ${error}`);
+      console.error('Blueprint asset loading error:', error);
+    }
+  };
+
   useEffect(() => {
     if (initialized) return; // Prevent double initialization
 
@@ -61,19 +182,21 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
                 clips: [
                   {
                     asset: {
-                      type: 'text',
+                      type: "text" as const,
                       text: 'Welcome to Shotstack Studio',
-                      style: {
-                        fontFamily: 'Arial',
-                        fontSize: 48,
-                        fontWeight: 'bold',
-                        color: '#ffffff',
-                        textAlign: 'center'
+                      font: {
+                        family: 'Arial',
+                        size: 48,
+                        weight: 700,
+                        color: '#ffffff'
+                      },
+                      alignment: {
+                        horizontal: 'center' as const,
+                        vertical: 'center' as const
                       }
                     },
                     start: 0,
-                    length: 3,
-                    position: 'center'
+                    length: 3
                   }
                 ]
               }
@@ -108,14 +231,23 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         addLog('📄 Loading template into edit...');
         await edit.loadEdit(template);
         addLog('✅ Template loaded');
+
+        // 5. Load blueprint assets if project data is available
+        if (project) {
+          addLog('🎬 Loading blueprint assets...');
+          await loadBlueprintAssets(edit, project);
+          addLog('✅ Blueprint assets loaded');
+        } else {
+          addLog('⚠️ No project data - using default template only');
+        }
         
-        // 5. Add keyboard controls
+        // 6. Add keyboard controls
         addLog('⌨️ Creating Controls...');
         const controls = new Controls(edit);
         await controls.load();
         addLog('✅ Controls created and loaded');
         
-        // 6. Add timeline for visual editing (following official docs)
+        // 7. Add timeline for visual editing (following official docs)
         addLog('📊 Creating Timeline...');
         const timeline = new Timeline(edit, {
           width: template.output.size.width,
@@ -174,44 +306,46 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
       {/* Header */}
-      <div className="bg-gray-900 p-6 border-b border-gray-700">
+      <div className="bg-gray-900 border-b border-gray-700 px-6 py-4">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-white">Working Shotstack Studio</h1>
-            <p className="text-gray-300 mt-1">
-              Status: {isLoading ? 'Loading...' : initialized ? 'Ready' : 'Initializing...'}
-            </p>
+            <h1 className="text-xl font-bold text-white">Shotstack Studio</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <div className={`w-2 h-2 rounded-full ${initialized ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
+              <span className="text-sm text-gray-300">
+                {isLoading ? 'Loading...' : initialized ? 'Ready' : 'Initializing...'}
+              </span>
+            </div>
           </div>
-          <div className="text-sm text-gray-400 bg-gray-800 px-3 py-2 rounded-lg">
-            {logs.length > 0 && logs[logs.length - 1]}
-          </div>
+          {logs.length > 0 && (
+            <div className="text-xs text-gray-400 bg-gray-800/50 px-3 py-2 rounded-lg border border-gray-600">
+              {logs[logs.length - 1]}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col px-8">
-        {/* Canvas Area */}
-        <div className="flex-1 p-6">
-          <div className="bg-gray-900 rounded-xl p-6 h-full max-w-7xl mx-auto">
-            <h3 className="text-xl font-bold mb-6 text-white text-center">Canvas</h3>
+      <div className="flex-1 flex flex-col">
+        {/* Canvas Area - Centered and Clean */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-6xl mx-auto">
             <div 
               ref={canvasRef}
               data-shotstack-studio
-              className="w-full h-full bg-black rounded-lg border-2 border-gray-700"
-              style={{ minHeight: '600px' }}
+              className="w-full aspect-video bg-black rounded-xl border border-gray-600 shadow-2xl"
+              style={{ minHeight: '500px' }}
             />
           </div>
         </div>
 
-        {/* Timeline Area */}
-        <div className="h-80 p-6">
-          <div className="bg-gray-900 rounded-xl p-6 h-full max-w-7xl mx-auto">
-            <h3 className="text-xl font-bold mb-6 text-white text-center">Timeline</h3>
+        {/* Timeline Area - Fixed Height */}
+        <div className="h-64 border-t border-gray-700 bg-gray-800/50">
+          <div className="h-full p-4">
             <div 
               ref={timelineRef}
               data-shotstack-timeline
-              className="w-full h-full bg-gray-800 rounded-lg border-2 border-gray-700"
-              style={{ minHeight: '250px' }}
+              className="w-full h-full bg-gray-900 rounded-lg border border-gray-600"
             />
           </div>
         </div>

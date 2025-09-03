@@ -10,9 +10,10 @@ import * as supabase from '../services/supabaseService';
 interface DashboardProps {
     onSelectProject: (id: string) => void;
     onNewProject: () => void;
+    onOneClickViral?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onNewProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onNewProject, onOneClickViral }) => {
     const { user, t, isInitialLoading: isAppLoading, addToast } = useAppContext();
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -53,6 +54,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onNewProject }) 
                      {user?.email && <p className="mt-2 text-lg text-gray-400">{t('dashboard.welcome_back', {userName: user.email.split('@')[0]})}</p>}
                 </div>
                 <div className="flex items-center gap-4 mt-4 md:mt-0">
+                    {onOneClickViral && (
+                        <button
+                            onClick={onOneClickViral}
+                            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                        >
+                            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            One-Click Viral
+                        </button>
+                    )}
                      <button
                         onClick={() => onNewProject()}
                         className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"

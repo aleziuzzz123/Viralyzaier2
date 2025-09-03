@@ -21,13 +21,14 @@ import ConfirmationModal from './components/ConfirmationModal';
 import ProjectKickoff from './components/ProjectKickoff';
 import Loader from './components/Loader';
 import CreativeStudio from './components/CreativeStudio';
+import OneClickViral from './components/OneClickViral';
 // import FinalShotstackStudio from './components/FinalShotstackStudio'; // Temporarily disabled
 import SimpleShotstackStudio from './components/SimpleShotstackStudio';
 import MinimalShotstackTest from './components/MinimalShotstackTest';
 import WorkingShotstackStudio from './components/WorkingShotstackStudio';
 
 
-type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff';
+type View = 'dashboard' | 'project' | 'calendar' | 'pricing' | 'channel' | 'assetLibrary' | 'autopilot' | 'settings' | 'kickoff' | 'oneClickViral';
 
 const BackendErrorModal: React.FC = () => {
     const { backendError, clearBackendError, t } = useAppContext();
@@ -219,9 +220,15 @@ const MainApp = () => {
                 return <Autopilot />;
             case 'settings':
                 return <Settings />;
+            case 'oneClickViral':
+                return <OneClickViral onVideoCreated={handleSelectProject} onExit={() => handleSetView('dashboard')} />;
             case 'dashboard':
             default:
-                return <Dashboard onSelectProject={handleSelectProject} onNewProject={handleNewProject} />;
+                return <Dashboard 
+                    onSelectProject={handleSelectProject} 
+                    onNewProject={handleNewProject}
+                    onOneClickViral={() => handleSetView('oneClickViral')}
+                />;
         }
     };
     
