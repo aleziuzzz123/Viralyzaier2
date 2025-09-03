@@ -63,18 +63,21 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
             ? scenesWithVoiceover.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / scenesWithVoiceover.length
             : 0;
         
-        // Script scoring (0-10) - More sophisticated scoring
+        // Script scoring (0-10) - More sophisticated scoring with caps
         if (hasHook) scriptScore += 3;
         if (hasCTA) scriptScore += 2;
         if (totalScenes >= 3 && totalScenes <= 8) scriptScore += 2;
         if (avgSceneLength >= 10 && avgSceneLength <= 30) scriptScore += 2;
         if (project.title && project.title.length > 0) scriptScore += 1;
         
-        // Additional quality checks
-        if (hasHook && script.hook.length > 20) scriptScore += 1; // Detailed hook
-        if (hasCTA && script.cta.length > 10) scriptScore += 1; // Detailed CTA
+        // Additional quality checks (with caps to prevent exceeding 10)
+        if (hasHook && script.hook.length > 20 && scriptScore < 10) scriptScore += 1; // Detailed hook
+        if (hasCTA && script.cta.length > 10 && scriptScore < 10) scriptScore += 1; // Detailed CTA
         
-        // Visual scoring (0-10)
+        // Cap script score at 10
+        scriptScore = Math.min(scriptScore, 10);
+        
+        // Visual scoring (0-10) with caps
         const hasVisuals = script.scenes.some(scene => scene.visual && scene.visual.length > 0);
         const hasMoodboard = project.moodboard && project.moodboard.length > 0;
         if (hasVisuals) visualScore += 4;
@@ -82,12 +85,18 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         if (totalScenes >= 3) visualScore += 2;
         if (videoStyle === 'High-Energy Viral') visualScore += 1;
         
-        // Viral scoring (0-10)
+        // Cap visual score at 10
+        visualScore = Math.min(visualScore, 10);
+        
+        // Viral scoring (0-10) with caps
         if (hasHook && script.hook.includes('!')) viralScore += 2;
         if (project.title && (project.title.includes('!') || project.title.includes('?'))) viralScore += 2;
         if (videoStyle === 'High-Energy Viral') viralScore += 3;
         if (videoLength <= 60) viralScore += 2;
         if (hasCTA) viralScore += 1;
+        
+        // Cap viral score at 10
+        viralScore = Math.min(viralScore, 10);
         
         // Generate more specific and actionable suggestions
         if (!hasHook) suggestions.push("🎯 Add a compelling hook in the first 3 seconds to grab attention");
@@ -118,7 +127,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     const qualityAnalysis = useMemo(() => {
         if (!project.script) return null;
         return analyzeScriptQuality(project.script);
-    }, [project.script, project.title, project.moodboard, videoStyle, videoLength]);
+    }, [project.script, project.title, project.moodboard, videoStyle, videoLength, project.videoSize, project.platform]);
     
     useEffect(() => {
         setScript(project.script);
@@ -154,15 +163,22 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                 isNarratorEnabled
             );
             
-            await handleUpdateProject(project.id, {
+            const success = await handleUpdateProject(project.id, {
                 script: improvedBlueprint.script,
                 moodboard: improvedBlueprint.moodboard,
                 workflowStep: 3
             });
             
-            addToast("Script improved for viral potential! 🚀", "success");
+            if (success) {
+                // Update local script state to reflect changes
+                setScript(improvedBlueprint.script);
+                addToast("Script improved for viral potential! 🚀", "success");
+            } else {
+                addToast("Failed to save improved script. Please try again.", "error");
+            }
         } catch (error) {
-            addToast("Failed to improve script. Please try again.", "error");
+            console.error("Script improvement error:", error);
+            addToast(`Failed to improve script: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
         } finally {
             setIsAnalyzing(false);
         }
@@ -215,18 +231,25 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                 improvementsMade.push("Added viral elements to scenes");
             }
             
-            await handleUpdateProject(project.id, {
+            const success = await handleUpdateProject(project.id, {
                 script: optimizedScript,
                 workflowStep: 3
             });
             
-            const improvementText = improvementsMade.length > 0 
-                ? `Script optimized! Improvements: ${improvementsMade.join(', ')} 🔥`
-                : "Script already optimized for viral potential! 🎯";
-            
-            addToast(improvementText, "success");
+            if (success) {
+                // Update local script state to reflect changes
+                setScript(optimizedScript);
+                const improvementText = improvementsMade.length > 0 
+                    ? `Script optimized! Improvements: ${improvementsMade.join(', ')} 🔥`
+                    : "Script already optimized for viral potential! 🎯";
+                
+                addToast(improvementText, "success");
+            } else {
+                addToast("Failed to save optimized script. Please try again.", "error");
+            }
         } catch (error) {
-            addToast("Failed to optimize script. Please try again.", "error");
+            console.error("Viral optimization error:", error);
+            addToast(`Failed to optimize script: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
         } finally {
             setIsAnalyzing(false);
         }
@@ -640,7 +663,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                             Video Quality Score
                         </h3>
                         <div className="text-right">
-                            <div className="text-3xl font-bold text-white">{qualityScores.overall}/10</div>
+                            <div className="text-3xl font-bold text-white">{qualityScores.overall || 0}/10</div>
                             <div className="text-sm text-gray-400">Overall Score</div>
                         </div>
                     </div>
@@ -649,12 +672,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                         <div className="bg-gray-800/50 p-4 rounded-lg">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-semibold text-gray-300">Script Quality</span>
-                                <span className="text-lg font-bold text-white">{qualityScores.script}/10</span>
+                                <span className="text-lg font-bold text-white">{qualityScores.script || 0}/10</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div 
                                     className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${(qualityScores.script / 10) * 100}%` }}
+                                    style={{ width: `${((qualityScores.script || 0) / 10) * 100}%` }}
                                 ></div>
                             </div>
                         </div>
@@ -662,12 +685,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                         <div className="bg-gray-800/50 p-4 rounded-lg">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-semibold text-gray-300">Visual Appeal</span>
-                                <span className="text-lg font-bold text-white">{qualityScores.visual}/10</span>
+                                <span className="text-lg font-bold text-white">{qualityScores.visual || 0}/10</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div 
                                     className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${(qualityScores.visual / 10) * 100}%` }}
+                                    style={{ width: `${((qualityScores.visual || 0) / 10) * 100}%` }}
                                 ></div>
                             </div>
                         </div>
@@ -675,12 +698,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
                         <div className="bg-gray-800/50 p-4 rounded-lg">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-semibold text-gray-300">Viral Potential</span>
-                                <span className="text-lg font-bold text-white">{qualityScores.viral}/10</span>
+                                <span className="text-lg font-bold text-white">{qualityScores.viral || 0}/10</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div 
                                     className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${(qualityScores.viral / 10) * 100}%` }}
+                                    style={{ width: `${((qualityScores.viral || 0) / 10) * 100}%` }}
                                 ></div>
                             </div>
                         </div>

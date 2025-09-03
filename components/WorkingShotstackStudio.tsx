@@ -25,9 +25,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
     try {
       addLog('🎬 Starting blueprint asset loading...');
       
-      // Clear existing tracks first
-      edit.timeline.tracks = [];
-      
+      const tracks: any[] = [];
       let currentTime = 0;
       
       // Add script scenes as video tracks with storyboard images
@@ -39,7 +37,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
             addLog(`🖼️ Adding scene ${index + 1} with image: ${scene.storyboardImageUrl}`);
             
             // Add video track with storyboard image
-            edit.timeline.tracks.push({
+            tracks.push({
               clips: [{
                 asset: {
                   type: "image",
@@ -54,7 +52,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
           
           // Add text overlay for scene content
           if (scene.voiceover || scene.visual) {
-            edit.timeline.tracks.push({
+            tracks.push({
               clips: [{
                 asset: {
                   type: "text",
@@ -85,7 +83,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         addLog(`🎨 Adding ${project.moodboard.length} moodboard images...`);
         
         project.moodboard.forEach((imageUrl: string, index: number) => {
-          edit.timeline.tracks.push({
+          tracks.push({
             clips: [{
               asset: {
                 type: "image",
@@ -107,7 +105,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
           if (voiceoverUrl) {
             addLog(`🎤 Adding voiceover for scene ${sceneIndex}: ${voiceoverUrl}`);
             
-            edit.timeline.tracks.push({
+            tracks.push({
               clips: [{
                 asset: {
                   type: "audio",
@@ -121,10 +119,35 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         });
       }
       
-      // Reload the edit with new assets
+      // If no assets found, create a placeholder
+      if (tracks.length === 0) {
+        addLog('⚠️ No blueprint assets found, creating placeholder...');
+        tracks.push({
+          clips: [{
+            asset: {
+              type: "text",
+              text: 'No assets available - Generate a blueprint first',
+              font: {
+                family: 'Arial',
+                size: 32,
+                weight: 600,
+                color: '#ffffff'
+              },
+              alignment: {
+                horizontal: 'center',
+                vertical: 'center'
+              }
+            },
+            start: 0,
+            length: 5
+          }]
+        });
+      }
+      
+      // Load the edit with our blueprint assets
       await edit.loadEdit({
         timeline: {
-          tracks: edit.timeline.tracks,
+          tracks: tracks,
           background: '#000000'
         },
         output: {
@@ -133,7 +156,7 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         }
       });
       
-      addLog(`✅ Successfully loaded ${edit.timeline.tracks.length} tracks with blueprint assets`);
+      addLog(`✅ Successfully loaded ${tracks.length} tracks with blueprint assets`);
       
     } catch (error) {
       addLog(`❌ Error loading blueprint assets: ${error}`);
@@ -174,33 +197,10 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
         
         addLog('✅ DOM elements ready with dimensions');
         
-        // Create a valid template following Shotstack format
+        // Create an empty template - we'll load blueprint assets instead
         const template = {
           timeline: {
-            tracks: [
-              {
-                clips: [
-                  {
-                    asset: {
-                      type: "text" as const,
-                      text: 'Welcome to Shotstack Studio',
-                      font: {
-                        family: 'Arial',
-                        size: 48,
-                        weight: 700,
-                        color: '#ffffff'
-                      },
-                      alignment: {
-                        horizontal: 'center' as const,
-                        vertical: 'center' as const
-                      }
-                    },
-                    start: 0,
-                    length: 3
-                  }
-                ]
-              }
-            ],
+            tracks: [], // Start with empty tracks
             background: '#000000'
           },
           output: {
@@ -280,6 +280,32 @@ const WorkingShotstackStudio: React.FC<WorkingShotstackStudioProps> = ({ project
 
     initializeEditor();
   }, [initialized]);
+
+  // Effect to reload assets when project changes
+  useEffect(() => {
+    if (initialized && project) {
+      const reloadAssets = async () => {
+        try {
+          addLog('🔄 Project changed - reloading assets...');
+          
+          // Get the existing edit instance from the canvas
+          const canvasElement = canvasRef.current?.querySelector('[data-shotstack-studio]');
+          if (canvasElement && (canvasElement as any).__shotstackEdit) {
+            const edit = (canvasElement as any).__shotstackEdit;
+            await loadBlueprintAssets(edit, project);
+            addLog('✅ Assets reloaded successfully');
+          } else {
+            addLog('⚠️ Edit instance not found - assets will load on next initialization');
+          }
+        } catch (error) {
+          addLog(`❌ Error reloading assets: ${error}`);
+          console.error('Asset reload error:', error);
+        }
+      };
+      
+      reloadAssets();
+    }
+  }, [project, initialized]);
 
   if (error) {
     return (
