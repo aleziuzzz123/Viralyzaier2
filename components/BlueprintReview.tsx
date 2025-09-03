@@ -26,6 +26,171 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [selectedVisualStyle, setSelectedVisualStyle] = useState<string>('modern');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Quality scoring system
+  const [qualityScores, setQualityScores] = useState<{
+    script: number;
+    visual: number;
+    viral: number;
+    overall: number;
+  } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [improvementSuggestions, setImprovementSuggestions] = useState<string[]>([]);
+
+  // Quality analysis function
+  const analyzeBlueprintQuality = (script: Script) => {
+    if (!script || !script.scenes) return null;
+    
+    let scriptScore = 0;
+    let visualScore = 0;
+    let viralScore = 0;
+    const suggestions: string[] = [];
+    
+    // Analyze script quality
+    const totalScenes = script.scenes.length;
+    const hasHook = script.hook && script.hook.length > 0;
+    const hasCTA = script.cta && script.cta.length > 0;
+    const avgSceneLength = script.scenes.reduce((acc, scene) => acc + (scene.voiceover?.length || 0), 0) / totalScenes;
+    
+    // Script scoring (0-10)
+    if (hasHook) scriptScore += 3;
+    if (hasCTA) scriptScore += 2;
+    if (totalScenes >= 3 && totalScenes <= 8) scriptScore += 2;
+    if (avgSceneLength >= 10 && avgSceneLength <= 30) scriptScore += 2;
+    if (project.title && project.title.length > 0) scriptScore += 1;
+    
+    // Visual scoring (0-10)
+    const hasVisuals = script.scenes.some(scene => scene.visual && scene.visual.length > 0);
+    const hasMoodboard = project.moodboard && project.moodboard.length > 0;
+    if (hasVisuals) visualScore += 4;
+    if (hasMoodboard) visualScore += 3;
+    if (totalScenes >= 3) visualScore += 2;
+    if (selectedVisualStyle === 'vibrant') visualScore += 1;
+    
+    // Viral scoring (0-10)
+    if (hasHook && script.hook.includes('!')) viralScore += 2;
+    if (project.title && (project.title.includes('!') || project.title.includes('?'))) viralScore += 2;
+    if (selectedVisualStyle === 'vibrant') viralScore += 3;
+    if (project.videoSize === '9:16') viralScore += 2;
+    if (hasCTA) viralScore += 1;
+    
+    // Generate suggestions
+    if (!hasHook) suggestions.push("Add a strong hook in the first 3 seconds");
+    if (!hasCTA) suggestions.push("Add a clear call-to-action at the end");
+    if (totalScenes < 3) suggestions.push("Add more scenes for better engagement");
+    if (totalScenes > 8) suggestions.push("Consider reducing scenes for better focus");
+    if (avgSceneLength < 10) suggestions.push("Make scenes more detailed and engaging");
+    if (avgSceneLength > 30) suggestions.push("Keep scenes concise for better retention");
+    if (!hasVisuals) suggestions.push("Add visual descriptions to each scene");
+    if (!hasMoodboard) suggestions.push("Generate moodboard for visual consistency");
+    if (project.videoSize === '16:9' && project.platform === 'youtube_short') suggestions.push("Consider 9:16 format for better mobile viewing");
+    
+    const overallScore = Math.round((scriptScore + visualScore + viralScore) / 3);
+    
+    return {
+      script: scriptScore,
+      visual: visualScore,
+      viral: viralScore,
+      overall: overallScore,
+      suggestions
+    };
+  };
+
+  // One-click improvement functions
+  const handleImproveBlueprint = async () => {
+    if (!editedScript) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // Enhance the current script
+      const improvedScript = { ...editedScript };
+      
+      // Enhance hook
+      if (improvedScript.hook) {
+        improvedScript.hook = improvedScript.hook + " This will blow your mind!";
+      }
+      
+      // Enhance title (update project title)
+      if (project.title) {
+        await handleUpdateProject(project.id, {
+          title: project.title.replace(/[.!]$/, '') + "!"
+        });
+      }
+      
+      // Add viral elements
+      improvedScript.scenes.forEach((scene, index) => {
+        if (scene.voiceover && !scene.voiceover.includes('!')) {
+          scene.voiceover = scene.voiceover + " This is incredible!";
+        }
+      });
+      
+      setEditedScript(improvedScript);
+      setHasUnsavedChanges(true);
+      addToast("Blueprint improved for viral potential! 🚀", "success");
+    } catch (error) {
+      addToast("Failed to improve blueprint. Please try again.", "error");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleOptimizeForViral = async () => {
+    if (!editedScript) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // Optimize for viral potential
+      const optimizedScript = { ...editedScript };
+      
+      // Make title more viral (update project title)
+      if (project.title) {
+        await handleUpdateProject(project.id, {
+          title: project.title
+            .replace(/[.!]$/, '')
+            .replace(/^/, '🔥 ')
+            + "!"
+        });
+      }
+      
+      // Enhance hook with viral elements
+      if (optimizedScript.hook) {
+        optimizedScript.hook = "You won't believe this! " + optimizedScript.hook;
+      }
+      
+      // Add viral elements to scenes
+      optimizedScript.scenes.forEach((scene, index) => {
+        if (scene.voiceover) {
+          scene.voiceover = scene.voiceover
+            .replace(/[.!]$/, '')
+            + " This is absolutely mind-blowing!";
+        }
+      });
+      
+      setEditedScript(optimizedScript);
+      setHasUnsavedChanges(true);
+      addToast("Blueprint optimized for viral potential! 🔥", "success");
+    } catch (error) {
+      addToast("Failed to optimize blueprint. Please try again.", "error");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Update quality scores when script changes
+  useEffect(() => {
+    if (editedScript) {
+      const analysis = analyzeBlueprintQuality(editedScript);
+      if (analysis) {
+        setQualityScores({
+          script: analysis.script,
+          visual: analysis.visual,
+          viral: analysis.viral,
+          overall: analysis.overall
+        });
+        setImprovementSuggestions(analysis.suggestions);
+      }
+    }
+  }, [editedScript, selectedVisualStyle, project.moodboard, project.videoSize, project.platform]);
 
   // Visual Style Options
   const visualStyles = [
@@ -499,6 +664,99 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
                         ) : null}
                     </div>
                 </div>
+
+                {/* Quality Scoring System */}
+                {qualityScores && (
+                    <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 p-6 rounded-2xl border border-indigo-500/30">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <SparklesIcon className="w-6 h-6 text-indigo-400" />
+                                Blueprint Quality Score
+                            </h3>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold text-white">{qualityScores.overall}/10</div>
+                                <div className="text-sm text-gray-400">Overall Score</div>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold text-gray-300">Script Quality</span>
+                                    <span className="text-lg font-bold text-white">{qualityScores.script}/10</span>
+                                </div>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div 
+                                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${(qualityScores.script / 10) * 100}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold text-gray-300">Visual Appeal</span>
+                                    <span className="text-lg font-bold text-white">{qualityScores.visual}/10</span>
+                                </div>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div 
+                                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${(qualityScores.visual / 10) * 100}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gray-800/50 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold text-gray-300">Viral Potential</span>
+                                    <span className="text-lg font-bold text-white">{qualityScores.viral}/10</span>
+                                </div>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div 
+                                        className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${(qualityScores.viral / 10) * 100}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* One-Click Improvement Buttons */}
+                        <div className="flex flex-wrap gap-3 mb-4">
+                            <button
+                                onClick={handleImproveBlueprint}
+                                disabled={isAnalyzing}
+                                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                {isAnalyzing ? 'Improving...' : 'Improve Blueprint'}
+                            </button>
+                            
+                            <button
+                                onClick={handleOptimizeForViral}
+                                disabled={isAnalyzing}
+                                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                {isAnalyzing ? 'Optimizing...' : 'Optimize for Viral'}
+                            </button>
+                        </div>
+                        
+                        {/* Improvement Suggestions */}
+                        {improvementSuggestions.length > 0 && (
+                            <div className="bg-gray-800/30 p-4 rounded-lg">
+                                <h4 className="text-sm font-semibold text-yellow-400 mb-2">💡 Improvement Suggestions:</h4>
+                                <ul className="space-y-1">
+                                    {improvementSuggestions.map((suggestion, index) => (
+                                        <li key={index} className="text-sm text-gray-300 flex items-start gap-2">
+                                            <span className="text-yellow-400 mt-0.5">•</span>
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Progress Indicator */}
                 <div className="flex justify-center">
