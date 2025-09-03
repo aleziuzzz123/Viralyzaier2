@@ -31,6 +31,9 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [selectedSceneForStyle, setSelectedSceneForStyle] = useState<number | null>(null);
     const [showStoryboardModal, setShowStoryboardModal] = useState<{ sceneIndex: number; imageUrl: string } | null>(null);
     const [hoveredStoryboard, setHoveredStoryboard] = useState<{ sceneIndex: number; imageUrl: string; x: number; y: number } | null>(null);
+    const [showCartoonSubstyles, setShowCartoonSubstyles] = useState(false);
+    const [selectedCartoonStyle, setSelectedCartoonStyle] = useState<string>('anime');
+    const [isAddingScene, setIsAddingScene] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -266,7 +269,17 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
     { id: 'vibrant', name: 'Vibrant & Colorful', description: 'Bright, energetic colors and dynamic compositions', emoji: '🌈' },
     { id: 'minimalist', name: 'Minimalist', description: 'Simple, clean designs with focus on content', emoji: '⚪' },
     { id: 'corporate', name: 'Corporate', description: 'Professional, business-focused imagery', emoji: '💼' },
-    { id: 'artistic', name: 'Artistic', description: 'Creative, expressive visuals with artistic flair', emoji: '🎨' }
+    { id: 'artistic', name: 'Artistic', description: 'Creative, expressive visuals with artistic flair', emoji: '🎨' },
+    { id: 'cartoon', name: 'Cartoon', description: 'Fun, animated style with playful characters', emoji: '🎭' }
+  ];
+
+  const cartoonStyles = [
+    { id: 'anime', name: 'Anime', description: 'Japanese animation style with expressive characters', emoji: '🌸' },
+    { id: 'disney', name: 'Disney', description: 'Classic Disney animation with magical storytelling', emoji: '🏰' },
+    { id: 'pixar', name: 'Pixar', description: '3D animated style with realistic textures', emoji: '💡' },
+    { id: 'comic', name: 'Comic Book', description: 'Bold, dynamic comic book art style', emoji: '💥' },
+    { id: 'retro', name: 'Retro Cartoon', description: 'Vintage cartoon style from classic animation', emoji: '📺' },
+    { id: 'kawaii', name: 'Kawaii', description: 'Cute, adorable style with pastel colors', emoji: '✨' }
   ];
 
   // Auto-save functionality
@@ -452,6 +465,61 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
         setEditingHookText('');
     };
 
+    // Scene management functions
+    const deleteScene = (sceneIndex: number) => {
+        if (!editedScript || !editedScript.scenes) return;
+        
+        const newScenes = editedScript.scenes.filter((_, index) => index !== sceneIndex);
+        setEditedScript({ ...editedScript, scenes: newScenes });
+        setHasUnsavedChanges(true);
+        addToast(`Scene ${sceneIndex + 1} deleted successfully`, 'success');
+    };
+
+    const addNewScene = async () => {
+        if (!editedScript) return;
+        
+        setIsAddingScene(true);
+        try {
+            // Generate a new scene using AI
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: `Generate a new video scene for a viral video about "${project.topic}". Create a compelling visual description and voiceover text that fits with the existing scenes. Make it engaging and likely to go viral.`,
+                    config: {
+                        systemInstruction: 'You are a viral video expert. Generate a new scene with visual description and voiceover text. Return a JSON object with "visual" and "voiceover" fields.',
+                        responseMimeType: 'application/json'
+                    }
+                }
+            });
+
+            if ((response as any).text) {
+                let newScene;
+                try {
+                    const cleanedResponse = (response as any).text.replace(/```json|```/g, '').trim();
+                    newScene = JSON.parse(cleanedResponse);
+                } catch {
+                    // Fallback if JSON parsing fails
+                    newScene = {
+                        visual: `A compelling visual scene for ${project.topic}`,
+                        voiceover: `Engaging voiceover for this scene`
+                    };
+                }
+
+                // Add the new scene
+                const newScenes = [...(editedScript.scenes || []), newScene];
+                setEditedScript({ ...editedScript, scenes: newScenes });
+                setHasUnsavedChanges(true);
+                addToast('New scene added successfully!', 'success');
+            }
+        } catch (error) {
+            console.error('Error adding new scene:', error);
+            addToast('Failed to add new scene - please try again', 'error');
+        } finally {
+            setIsAddingScene(false);
+        }
+    };
+
     // Regenerate individual hook
     const regenerateIndividualHook = async (index: number) => {
         if (!editedScript) return;
@@ -513,17 +581,30 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                 if (sceneIndex !== undefined) {
                     // Regenerate individual scene storyboard
                     const styleToUse = styleId || selectedVisualStyle;
-                    const selectedStyle = visualStyles.find(style => style.id === styleToUse);
-                    const styleName = selectedStyle?.name || 'Modern & Clean';
+                    let selectedStyle, styleName, styleDescription;
+                    
+                    if (styleToUse && styleToUse.startsWith('cartoon-')) {
+                        // Handle cartoon sub-styles
+                        const cartoonSubStyle = cartoonStyles.find(style => style.id === styleToUse.replace('cartoon-', ''));
+                        selectedStyle = cartoonSubStyle;
+                        styleName = cartoonSubStyle?.name || 'Anime';
+                        styleDescription = cartoonSubStyle?.description || 'Japanese animation style';
+                    } else {
+                        // Handle regular styles
+                        selectedStyle = visualStyles.find(style => style.id === styleToUse);
+                        styleName = selectedStyle?.name || 'Modern & Clean';
+                        styleDescription = selectedStyle?.description || 'Clean and modern visuals';
+                    }
+                    
                     const scene = editedScript.scenes[sceneIndex];
                     
                     const response = await invokeEdgeFunction('openai-proxy', {
                         type: 'generateImages',
                         params: {
-                            prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${selectedStyle?.description || 'Clean and modern visuals'}. Aspect ratio: 16:9.`,
+                            prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
                             config: {
                                 numberOfImages: 1,
-                                aspectRatio: '16:9'
+                                aspectRatio: project.videoSize || '16:9'
                             }
                         }
                     });
@@ -557,18 +638,30 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     }
                 } else {
                     // Regenerate all scene storyboards with new visual style
-                    const selectedStyle = visualStyles.find(style => style.id === (styleId || selectedVisualStyle));
-                    const styleName = selectedStyle?.name || 'Modern & Clean';
+                    let selectedStyle, styleName, styleDescription;
+                    
+                    if (styleId && styleId.startsWith('cartoon-')) {
+                        // Handle cartoon sub-styles
+                        const cartoonSubStyle = cartoonStyles.find(style => style.id === styleId.replace('cartoon-', ''));
+                        selectedStyle = cartoonSubStyle;
+                        styleName = cartoonSubStyle?.name || 'Anime';
+                        styleDescription = cartoonSubStyle?.description || 'Japanese animation style';
+                    } else {
+                        // Handle regular styles
+                        selectedStyle = visualStyles.find(style => style.id === (styleId || selectedVisualStyle));
+                        styleName = selectedStyle?.name || 'Modern & Clean';
+                        styleDescription = selectedStyle?.description || 'Clean and modern visuals';
+                    }
                     
                     // Generate storyboards for each scene
                     const imagePromises = editedScript.scenes?.map((scene, index) => 
                     invokeEdgeFunction('openai-proxy', {
                         type: 'generateImages',
                         params: {
-                                prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${selectedStyle?.description || 'Clean and modern visuals'}. Aspect ratio: 16:9.`,
+                                prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
                             config: {
                                 numberOfImages: 1,
-                                aspectRatio: '16:9'
+                                aspectRatio: project.videoSize || '16:9'
                             }
                         }
                     })
@@ -1279,6 +1372,13 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 <button
                                     key={style.id}
                                     onClick={async () => {
+                                        if (style.id === 'cartoon') {
+                                            // Show cartoon sub-styles instead of applying immediately
+                                            setShowCartoonSubstyles(true);
+                                            setSelectedVisualStyle('cartoon');
+                                            return;
+                                        }
+                                        
                                         if (styleApplicationMode === 'specific' && selectedSceneForStyle === null) {
                                             addToast('Please select a scene first', 'error');
                                             return;
@@ -1286,6 +1386,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                         
                                         setProcessingStyle(style.id);
                                         setSelectedVisualStyle(style.id);
+                                        setShowCartoonSubstyles(false);
                                         
                                         if (styleApplicationMode === 'all') {
                                             // Regenerate all storyboards with new style
@@ -1319,6 +1420,74 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </button>
                             ))}
                         </div>
+                        
+                        {/* Cartoon Sub-styles */}
+                        {showCartoonSubstyles && (
+                            <div className="mt-6 p-4 bg-purple-900/20 rounded-xl border border-purple-500/30">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-lg font-semibold text-white">🎭 Choose Cartoon Style</h4>
+                                    <button
+                                        onClick={() => {
+                                            setShowCartoonSubstyles(false);
+                                            setSelectedVisualStyle('modern'); // Reset to default
+                                        }}
+                                        className="text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {cartoonStyles.map((style) => (
+                                        <button
+                                            key={style.id}
+                                            onClick={async () => {
+                                                if (styleApplicationMode === 'specific' && selectedSceneForStyle === null) {
+                                                    addToast('Please select a scene first', 'error');
+                                                    return;
+                                                }
+                                                
+                                                setProcessingStyle(`cartoon-${style.id}`);
+                                                setSelectedCartoonStyle(style.id);
+                                                
+                                                // Use cartoon style with specific sub-style
+                                                const combinedStyle = `cartoon-${style.id}`;
+                                                
+                                                if (styleApplicationMode === 'all') {
+                                                    await regenerateContent('moodboard', undefined, combinedStyle);
+                                                } else {
+                                                    await regenerateContent('moodboard', selectedSceneForStyle, combinedStyle);
+                                                }
+                                                
+                                                setProcessingStyle(null);
+                                                setShowCartoonSubstyles(false);
+                                            }}
+                                            disabled={isRegenerating === `cartoon-${style.id}` || processingStyle !== null}
+                                            className={`p-3 rounded-lg border transition-all duration-300 text-left disabled:opacity-50 ${
+                                                selectedCartoonStyle === style.id
+                                                    ? 'border-purple-500 bg-purple-500/20 shadow-lg'
+                                                    : 'border-purple-600 bg-purple-700/30 hover:border-purple-500 hover:bg-purple-700/50'
+                                            }`}
+                                        >
+                                            {processingStyle === `cartoon-${style.id}` ? (
+                                                <div className="flex flex-col items-center justify-center py-2">
+                                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400 mb-2"></div>
+                                                    <div className="text-sm font-semibold text-purple-400">Processing...</div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="text-xl mb-2">{style.emoji}</div>
+                                                    <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
+                                                    <div className="text-xs text-gray-300 leading-tight">{style.description}</div>
+                                                </>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     
                     <div className="grid lg:grid-cols-2 gap-6">
@@ -1382,7 +1551,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                 <img 
                                                     src={scene.storyboardImageUrl} 
                                                     alt={`Scene ${index + 1} storyboard`}
-                                                    className="w-full aspect-video object-cover transition-transform duration-300 group-hover:scale-105"
+                                                    className={`w-full object-cover transition-transform duration-300 group-hover:scale-105 ${project.videoSize === '9:16' ? 'aspect-[9/16]' : 'aspect-video'}`}
                                                 />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                                     <div className="text-center">
@@ -1459,11 +1628,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                             Regenerate Script
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                const newScenes = [...editedScript.scenes];
-                                                newScenes.splice(index, 1);
-                                                handleScriptChange('scenes', newScenes);
-                                            }}
+                                            onClick={() => deleteScene(index)}
                                             className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-medium rounded-lg transition-colors text-sm"
                                         >
                                             Delete
@@ -1472,6 +1637,29 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </div>
                             </div>
                         ))}
+                        
+                        {/* Add Scene Button */}
+                        <div className="flex justify-center mt-6">
+                            <button
+                                onClick={addNewScene}
+                                disabled={isAddingScene}
+                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+                            >
+                                {isAddingScene ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                        Adding Scene...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                        Add New Scene
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
 

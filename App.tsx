@@ -147,7 +147,7 @@ const MainApp = () => {
         const isStudioRoute = window.location.pathname === '/studio-editor';
         setIsStudioEditor(isStudioRoute);
         
-        // Handle legal page routes
+        // Handle all page routes
         const path = window.location.pathname;
         if (path === '/privacy') {
             setCurrentView('privacy');
@@ -159,6 +159,16 @@ const MainApp = () => {
             setCurrentView('refund');
         } else if (path === '/dashboard') {
             setCurrentView('dashboard');
+        } else if (path === '/autopilot') {
+            setCurrentView('autopilot');
+        } else if (path === '/calendar') {
+            setCurrentView('calendar');
+        } else if (path === '/channel') {
+            setCurrentView('channel');
+        } else if (path === '/asset-library') {
+            setCurrentView('assetLibrary');
+        } else if (path === '/settings') {
+            setCurrentView('settings');
         } else if (activeProjectId) {
             setCurrentView('project');
         } else if (currentView === 'project') {
@@ -180,6 +190,16 @@ const MainApp = () => {
                 setCurrentView('refund');
             } else if (path === '/dashboard') {
                 setCurrentView('dashboard');
+            } else if (path === '/autopilot') {
+                setCurrentView('autopilot');
+            } else if (path === '/calendar') {
+                setCurrentView('calendar');
+            } else if (path === '/channel') {
+                setCurrentView('channel');
+            } else if (path === '/asset-library') {
+                setCurrentView('assetLibrary');
+            } else if (path === '/settings') {
+                setCurrentView('settings');
             } else if (path === '/studio-editor') {
                 setIsStudioEditor(true);
             } else {
@@ -202,7 +222,7 @@ const MainApp = () => {
         } else {
             setCurrentView(view);
             
-            // Update URL for legal pages
+            // Update URL for all views
             if (view === 'privacy') {
                 window.history.pushState({}, '', '/privacy');
             } else if (view === 'terms') {
@@ -213,8 +233,16 @@ const MainApp = () => {
                 window.history.pushState({}, '', '/refund');
             } else if (view === 'dashboard') {
                 window.history.pushState({}, '', '/dashboard');
-            } else if (view === 'dashboard' && window.location.pathname === '/') {
-                window.history.pushState({}, '', '/');
+            } else if (view === 'autopilot') {
+                window.history.pushState({}, '', '/autopilot');
+            } else if (view === 'calendar') {
+                window.history.pushState({}, '', '/calendar');
+            } else if (view === 'channel') {
+                window.history.pushState({}, '', '/channel');
+            } else if (view === 'assetLibrary') {
+                window.history.pushState({}, '', '/asset-library');
+            } else if (view === 'settings') {
+                window.history.pushState({}, '', '/settings');
             }
         }
         if (view !== 'project' && view !== 'kickoff') {
@@ -224,6 +252,7 @@ const MainApp = () => {
 
     const handleSelectProject = (projectId: string) => {
         setActiveProjectId(projectId);
+        setCurrentView('project');
     };
     
     const handleNewProject = () => {
