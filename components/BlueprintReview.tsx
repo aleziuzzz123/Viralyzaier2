@@ -551,56 +551,59 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         }
                     }
                 } else {
-                    // Regenerate all moodboard images (legacy functionality)
-                    const selectedStyle = visualStyles.find(style => style.id === selectedVisualStyle);
+                    // Regenerate all scene storyboards with new visual style
+                    const selectedStyle = visualStyles.find(style => style.id === (styleId || selectedVisualStyle));
                     const styleName = selectedStyle?.name || 'Modern & Clean';
                     
-                const imagePromises = Array.from({ length: 4 }, (_, index) => 
-                    invokeEdgeFunction('openai-proxy', {
-                        type: 'generateImages',
-                        params: {
-                                prompt: `Create a ${selectedVisualStyle} visual for a video about "${project.topic}". Style: ${styleName.toLowerCase()}, engaging, professional. Aspect ratio: 16:9.`,
-                            config: {
-                                numberOfImages: 1,
-                                aspectRatio: '16:9'
+                    // Generate storyboards for each scene
+                    const imagePromises = editedScript.scenes?.map((scene, index) => 
+                        invokeEdgeFunction('openai-proxy', {
+                            type: 'generateImages',
+                            params: {
+                                prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${selectedStyle?.description || 'Clean and modern visuals'}. Aspect ratio: 16:9.`,
+                                config: {
+                                    numberOfImages: 1,
+                                    aspectRatio: '16:9'
+                                }
                             }
-                        }
-                    })
-                );
+                        })
+                    ) || [];
 
-                const imageResponses = await Promise.all(imagePromises);
-                const newMoodboardUrls = imageResponses
-                    .filter((response: any) => response.generatedImages && response.generatedImages.length > 0)
-                    .map((response: any) => `data:image/png;base64,${response.generatedImages[0].image.imageBytes}`);
-
-                if (newMoodboardUrls.length > 0) {
-                    // Upload images to Supabase storage and get URLs
-                    const uploadedUrls = [];
-                    for (let i = 0; i < newMoodboardUrls.length; i++) {
-                        const base64Data = newMoodboardUrls[i].split(',')[1];
-                        const fileName = `moodboard_${i}_${Date.now()}.png`;
-                        const filePath = `${project.userId}/${project.id}/${fileName}`;
+                    const imageResponses = await Promise.all(imagePromises);
+                    
+                    // Update each scene with its new storyboard
+                    const updatedScenes = [...editedScript.scenes];
+                    for (let i = 0; i < imageResponses.length; i++) {
+                        const response = imageResponses[i];
+                        if ((response as any).generatedImages && (response as any).generatedImages[0]) {
+                            const base64Data = (response as any).generatedImages[0].image.imageBytes;
+                            const fileName = `storyboard-${Date.now()}-${i}.png`;
+                            const filePath = `${project.userId}/${project.id}/${fileName}`;
                         
-                        const { data, error } = await supabase.storage
-                            .from('assets')
-                            .upload(filePath, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
-                                contentType: 'image/png',
-                                upsert: true
-                            });
-                        
-                        if (!error && data) {
-                            const { data: urlData } = supabase.storage
+                            const { data, error } = await supabase.storage
                                 .from('assets')
-                                .getPublicUrl(filePath);
-                            uploadedUrls.push(urlData.publicUrl);
+                                .upload(filePath, Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)), {
+                                    contentType: 'image/png',
+                                    upsert: true
+                                });
+                            
+                            if (!error && data) {
+                                const { data: urlData } = supabase.storage
+                                    .from('assets')
+                                    .getPublicUrl(filePath);
+                                
+                                // Update the specific scene's storyboard
+                                updatedScenes[i] = {
+                                    ...updatedScenes[i],
+                                    storyboardImageUrl: urlData.publicUrl
+                                };
+                            }
                         }
                     }
                     
-                    if (uploadedUrls.length > 0) {
-                        await handleUpdateProject(project.id, { moodboard: uploadedUrls });
-                        addToast('Moodboard regenerated successfully!', 'success');
-                        }
-                    }
+                    // Update the script with new storyboards
+                    setEditedScript({ ...editedScript, scenes: updatedScenes });
+                    addToast(`Visual style "${styleName}" applied to all scenes!`, 'success');
                 }
             } else if (type === 'scene' && sceneIndex !== undefined) {
                 // Regenerate specific scene - use separate visual and voiceover calls for better reliability
@@ -612,9 +615,9 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         type: 'generateContent',
                         params: {
                             model: 'gpt-4o',
-                            contents: `Improve this visual description for a viral video about "${project.topic}": "${scene.visual}". Make it more engaging, specific, and visually striking. Keep it under 100 words.`,
+                            contents: `Improve this visual description for a viral video about "${project.topic}": "${scene.visual}". Make it more engaging, specific, and visually striking. Keep it concise and under 50 words.`,
                             config: {
-                                systemInstruction: 'You are a viral video expert. Improve the visual description to make it more engaging and likely to go viral. Return only the improved visual description text, nothing else.',
+                                systemInstruction: 'You are a viral video expert. Improve the visual description to make it more engaging and likely to go viral. Return only the improved visual description text, nothing else. Keep it short and punchy.',
                                 responseMimeType: 'text/plain'
                             }
                         }
@@ -625,9 +628,9 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         type: 'generateContent',
                         params: {
                             model: 'gpt-4o',
-                            contents: `Improve this voiceover text for a viral video about "${project.topic}": "${scene.voiceover}". Make it more engaging, emotional, and likely to go viral. Keep it under 50 words.`,
+                            contents: `Improve this voiceover text for a viral video about "${project.topic}": "${scene.voiceover}". Make it more engaging, emotional, and likely to go viral. Keep it short and punchy, under 30 words.`,
                             config: {
-                                systemInstruction: 'You are a viral video expert. Improve the voiceover text to make it more engaging and likely to go viral. Return only the improved voiceover text, nothing else.',
+                                systemInstruction: 'You are a viral video expert. Improve the voiceover text to make it more engaging and likely to go viral. Return only the improved voiceover text, nothing else. Keep it short and punchy.',
                                 responseMimeType: 'text/plain'
                             }
                         }
@@ -1203,6 +1206,36 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scripts (FREE)'}
                         </button>
                     </div>
+
+                    {/* Global Visual Style Selection */}
+                    <div className="mb-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-semibold text-white">🎨 Choose Your Visual Style</h3>
+                            <span className="text-sm text-gray-400">This style will apply to all scenes</span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            {visualStyles.map((style) => (
+                                <button
+                                    key={style.id}
+                                    onClick={() => {
+                                        setSelectedVisualStyle(style.id);
+                                        // Regenerate all storyboards with new style
+                                        regenerateContent('moodboard', undefined, style.id);
+                                    }}
+                                    disabled={isRegenerating === 'moodboard'}
+                                    className={`p-3 rounded-lg border transition-all duration-300 text-left disabled:opacity-50 ${
+                                        selectedVisualStyle === style.id
+                                            ? 'border-indigo-500 bg-indigo-500/20 shadow-lg'
+                                            : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
+                                    }`}
+                                >
+                                    <div className="text-xl mb-2">{style.emoji}</div>
+                                    <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
+                                    <div className="text-xs text-gray-400 leading-tight">{style.description}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     
                     <div className="grid lg:grid-cols-2 gap-6">
                         {editedScript.scenes?.map((scene, index) => (
@@ -1246,30 +1279,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                     </div>
                                                 </div>
                                             </div>
-                                            
-                                            {/* Visual Style Selection for this scene */}
-                                            <div className="mt-3">
-                                                <label className="block text-gray-300 text-sm font-semibold mb-2">Visual Style</label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {visualStyles.slice(0, 6).map((style) => (
-                                                        <button
-                                                            key={style.id}
-                                                            onClick={() => {
-                                                                // Regenerate with selected style
-                                                                regenerateContent('moodboard', index, style.id);
-                                                            }}
-                                                            className={`p-2 rounded-lg border transition-all duration-300 text-left ${
-                                                                selectedVisualStyle === style.id
-                                                                    ? 'border-indigo-500 bg-indigo-500/20'
-                                                                    : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
-                                                            }`}
-                                                        >
-                                                            <div className="text-lg mb-1">{style.emoji}</div>
-                                                            <div className="text-xs font-semibold text-white">{style.name}</div>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
+
                                         </div>
                                     )}
                                     
@@ -1280,10 +1290,14 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                             <button
                                                 onClick={() => regenerateContent('visual', index)}
                                                 disabled={isRegenerating === 'visual'}
-                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors disabled:opacity-50"
                                                 title="Regenerate visual description"
                                             >
-                                                <SparklesIcon className="w-4 h-4" />
+                                                {isRegenerating === 'visual' ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b border-indigo-400"></div>
+                                                ) : (
+                                                    <SparklesIcon className="w-4 h-4" />
+                                                )}
                                             </button>
                                         </div>
                                         <textarea
@@ -1298,14 +1312,18 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     {/* Voiceover Text */}
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <label className="block text-gray-300 text-sm font-semibold">Voiceover Text</label>
+                                            <label className="block text-gray-300 text-sm font-semibold">🎤 Voiceover Script</label>
                                             <button
                                                 onClick={() => regenerateContent('voiceover', index)}
                                                 disabled={isRegenerating === 'voiceover'}
-                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors disabled:opacity-50"
                                                 title="Regenerate voiceover text"
                                             >
-                                                <SparklesIcon className="w-4 h-4" />
+                                                {isRegenerating === 'voiceover' ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b border-indigo-400"></div>
+                                                ) : (
+                                                    <SparklesIcon className="w-4 h-4" />
+                                                )}
                                             </button>
                                         </div>
                                         <textarea
