@@ -368,8 +368,46 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
     useEffect(() => {
         if (project.script) {
             setEditedScript(project.script);
+            
+            // Auto-generate hooks if they don't exist
+            if (!project.script.hooks || project.script.hooks.length === 0) {
+                generateInitialHooks();
+            }
         }
     }, [project.script]);
+
+    // Auto-generate hooks when component loads
+    const generateInitialHooks = async () => {
+        if (!project.topic) return;
+        
+        try {
+            setIsRegenerating('hook');
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: `Generate 5 engaging hooks for a video about "${project.topic}". Each hook should be 1-2 sentences and designed to capture attention immediately. Make them diverse, compelling, and viral-worthy.`,
+                    config: {
+                        systemInstruction: 'You are a viral video expert. Generate hooks that are attention-grabbing, emotional, and designed to make viewers want to watch more. Each hook should be unique and target different emotional triggers. Return only the hooks, one per line.'
+                    }
+                }
+            });
+
+            if ((response as any).text) {
+                const newHooks = (response as any).text.split('\n').filter((hook: string) => hook.trim()).slice(0, 5);
+                if (editedScript) {
+                    setEditedScript({ ...editedScript, hooks: newHooks });
+                }
+                setSelectedHookIndex(0);
+                addToast('Hooks generated! Choose your favorite to continue.', 'success');
+            }
+        } catch (error) {
+            console.error('Error generating initial hooks:', error);
+            addToast('Failed to generate hooks. You can generate them manually.', 'error');
+        } finally {
+            setIsRegenerating(null);
+        }
+    };
 
     const handleScriptChange = (field: string, value: any, sceneIndex?: number) => {
         if (!editedScript) return;
@@ -846,7 +884,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-2">🎯 Choose Your Hook</h2>
-                            <p className="text-gray-300">Select the most compelling hook to grab your audience's attention</p>
+                            <p className="text-gray-300">Pick the most compelling hook from the options below, or generate new ones if needed</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('hook')}
@@ -854,13 +892,21 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
                             <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'hook' ? 'Generating...' : 'Generate New Hooks (FREE)'}
+                            {isRegenerating === 'hook' ? 'Generating...' : 'Generate Different Hooks (FREE)'}
                         </button>
                     </div>
                     
                     {/* Hook Selection Grid */}
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {(editedScript.hooks || []).map((hook, index) => (
+                    {isRegenerating === 'hook' ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                                <p className="text-gray-300">Generating compelling hooks for your video...</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(editedScript.hooks || []).map((hook, index) => (
                             <div 
                                 key={index} 
                                 className={`relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
@@ -895,11 +941,12 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </div>
                                 <p className="text-white text-sm leading-relaxed">{hook}</p>
                             </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                     
                     {/* Selected Hook Preview */}
-                    {editedScript.hooks && editedScript.hooks[selectedHookIndex] && (
+                    {!isRegenerating && editedScript.hooks && editedScript.hooks[selectedHookIndex] && (
                         <div className="mt-6 p-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl border border-indigo-500/30">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="text-indigo-400 font-semibold">Selected Hook:</span>
@@ -917,7 +964,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h2 className="text-2xl font-bold text-white mb-2">🎬 Video Scenes</h2>
-                            <p className="text-gray-300">Review and edit your video scenes. Click storyboard images to regenerate them.</p>
+                            <p className="text-gray-300">Review and edit your video script content. Use the sparkle icons to regenerate individual scene text.</p>
                         </div>
                         <button
                             onClick={() => regenerateContent('scene')}
@@ -925,7 +972,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
                             <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scenes (FREE)'}
+                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scripts (FREE)'}
                         </button>
                     </div>
                     
@@ -948,35 +995,19 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </div>
                                 
                                 <div className="space-y-4">
-                                    {/* Storyboard Image - Clickable */}
-                                    {scene.storyboardImageUrl && (
-                                        <div className="relative group">
-                                            <label className="block text-gray-300 text-sm font-semibold mb-2">Storyboard</label>
-                                            <div 
-                                                className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg"
-                                                onClick={() => {
-                                                    // Regenerate this specific storyboard image
-                                                    regenerateContent('moodboard', index);
-                                                }}
-                                            >
-                                                <img 
-                                                    src={scene.storyboardImageUrl} 
-                                                    alt={`Scene ${index + 1} storyboard`}
-                                                    className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
-                                                />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                                    <div className="text-center">
-                                                        <SparklesIcon className="w-6 h-6 text-white mx-auto mb-1" />
-                                                        <span className="text-white text-sm font-semibold">Click to Regenerate</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    
                                     {/* Visual Description */}
                                     <div>
-                                        <label className="block text-gray-300 text-sm font-semibold mb-2">Visual Description</label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-gray-300 text-sm font-semibold">Visual Description</label>
+                                            <button
+                                                onClick={() => regenerateContent('scene', index)}
+                                                disabled={isRegenerating === 'scene'}
+                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                title="Regenerate visual description"
+                                            >
+                                                <SparklesIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                         <textarea
                                             value={scene.visual}
                                             onChange={(e) => handleScriptChange('visual', e.target.value, index)}
@@ -988,7 +1019,17 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     
                                     {/* Voiceover Text */}
                                     <div>
-                                        <label className="block text-gray-300 text-sm font-semibold mb-2">Voiceover Text</label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="block text-gray-300 text-sm font-semibold">Voiceover Text</label>
+                                            <button
+                                                onClick={() => regenerateContent('scene', index)}
+                                                disabled={isRegenerating === 'scene'}
+                                                className="p-1 text-gray-400 hover:text-indigo-400 transition-colors"
+                                                title="Regenerate voiceover text"
+                                            >
+                                                <SparklesIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                         <textarea
                                             value={scene.voiceover}
                                             onChange={(e) => handleScriptChange('voiceover', e.target.value, index)}
@@ -1005,7 +1046,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                             disabled={isRegenerating === 'scene'}
                                             className="flex-1 px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 font-medium rounded-lg transition-colors text-sm"
                                         >
-                                            Regenerate Scene
+                                            Regenerate Script
                                         </button>
                                         <button
                                             onClick={() => {
@@ -1121,7 +1162,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         <div className="flex justify-between items-center mb-6">
                             <div>
                                 <h2 className="text-2xl font-bold text-white mb-2">🎨 Visual Style Reference</h2>
-                                <p className="text-gray-300">Click on any image to regenerate it. These images set the visual tone for your video.</p>
+                                <p className="text-gray-300">These moodboard images set the visual tone for your video. Click any image to regenerate it with your selected style.</p>
                             </div>
                             <button
                                 onClick={() => regenerateContent('moodboard')}
