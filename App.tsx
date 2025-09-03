@@ -147,7 +147,7 @@ const MainApp = () => {
         const isStudioRoute = window.location.pathname === '/studio-editor';
         setIsStudioEditor(isStudioRoute);
         
-        // Handle all page routes
+        // Handle all page routes - only run on initial load or URL changes
         const path = window.location.pathname;
         if (path === '/privacy') {
             setCurrentView('privacy');
@@ -171,19 +171,17 @@ const MainApp = () => {
             setCurrentView('settings');
         } else if (activeProjectId) {
             setCurrentView('project');
-        } else if (currentView === 'project') {
-            setCurrentView('dashboard');
         }
-    }, [activeProjectId, currentView]);
+    }, [activeProjectId]); // Removed currentView from dependencies to prevent conflicts
 
     // Switch to project view when project details are loaded
     useEffect(() => {
-        console.log('🔄 Project view check:', { activeProjectId, hasActiveProjectDetails: !!activeProjectDetails, isProjectDetailsLoading });
+        console.log('🔄 Project view check:', { activeProjectId, hasActiveProjectDetails: !!activeProjectDetails, isProjectDetailsLoading, currentView });
         if (activeProjectId && activeProjectDetails && !isProjectDetailsLoading) {
-            console.log('✅ Switching to project view');
+            console.log('✅ Switching to project view from:', currentView);
             setCurrentView('project');
         }
-    }, [activeProjectId, activeProjectDetails, isProjectDetailsLoading]);
+    }, [activeProjectId, activeProjectDetails, isProjectDetailsLoading, currentView]);
 
     // Listen for URL changes (for browser back/forward buttons)
     useEffect(() => {
@@ -271,6 +269,8 @@ const MainApp = () => {
     };
 
     const renderCurrentView = () => {
+        console.log('🎨 Rendering view:', currentView, { activeProjectId, hasActiveProjectDetails: !!activeProjectDetails, isProjectDetailsLoading });
+        
         // Allow legal pages to be accessible without authentication
         if (!user && !['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
             return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading_user')}</div>;
