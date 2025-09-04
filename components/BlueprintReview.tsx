@@ -34,6 +34,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [showCartoonSubstyles, setShowCartoonSubstyles] = useState(false);
     const [selectedCartoonStyle, setSelectedCartoonStyle] = useState<string>('anime');
     const [isAddingScene, setIsAddingScene] = useState(false);
+    const [showSubstyles, setShowSubstyles] = useState(false);
+    const [selectedSubstyle, setSelectedSubstyle] = useState<string>('');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -263,15 +265,70 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
   }, [qualityAnalysis]);
 
   // Visual Style Options
-  const visualStyles = [
-    { id: 'modern', name: 'Modern & Clean', description: 'Sleek, contemporary visuals with clean lines', emoji: '✨' },
-    { id: 'cinematic', name: 'Cinematic', description: 'Dramatic, movie-like visuals with depth', emoji: '🎬' },
-    { id: 'vibrant', name: 'Vibrant & Colorful', description: 'Bright, energetic colors and dynamic compositions', emoji: '🌈' },
-    { id: 'minimalist', name: 'Minimalist', description: 'Simple, clean designs with focus on content', emoji: '⚪' },
-    { id: 'corporate', name: 'Corporate', description: 'Professional, business-focused imagery', emoji: '💼' },
-    { id: 'artistic', name: 'Artistic', description: 'Creative, expressive visuals with artistic flair', emoji: '🎨' },
-    { id: 'cartoon', name: 'Cartoon', description: 'Fun, animated style with playful characters', emoji: '🎭' }
-  ];
+      const visualStyles = [
+        { id: 'modern', name: 'Modern & Clean', description: 'Sleek, contemporary visuals with clean lines', emoji: '✨' },
+        { id: 'cinematic', name: 'Cinematic', description: 'Dramatic, movie-like visuals with depth', emoji: '🎬' },
+        { id: 'vibrant', name: 'Vibrant & Colorful', description: 'Bright, energetic colors and dynamic compositions', emoji: '🌈' },
+        { id: 'minimalist', name: 'Minimalist', description: 'Simple, clean designs with focus on content', emoji: '⚪' },
+        { id: 'corporate', name: 'Corporate', description: 'Professional, business-focused imagery', emoji: '💼' },
+        { id: 'artistic', name: 'Artistic', description: 'Creative, expressive visuals with artistic flair', emoji: '🎨' },
+        { id: 'cartoon', name: 'Cartoon', description: 'Fun, animated style with playful characters', emoji: '🎭' }
+    ];
+
+    // Sub-styles for each main visual style
+    const modernSubstyles = [
+        { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with lots of white space' },
+        { id: 'tech', name: 'Tech', description: 'Futuristic with sleek interfaces' },
+        { id: 'scandinavian', name: 'Scandinavian', description: 'Nordic-inspired clean design' },
+        { id: 'brutalist', name: 'Brutalist', description: 'Raw, bold geometric forms' },
+        { id: 'glassmorphism', name: 'Glassmorphism', description: 'Frosted glass effect with transparency' },
+        { id: 'neomorphism', name: 'Neomorphism', description: 'Soft, subtle 3D elements' }
+    ];
+
+    const cinematicSubstyles = [
+        { id: 'noir', name: 'Film Noir', description: 'Black and white with dramatic shadows' },
+        { id: 'sci-fi', name: 'Sci-Fi', description: 'Futuristic with neon and technology' },
+        { id: 'western', name: 'Western', description: 'Desert landscapes and cowboy aesthetics' },
+        { id: 'horror', name: 'Horror', description: 'Dark, eerie, and suspenseful' },
+        { id: 'romance', name: 'Romance', description: 'Soft lighting and warm tones' },
+        { id: 'action', name: 'Action', description: 'High-energy with dynamic compositions' }
+    ];
+
+    const vibrantSubstyles = [
+        { id: 'neon', name: 'Neon', description: 'Electric colors with glowing effects' },
+        { id: 'gradient', name: 'Gradient', description: 'Smooth color transitions' },
+        { id: 'pop-art', name: 'Pop Art', description: 'Bold, comic book inspired' },
+        { id: 'cyberpunk', name: 'Cyberpunk', description: 'Futuristic with bright contrasts' },
+        { id: 'retro', name: 'Retro', description: '80s inspired with bright colors' },
+        { id: 'psychedelic', name: 'Psychedelic', description: 'Trippy, swirling patterns' }
+    ];
+
+    const minimalistSubstyles = [
+        { id: 'zen', name: 'Zen', description: 'Peaceful with natural elements' },
+        { id: 'monochrome', name: 'Monochrome', description: 'Single color with variations' },
+        { id: 'geometric', name: 'Geometric', description: 'Simple shapes and patterns' },
+        { id: 'typography', name: 'Typography', description: 'Focus on text and fonts' },
+        { id: 'negative-space', name: 'Negative Space', description: 'Creative use of empty space' },
+        { id: 'line-art', name: 'Line Art', description: 'Simple line drawings' }
+    ];
+
+    const corporateSubstyles = [
+        { id: 'executive', name: 'Executive', description: 'High-end business luxury' },
+        { id: 'startup', name: 'Startup', description: 'Young, energetic business' },
+        { id: 'finance', name: 'Finance', description: 'Professional banking style' },
+        { id: 'tech-corp', name: 'Tech Corp', description: 'Modern technology company' },
+        { id: 'consulting', name: 'Consulting', description: 'Professional advisory' },
+        { id: 'healthcare', name: 'Healthcare', description: 'Medical and wellness' }
+    ];
+
+    const artisticSubstyles = [
+        { id: 'watercolor', name: 'Watercolor', description: 'Soft, painted effects' },
+        { id: 'oil-painting', name: 'Oil Painting', description: 'Rich, textured brushstrokes' },
+        { id: 'sketch', name: 'Sketch', description: 'Hand-drawn pencil style' },
+        { id: 'collage', name: 'Collage', description: 'Mixed media composition' },
+        { id: 'abstract', name: 'Abstract', description: 'Non-representational art' },
+        { id: 'impressionist', name: 'Impressionist', description: 'Soft, blurred brushstrokes' }
+    ];
 
   const cartoonStyles = [
     { id: 'anime', name: 'Anime', description: 'Japanese animation style with expressive characters', emoji: '🌸' },
@@ -388,13 +445,8 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
     useEffect(() => {
         if (project.script) {
             setEditedScript(project.script);
-            
-            // Auto-generate hooks if they don't exist and we're on the blueprint review stage
-            if ((!project.script.hooks || project.script.hooks.length === 0) && project.workflowStep === 3) {
-                generateInitialHooks();
-            }
         }
-    }, [project.script, project.workflowStep]);
+    }, [project.script]);
 
     // Auto-generate hooks when component loads
     const generateInitialHooks = async () => {
@@ -504,6 +556,61 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         visual: `A compelling visual scene for ${project.topic}`,
                         voiceover: `Engaging voiceover for this scene`
                     };
+                }
+
+                // Generate storyboard image for the new scene
+                try {
+                    const styleToUse = selectedVisualStyle || 'modern';
+                    let selectedStyle, styleName, styleDescription;
+
+                    if (styleToUse === 'cartoon' && selectedCartoonStyle) {
+                        const cartoonSubStyle = cartoonStyles.find(style => style.id === selectedCartoonStyle);
+                        selectedStyle = cartoonSubStyle;
+                        styleName = cartoonSubStyle?.name || 'Anime';
+                        styleDescription = cartoonSubStyle?.description || 'Japanese animation style';
+                    } else {
+                        selectedStyle = visualStyles.find(style => style.id === styleToUse);
+                        styleName = selectedStyle?.name || 'Modern & Clean';
+                        styleDescription = selectedStyle?.description || 'Clean and modern visuals';
+                    }
+
+                    const imageResponse = await invokeEdgeFunction('openai-proxy', {
+                        type: 'generateImages',
+                        params: {
+                            prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${newScene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
+                            config: {
+                                numberOfImages: 1,
+                                aspectRatio: project.videoSize || '16:9'
+                            }
+                        }
+                    });
+
+                    if ((imageResponse as any).data && (imageResponse as any).data.length > 0) {
+                        const imageUrl = (imageResponse as any).data[0].url;
+                        
+                        // Upload to Supabase storage
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        const fileName = `storyboard_${Date.now()}.png`;
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('project-assets')
+                            .upload(`${project.id}/${fileName}`, blob, {
+                                contentType: 'image/png',
+                                upsert: false
+                            });
+
+                        if (uploadError) {
+                            console.error('Error uploading storyboard:', uploadError);
+                        } else {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('project-assets')
+                                .getPublicUrl(`${project.id}/${fileName}`);
+                            
+                            newScene.storyboardImageUrl = publicUrl;
+                        }
+                    }
+                } catch (imageError) {
+                    console.error('Error generating storyboard for new scene:', imageError);
                 }
 
                 // Add the new scene
@@ -1529,7 +1636,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                             </div>
                                             
                                             <div 
-                                                className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg"
+                                                className="relative cursor-pointer rounded-lg overflow-hidden border-2 border-gray-600 hover:border-indigo-500 transition-all duration-300 group-hover:shadow-lg w-32 h-20"
                                                 onClick={() => {
                                                     setShowStoryboardModal({ 
                                                         sceneIndex: index, 
@@ -1551,7 +1658,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                 <img 
                                                     src={scene.storyboardImageUrl} 
                                                     alt={`Scene ${index + 1} storyboard`}
-                                                    className={`w-full object-cover transition-transform duration-300 group-hover:scale-105 ${project.videoSize === '9:16' ? 'aspect-[9/16]' : 'aspect-video'}`}
+                                                    className={`w-32 h-20 object-cover transition-transform duration-300 group-hover:scale-110 rounded-lg ${project.videoSize === '9:16' ? 'aspect-[9/16]' : 'aspect-video'}`}
                                                 />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                                                     <div className="text-center">
@@ -1643,19 +1750,19 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             <button
                                 onClick={addNewScene}
                                 disabled={isAddingScene}
-                                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+                                className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200 text-sm"
                             >
                                 {isAddingScene ? (
                                     <>
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                        Adding Scene...
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Adding...
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                         </svg>
-                                        Add New Scene
+                                        Add Scene
                                     </>
                                 )}
                             </button>
