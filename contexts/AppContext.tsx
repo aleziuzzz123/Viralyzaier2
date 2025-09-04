@@ -52,6 +52,7 @@ interface AppContextType {
     dismissToast: (id: number) => void;
     setActiveProjectId: (id: string | null) => void;
     handleLogout: () => void;
+    forceLogout: () => void;
     handleSubscriptionChange: (planId: PlanId) => void;
     consumeCredits: (amount: number) => Promise<boolean>;
     requirePermission: (requiredPlan: PlanId) => boolean;
@@ -142,17 +143,47 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }, [setIsInitialLoading, setUser, setBackendError]);
 
     useEffect(() => {
-        supabaseService.getSession().then(({ session }) => setSession(session));
-        const authListener = supabaseService.onAuthStateChange((_event, session) => {
+        console.log('🔐 Initializing authentication...');
+        
+        // Add a timeout fallback to ensure loading state is always cleared
+        const timeoutId = setTimeout(() => {
+            console.log('⏰ Authentication timeout, clearing loading state');
+            setIsInitialLoading(false);
+        }, 5000); // 5 second timeout
+        
+        supabaseService.getSession().then(({ session }) => {
+            console.log('🔐 Initial session:', session ? 'Found' : 'None');
+            setSession(session);
+            // Ensure loading state is cleared after initial session check
+            if (!session) {
+                console.log('👤 No initial session, clearing loading state');
+                setIsInitialLoading(false);
+            }
+            clearTimeout(timeoutId);
+        }).catch(err => {
+            console.error('❌ Error getting initial session:', err);
+            // Ensure loading state is cleared even on error
+            setIsInitialLoading(false);
+            clearTimeout(timeoutId);
+        });
+        
+        const authListener = supabaseService.onAuthStateChange((event, session) => {
+            console.log('🔐 Auth state changed:', event, session ? 'Session found' : 'No session');
             setSession(session);
             if (session?.user) {
+                console.log('👤 User found, loading data...');
                 loadInitialData(session.user.id);
             } else {
+                console.log('👤 No user, clearing data...');
                 setUser(null);
                 setIsInitialLoading(false);
             }
+            clearTimeout(timeoutId);
         });
-        return () => authListener.subscription.unsubscribe();
+        return () => {
+            authListener.subscription.unsubscribe();
+            clearTimeout(timeoutId);
+        };
     }, [loadInitialData]);
     
     useEffect(() => {
@@ -197,10 +228,28 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
     const handleLogout = useCallback(() => {
         const confirmLogout = () => {
-            supabaseService.signOut().then(() => addToast(t('toast.logged_out'), 'success'));
+            supabaseService.signOut().then(() => {
+                // Clear local user state immediately
+                setUser(null);
+                setSession(null);
+                setActiveProjectId(null);
+                setActiveProjectDetails(null);
+                addToast(t('toast.logged_out'), 'success');
+            });
         };
         openConfirmationModal(t('confirmation_modal.logout_title'), t('confirmation_modal.logout_message'), confirmLogout);
-    }, [t, addToast, openConfirmationModal]);
+    }, [t, addToast, openConfirmationModal, setUser, setSession, setActiveProjectId, setActiveProjectDetails]);
+
+    // Force logout function for immediate use
+    const forceLogout = useCallback(() => {
+        console.log('🚪 Force logout triggered');
+        setUser(null);
+        setSession(null);
+        setActiveProjectId(null);
+        setActiveProjectDetails(null);
+        supabaseService.signOut().catch(console.error);
+        addToast('Force logged out', 'success');
+    }, [setUser, setSession, setActiveProjectId, setActiveProjectDetails]);
     
     const lockAndExecute = useCallback(async (asyncFunction: () => Promise<any>): Promise<any | undefined> => {
         if (executionLock.current) {
@@ -398,7 +447,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             session, user, activeProjectId, activeProjectDetails, isProjectDetailsLoading,
             toasts, isInitialLoading, isUpgradeModalOpen, upgradeReason,
             isScheduleModalOpen, projectToSchedule, confirmation, backendError, dismissedTutorials, language,
-            t, setLanguage, addToast, dismissToast, setActiveProjectId, handleLogout,
+            t, setLanguage, addToast, dismissToast, setActiveProjectId, handleLogout, forceLogout,
             handleSubscriptionChange, consumeCredits, requirePermission, setUpgradeModalOpen,
             openScheduleModal, closeScheduleModal, openConfirmationModal, handleConfirmation,
             handleCancelConfirmation, clearBackendError, dismissTutorial, lockAndExecute, handleUpdateProject,

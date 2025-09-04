@@ -117,11 +117,13 @@ serve(async (req: Request) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            model: config?.model || 'dall-e-3',
             prompt: prompt,
             n: config?.numberOfImages || 1,
-            size: config?.aspectRatio === '16:9' ? '1024x1024' : 
-                  config?.aspectRatio === '9:16' ? '1024x1024' : 
-                  config?.aspectRatio === '1:1' ? '1024x1024' : '1024x1024',
+            size: config?.aspectRatio === '16:9' ? '1792x1024' : 
+                  config?.aspectRatio === '9:16' ? '1024x1792' : 
+                  config?.aspectRatio === '1:1' ? '1024x1024' : '1792x1024',
+            quality: config?.quality || 'standard',
             response_format: 'b64_json'
           })
         });

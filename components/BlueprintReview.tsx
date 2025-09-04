@@ -36,6 +36,8 @@ const BlueprintReview: React.FC<BlueprintReviewProps> = ({ project, onApprove, o
     const [isAddingScene, setIsAddingScene] = useState(false);
     const [showSubstyles, setShowSubstyles] = useState(false);
     const [selectedSubstyle, setSelectedSubstyle] = useState<string>('');
+    const [currentMainStyle, setCurrentMainStyle] = useState<string>('');
+    const [cancelledOperations, setCancelledOperations] = useState<Set<string>>(new Set());
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -276,68 +278,73 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
     ];
 
     // Sub-styles for each main visual style
-    const modernSubstyles = [
-        { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with lots of white space' },
-        { id: 'tech', name: 'Tech', description: 'Futuristic with sleek interfaces' },
-        { id: 'scandinavian', name: 'Scandinavian', description: 'Nordic-inspired clean design' },
-        { id: 'brutalist', name: 'Brutalist', description: 'Raw, bold geometric forms' },
-        { id: 'glassmorphism', name: 'Glassmorphism', description: 'Frosted glass effect with transparency' },
-        { id: 'neomorphism', name: 'Neomorphism', description: 'Soft, subtle 3D elements' }
-    ];
+    const getSubstyles = (mainStyle: string) => {
+        const substyles = {
+            modern: [
+                { id: 'minimal', name: 'Minimal', description: 'Ultra-clean with lots of white space', emoji: '⚪' },
+                { id: 'tech', name: 'Tech', description: 'Futuristic with sleek interfaces', emoji: '💻' },
+                { id: 'scandinavian', name: 'Scandinavian', description: 'Nordic-inspired clean design', emoji: '🏔️' },
+                { id: 'brutalist', name: 'Brutalist', description: 'Raw, bold geometric forms', emoji: '🔲' },
+                { id: 'glassmorphism', name: 'Glassmorphism', description: 'Frosted glass effect with transparency', emoji: '🔮' },
+                { id: 'neomorphism', name: 'Neomorphism', description: 'Soft, subtle 3D elements', emoji: '🎨' }
+            ],
+            cinematic: [
+                { id: 'noir', name: 'Film Noir', description: 'Black and white with dramatic shadows', emoji: '🎭' },
+                { id: 'sci-fi', name: 'Sci-Fi', description: 'Futuristic with neon and technology', emoji: '🚀' },
+                { id: 'western', name: 'Western', description: 'Desert landscapes and cowboy aesthetics', emoji: '🤠' },
+                { id: 'horror', name: 'Horror', description: 'Dark, eerie, and suspenseful', emoji: '👻' },
+                { id: 'romance', name: 'Romance', description: 'Soft lighting and warm tones', emoji: '💕' },
+                { id: 'action', name: 'Action', description: 'High-energy with dynamic compositions', emoji: '💥' }
+            ],
+            vibrant: [
+                { id: 'neon', name: 'Neon', description: 'Electric colors with glowing effects', emoji: '⚡' },
+                { id: 'gradient', name: 'Gradient', description: 'Smooth color transitions', emoji: '🌈' },
+                { id: 'pop-art', name: 'Pop Art', description: 'Bold, comic book inspired', emoji: '🎨' },
+                { id: 'cyberpunk', name: 'Cyberpunk', description: 'Futuristic with bright contrasts', emoji: '🤖' },
+                { id: 'retro', name: 'Retro', description: '80s inspired with bright colors', emoji: '📺' },
+                { id: 'psychedelic', name: 'Psychedelic', description: 'Trippy, swirling patterns', emoji: '🌀' }
+            ],
+            minimalist: [
+                { id: 'zen', name: 'Zen', description: 'Peaceful with natural elements', emoji: '🧘' },
+                { id: 'monochrome', name: 'Monochrome', description: 'Single color with variations', emoji: '⚫' },
+                { id: 'geometric', name: 'Geometric', description: 'Simple shapes and patterns', emoji: '📐' },
+                { id: 'typography', name: 'Typography', description: 'Focus on text and fonts', emoji: '📝' },
+                { id: 'negative-space', name: 'Negative Space', description: 'Creative use of empty space', emoji: '⬜' },
+                { id: 'line-art', name: 'Line Art', description: 'Simple line drawings', emoji: '✏️' }
+            ],
+            corporate: [
+                { id: 'executive', name: 'Executive', description: 'High-end business luxury', emoji: '💼' },
+                { id: 'startup', name: 'Startup', description: 'Young, energetic business', emoji: '🚀' },
+                { id: 'finance', name: 'Finance', description: 'Professional banking style', emoji: '💰' },
+                { id: 'tech-corp', name: 'Tech Corp', description: 'Modern technology company', emoji: '💻' },
+                { id: 'consulting', name: 'Consulting', description: 'Professional advisory', emoji: '📊' },
+                { id: 'healthcare', name: 'Healthcare', description: 'Medical and wellness', emoji: '🏥' }
+            ],
+            artistic: [
+                { id: 'watercolor', name: 'Watercolor', description: 'Soft, painted effects', emoji: '🎨' },
+                { id: 'oil-painting', name: 'Oil Painting', description: 'Rich, textured brushstrokes', emoji: '🖼️' },
+                { id: 'sketch', name: 'Sketch', description: 'Hand-drawn pencil style', emoji: '✏️' },
+                { id: 'collage', name: 'Collage', description: 'Mixed media composition', emoji: '📰' },
+                { id: 'abstract', name: 'Abstract', description: 'Non-representational art', emoji: '🎭' },
+                { id: 'impressionist', name: 'Impressionist', description: 'Soft, blurred brushstrokes', emoji: '🌅' }
+            ],
+            cartoon: [
+                { id: 'anime', name: 'Anime', description: 'Japanese animation style with expressive characters', emoji: '🌸' },
+                { id: 'disney', name: 'Disney', description: 'Classic Disney animation with magical storytelling', emoji: '🏰' },
+                { id: 'pixar', name: 'Pixar', description: '3D animated style with realistic textures', emoji: '💡' },
+                { id: 'comic', name: 'Comic Book', description: 'Bold, dynamic comic book art style', emoji: '💥' },
+                { id: 'retro', name: 'Retro Cartoon', description: 'Vintage cartoon style from classic animation', emoji: '📺' },
+                { id: 'kawaii', name: 'Kawaii', description: 'Cute, adorable style with pastel colors', emoji: '✨' }
+            ]
+        };
+        return substyles[mainStyle as keyof typeof substyles] || substyles.modern;
+    };
 
-    const cinematicSubstyles = [
-        { id: 'noir', name: 'Film Noir', description: 'Black and white with dramatic shadows' },
-        { id: 'sci-fi', name: 'Sci-Fi', description: 'Futuristic with neon and technology' },
-        { id: 'western', name: 'Western', description: 'Desert landscapes and cowboy aesthetics' },
-        { id: 'horror', name: 'Horror', description: 'Dark, eerie, and suspenseful' },
-        { id: 'romance', name: 'Romance', description: 'Soft lighting and warm tones' },
-        { id: 'action', name: 'Action', description: 'High-energy with dynamic compositions' }
-    ];
 
-    const vibrantSubstyles = [
-        { id: 'neon', name: 'Neon', description: 'Electric colors with glowing effects' },
-        { id: 'gradient', name: 'Gradient', description: 'Smooth color transitions' },
-        { id: 'pop-art', name: 'Pop Art', description: 'Bold, comic book inspired' },
-        { id: 'cyberpunk', name: 'Cyberpunk', description: 'Futuristic with bright contrasts' },
-        { id: 'retro', name: 'Retro', description: '80s inspired with bright colors' },
-        { id: 'psychedelic', name: 'Psychedelic', description: 'Trippy, swirling patterns' }
-    ];
 
-    const minimalistSubstyles = [
-        { id: 'zen', name: 'Zen', description: 'Peaceful with natural elements' },
-        { id: 'monochrome', name: 'Monochrome', description: 'Single color with variations' },
-        { id: 'geometric', name: 'Geometric', description: 'Simple shapes and patterns' },
-        { id: 'typography', name: 'Typography', description: 'Focus on text and fonts' },
-        { id: 'negative-space', name: 'Negative Space', description: 'Creative use of empty space' },
-        { id: 'line-art', name: 'Line Art', description: 'Simple line drawings' }
-    ];
 
-    const corporateSubstyles = [
-        { id: 'executive', name: 'Executive', description: 'High-end business luxury' },
-        { id: 'startup', name: 'Startup', description: 'Young, energetic business' },
-        { id: 'finance', name: 'Finance', description: 'Professional banking style' },
-        { id: 'tech-corp', name: 'Tech Corp', description: 'Modern technology company' },
-        { id: 'consulting', name: 'Consulting', description: 'Professional advisory' },
-        { id: 'healthcare', name: 'Healthcare', description: 'Medical and wellness' }
-    ];
 
-    const artisticSubstyles = [
-        { id: 'watercolor', name: 'Watercolor', description: 'Soft, painted effects' },
-        { id: 'oil-painting', name: 'Oil Painting', description: 'Rich, textured brushstrokes' },
-        { id: 'sketch', name: 'Sketch', description: 'Hand-drawn pencil style' },
-        { id: 'collage', name: 'Collage', description: 'Mixed media composition' },
-        { id: 'abstract', name: 'Abstract', description: 'Non-representational art' },
-        { id: 'impressionist', name: 'Impressionist', description: 'Soft, blurred brushstrokes' }
-    ];
 
-  const cartoonStyles = [
-    { id: 'anime', name: 'Anime', description: 'Japanese animation style with expressive characters', emoji: '🌸' },
-    { id: 'disney', name: 'Disney', description: 'Classic Disney animation with magical storytelling', emoji: '🏰' },
-    { id: 'pixar', name: 'Pixar', description: '3D animated style with realistic textures', emoji: '💡' },
-    { id: 'comic', name: 'Comic Book', description: 'Bold, dynamic comic book art style', emoji: '💥' },
-    { id: 'retro', name: 'Retro Cartoon', description: 'Vintage cartoon style from classic animation', emoji: '📺' },
-    { id: 'kawaii', name: 'Kawaii', description: 'Cute, adorable style with pastel colors', emoji: '✨' }
-  ];
 
   // Auto-save functionality
   const autoSave = useCallback(async () => {
@@ -517,6 +524,14 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
         setEditingHookText('');
     };
 
+    const cancelOperation = (operationId: string) => {
+        setCancelledOperations(prev => new Set([...prev, operationId]));
+        setProcessingStyle(null);
+        setIsRegenerating(null);
+        setIsAddingScene(false);
+        addToast('Operation cancelled', 'info');
+    };
+
     // Scene management functions
     const deleteScene = (sceneIndex: number) => {
         if (!editedScript || !editedScript.scenes) return;
@@ -525,6 +540,102 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
         setEditedScript({ ...editedScript, scenes: newScenes });
         setHasUnsavedChanges(true);
         addToast(`Scene ${sceneIndex + 1} deleted successfully`, 'success');
+    };
+
+    const addNewSceneAtIndex = async (index: number) => {
+        if (!editedScript) return;
+        
+        setIsAddingScene(true);
+        try {
+            // Generate a new scene using AI
+            const response = await invokeEdgeFunction('openai-proxy', {
+                type: 'generateContent',
+                params: {
+                    model: 'gpt-4o',
+                    contents: `Generate a new video scene for a viral video about "${project.topic}". Create a compelling visual description and voiceover text that fits with the existing scenes. Make it engaging and likely to go viral.`,
+                    config: {
+                        systemInstruction: 'You are a viral video expert. Generate a new scene with visual description and voiceover text. Return a JSON object with "visual" and "voiceover" fields.',
+                        responseMimeType: 'application/json'
+                    }
+                }
+            });
+
+            if ((response as any).text) {
+                let newScene;
+                try {
+                    const cleanedResponse = (response as any).text.replace(/```json|```/g, '').trim();
+                    newScene = JSON.parse(cleanedResponse);
+                } catch {
+                    // Fallback if JSON parsing fails
+                    newScene = {
+                        visual: `A compelling visual scene for ${project.topic}`,
+                        voiceover: `Engaging voiceover for this scene`
+                    };
+                }
+
+                // Generate storyboard image for the new scene
+                try {
+                    const styleToUse = selectedVisualStyle || 'modern';
+                    let selectedStyle, styleName, styleDescription;
+
+                    selectedStyle = visualStyles.find(style => style.id === styleToUse);
+                    styleName = selectedStyle?.name || 'Modern & Clean';
+                    styleDescription = selectedStyle?.description || 'Clean and modern visuals';
+
+                    const imageResponse = await invokeEdgeFunction('openai-proxy', {
+                        type: 'generateImages',
+                        params: {
+                            prompt: `Professional ${styleName.toLowerCase()} style storyboard for viral video: "${newScene.visual}". ${styleDescription}. High quality, cinematic composition, perfect lighting, professional photography style, social media optimized, ${project.videoSize || '16:9'} aspect ratio.`,
+                            config: {
+                                numberOfImages: 1,
+                                aspectRatio: project.videoSize || '16:9',
+                                model: 'dall-e-3',
+                                quality: 'hd'
+                            }
+                        }
+                    });
+
+                    if ((imageResponse as any).data && (imageResponse as any).data.length > 0) {
+                        const imageUrl = (imageResponse as any).data[0].url;
+                        
+                        // Upload to Supabase storage
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        const fileName = `storyboard_${Date.now()}.png`;
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('project-assets')
+                            .upload(`${project.id}/${fileName}`, blob, {
+                                contentType: 'image/png',
+                                upsert: false
+                            });
+
+                        if (uploadError) {
+                            console.error('Error uploading storyboard:', uploadError);
+                        } else {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('project-assets')
+                                .getPublicUrl(`${project.id}/${fileName}`);
+                            
+                            newScene.storyboardImageUrl = publicUrl;
+                        }
+                    }
+                } catch (imageError) {
+                    console.error('Error generating storyboard for new scene:', imageError);
+                }
+
+                // Insert the new scene at the specified index
+                const newScenes = [...(editedScript.scenes || [])];
+                newScenes.splice(index, 0, newScene);
+                setEditedScript({ ...editedScript, scenes: newScenes });
+                setHasUnsavedChanges(true);
+                addToast('New scene added successfully!', 'success');
+            }
+        } catch (error) {
+            console.error('Error adding new scene:', error);
+            addToast('Failed to add new scene - please try again', 'error');
+        } finally {
+            setIsAddingScene(false);
+        }
     };
 
     const addNewScene = async () => {
@@ -563,27 +674,22 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     const styleToUse = selectedVisualStyle || 'modern';
                     let selectedStyle, styleName, styleDescription;
 
-                    if (styleToUse === 'cartoon' && selectedCartoonStyle) {
-                        const cartoonSubStyle = cartoonStyles.find(style => style.id === selectedCartoonStyle);
-                        selectedStyle = cartoonSubStyle;
-                        styleName = cartoonSubStyle?.name || 'Anime';
-                        styleDescription = cartoonSubStyle?.description || 'Japanese animation style';
-                    } else {
-                        selectedStyle = visualStyles.find(style => style.id === styleToUse);
-                        styleName = selectedStyle?.name || 'Modern & Clean';
-                        styleDescription = selectedStyle?.description || 'Clean and modern visuals';
-                    }
+                    selectedStyle = visualStyles.find(style => style.id === styleToUse);
+                    styleName = selectedStyle?.name || 'Modern & Clean';
+                    styleDescription = selectedStyle?.description || 'Clean and modern visuals';
 
-                    const imageResponse = await invokeEdgeFunction('openai-proxy', {
-                        type: 'generateImages',
-                        params: {
-                            prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${newScene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
-                            config: {
-                                numberOfImages: 1,
-                                aspectRatio: project.videoSize || '16:9'
-                            }
-                        }
-                    });
+                                                const imageResponse = await invokeEdgeFunction('openai-proxy', {
+                                type: 'generateImages',
+                                params: {
+                                    prompt: `Professional ${styleName.toLowerCase()} style storyboard for viral video: "${newScene.visual}". ${styleDescription}. High quality, cinematic composition, perfect lighting, professional photography style, social media optimized, ${project.videoSize || '16:9'} aspect ratio.`,
+                                    config: {
+                                        numberOfImages: 1,
+                                        aspectRatio: project.videoSize || '16:9',
+                                        model: 'dall-e-3',
+                                        quality: 'hd'
+                                    }
+                                }
+                            });
 
                     if ((imageResponse as any).data && (imageResponse as any).data.length > 0) {
                         const imageUrl = (imageResponse as any).data[0].url;
@@ -708,10 +814,12 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     const response = await invokeEdgeFunction('openai-proxy', {
                         type: 'generateImages',
                         params: {
-                            prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
+                            prompt: `Professional ${styleName.toLowerCase()} style storyboard for viral video: "${scene.visual}". ${styleDescription}. High quality, cinematic composition, perfect lighting, professional photography style, social media optimized, ${project.videoSize || '16:9'} aspect ratio.`,
                             config: {
                                 numberOfImages: 1,
-                                aspectRatio: project.videoSize || '16:9'
+                                aspectRatio: project.videoSize || '16:9',
+                                model: 'dall-e-3',
+                                quality: 'hd'
                             }
                         }
                     });
@@ -747,28 +855,22 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                     // Regenerate all scene storyboards with new visual style
                     let selectedStyle, styleName, styleDescription;
                     
-                    if (styleId && styleId.startsWith('cartoon-')) {
-                        // Handle cartoon sub-styles
-                        const cartoonSubStyle = cartoonStyles.find(style => style.id === styleId.replace('cartoon-', ''));
-                        selectedStyle = cartoonSubStyle;
-                        styleName = cartoonSubStyle?.name || 'Anime';
-                        styleDescription = cartoonSubStyle?.description || 'Japanese animation style';
-                    } else {
-                        // Handle regular styles
-                        selectedStyle = visualStyles.find(style => style.id === (styleId || selectedVisualStyle));
-                        styleName = selectedStyle?.name || 'Modern & Clean';
-                        styleDescription = selectedStyle?.description || 'Clean and modern visuals';
-                    }
+                    // Handle regular styles
+                    selectedStyle = visualStyles.find(style => style.id === (styleId || selectedVisualStyle));
+                    styleName = selectedStyle?.name || 'Modern & Clean';
+                    styleDescription = selectedStyle?.description || 'Clean and modern visuals';
                     
                     // Generate storyboards for each scene
                     const imagePromises = editedScript.scenes?.map((scene, index) => 
                     invokeEdgeFunction('openai-proxy', {
                         type: 'generateImages',
                         params: {
-                                prompt: `Create a ${styleName.toLowerCase()} style storyboard image for this video scene: "${scene.visual}". The image should be visually striking, professional, and suitable for social media. Style: ${styleDescription}. Aspect ratio: ${project.videoSize || '16:9'}.`,
+                                prompt: `Professional ${styleName.toLowerCase()} style storyboard for viral video: "${scene.visual}". ${styleDescription}. High quality, cinematic composition, perfect lighting, professional photography style, social media optimized, ${project.videoSize || '16:9'} aspect ratio.`,
                             config: {
                                 numberOfImages: 1,
-                                aspectRatio: project.videoSize || '16:9'
+                                aspectRatio: project.videoSize || '16:9',
+                                model: 'dall-e-3',
+                                quality: 'hd'
                             }
                         }
                     })
@@ -1207,9 +1309,27 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 disabled={isAnalyzing}
                                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <SparklesIcon className="w-4 h-4 mr-2" />
-                                {isAnalyzing ? 'Improving...' : 'Improve Blueprint'}
-                                <span className="ml-2 text-xs bg-blue-500/30 px-2 py-1 rounded-full">2 Credits</span>
+                                {isAnalyzing ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Improving...
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                cancelOperation('improve-blueprint');
+                                            }}
+                                            className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SparklesIcon className="w-4 h-4 mr-2" />
+                                        Improve Blueprint
+                                        <span className="ml-2 text-xs bg-blue-500/30 px-2 py-1 rounded-full">2 Credits</span>
+                                    </>
+                                )}
                             </button>
                             
                             <button
@@ -1217,9 +1337,27 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 disabled={isAnalyzing}
                                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <SparklesIcon className="w-4 h-4 mr-2" />
-                                {isAnalyzing ? 'Optimizing...' : 'Optimize for Viral'}
-                                <span className="ml-2 text-xs bg-purple-500/30 px-2 py-1 rounded-full">3 Credits</span>
+                                {isAnalyzing ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Optimizing...
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                cancelOperation('optimize-viral');
+                                            }}
+                                            className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SparklesIcon className="w-4 h-4 mr-2" />
+                                        Optimize for Viral
+                                        <span className="ml-2 text-xs bg-purple-500/30 px-2 py-1 rounded-full">3 Credits</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                         
@@ -1275,8 +1413,26 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             disabled={isRegenerating === 'hook'}
                             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
+                            {isRegenerating === 'hook' ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                    Generating...
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            cancelOperation('hook');
+                                        }}
+                                        className="ml-3 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            ) : (
+                                <>
                             <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'hook' ? 'Generating...' : 'Generate Different Hooks (FREE)'}
+                                    Generate Different Hooks (FREE)
+                                </>
+                            )}
                         </button>
                     </div>
                     
@@ -1409,11 +1565,29 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             disabled={isRegenerating === 'scene'}
                             className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
+                            {isRegenerating === 'scene' ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                    Regenerating...
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            cancelOperation('scene');
+                                        }}
+                                        className="ml-3 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            ) : (
+                                <>
                             <SparklesIcon className="w-5 h-5 mr-2" />
-                            {isRegenerating === 'scene' ? 'Regenerating...' : 'Regenerate All Scripts (FREE)'}
+                                    Regenerate All Scripts (FREE)
+                                </>
+                            )}
                         </button>
                     </div>
-
+                    
                     {/* Global Visual Style Selection */}
                     <div className={`mb-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700 relative ${processingStyle ? 'opacity-75' : ''}`}>
                         <div className="flex items-center justify-between mb-3">
@@ -1479,31 +1653,11 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 <button
                                     key={style.id}
                                     onClick={async () => {
-                                        if (style.id === 'cartoon') {
-                                            // Show cartoon sub-styles instead of applying immediately
-                                            setShowCartoonSubstyles(true);
-                                            setSelectedVisualStyle('cartoon');
-                                            return;
-                                        }
-                                        
-                                        if (styleApplicationMode === 'specific' && selectedSceneForStyle === null) {
-                                            addToast('Please select a scene first', 'error');
-                                            return;
-                                        }
-                                        
-                                        setProcessingStyle(style.id);
+                                        // Show sub-styles for all main styles
+                                        setCurrentMainStyle(style.id);
+                                        setShowSubstyles(true);
                                         setSelectedVisualStyle(style.id);
                                         setShowCartoonSubstyles(false);
-                                        
-                                        if (styleApplicationMode === 'all') {
-                                            // Regenerate all storyboards with new style
-                                            await regenerateContent('moodboard', undefined, style.id);
-                                        } else {
-                                            // Regenerate specific scene storyboard
-                                            await regenerateContent('moodboard', selectedSceneForStyle, style.id);
-                                        }
-                                        
-                                        setProcessingStyle(null);
                                     }}
                                     disabled={isRegenerating === 'moodboard' || processingStyle !== null}
                                     className={`p-3 rounded-lg border transition-all duration-300 text-left disabled:opacity-50 ${
@@ -1515,7 +1669,16 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     {processingStyle === style.id ? (
                                         <div className="flex flex-col items-center justify-center py-2">
                                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400 mb-2"></div>
-                                            <div className="text-sm font-semibold text-indigo-400">Processing...</div>
+                                            <div className="text-sm font-semibold text-indigo-400 mb-2">Processing...</div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    cancelOperation(style.id);
+                                                }}
+                                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
                                         </div>
                                     ) : (
                                         <>
@@ -1528,14 +1691,17 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                             ))}
                         </div>
                         
-                        {/* Cartoon Sub-styles */}
-                        {showCartoonSubstyles && (
-                            <div className="mt-6 p-4 bg-purple-900/20 rounded-xl border border-purple-500/30">
+                        {/* Generic Sub-styles for all main styles */}
+                        {showSubstyles && currentMainStyle && (
+                            <div className="mt-6 p-4 bg-indigo-900/20 rounded-xl border border-indigo-500/30">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h4 className="text-lg font-semibold text-white">🎭 Choose Cartoon Style</h4>
+                                    <h4 className="text-lg font-semibold text-white">
+                                        {visualStyles.find(s => s.id === currentMainStyle)?.emoji} Choose {visualStyles.find(s => s.id === currentMainStyle)?.name} Style
+                                    </h4>
                                     <button
                                         onClick={() => {
-                                            setShowCartoonSubstyles(false);
+                                            setShowSubstyles(false);
+                                            setCurrentMainStyle('');
                                             setSelectedVisualStyle('modern'); // Reset to default
                                         }}
                                         className="text-gray-400 hover:text-white transition-colors"
@@ -1547,7 +1713,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </div>
                                 
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {cartoonStyles.map((style) => (
+                                    {getSubstyles(currentMainStyle).map((style) => (
                                         <button
                                             key={style.id}
                                             onClick={async () => {
@@ -1556,11 +1722,11 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                     return;
                                                 }
                                                 
-                                                setProcessingStyle(`cartoon-${style.id}`);
-                                                setSelectedCartoonStyle(style.id);
+                                                setProcessingStyle(`${currentMainStyle}-${style.id}`);
+                                                setSelectedSubstyle(style.id);
                                                 
-                                                // Use cartoon style with specific sub-style
-                                                const combinedStyle = `cartoon-${style.id}`;
+                                                // Use main style with specific sub-style
+                                                const combinedStyle = `${currentMainStyle}-${style.id}`;
                                                 
                                                 if (styleApplicationMode === 'all') {
                                                     await regenerateContent('moodboard', undefined, combinedStyle);
@@ -1569,25 +1735,34 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                 }
                                                 
                                                 setProcessingStyle(null);
-                                                setShowCartoonSubstyles(false);
+                                                setShowSubstyles(false);
                                             }}
-                                            disabled={isRegenerating === `cartoon-${style.id}` || processingStyle !== null}
+                                            disabled={processingStyle !== null}
                                             className={`p-3 rounded-lg border transition-all duration-300 text-left disabled:opacity-50 ${
-                                                selectedCartoonStyle === style.id
-                                                    ? 'border-purple-500 bg-purple-500/20 shadow-lg'
-                                                    : 'border-purple-600 bg-purple-700/30 hover:border-purple-500 hover:bg-purple-700/50'
+                                                selectedSubstyle === style.id
+                                                    ? 'border-indigo-500 bg-indigo-500/20 shadow-lg'
+                                                    : 'border-gray-600 bg-gray-700/50 hover:border-gray-500 hover:bg-gray-700/70'
                                             }`}
                                         >
-                                            {processingStyle === `cartoon-${style.id}` ? (
+                                            {processingStyle === `${currentMainStyle}-${style.id}` ? (
                                                 <div className="flex flex-col items-center justify-center py-2">
-                                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400 mb-2"></div>
-                                                    <div className="text-sm font-semibold text-purple-400">Processing...</div>
+                                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400 mb-2"></div>
+                                                    <div className="text-sm font-semibold text-indigo-400 mb-2">Processing...</div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            cancelOperation(`${currentMainStyle}-${style.id}`);
+                                                        }}
+                                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
                                                 </div>
                                             ) : (
                                                 <>
                                                     <div className="text-xl mb-2">{style.emoji}</div>
                                                     <div className="text-sm font-semibold text-white mb-1">{style.name}</div>
-                                                    <div className="text-xs text-gray-300 leading-tight">{style.description}</div>
+                                                    <div className="text-xs text-gray-400 leading-tight">{style.description}</div>
                                                 </>
                                             )}
                                         </button>
@@ -1597,7 +1772,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                         )}
                     </div>
                     
-                    <div className="grid lg:grid-cols-2 gap-6">
+                    <div className="space-y-4">
                         {editedScript.scenes?.map((scene, index) => (
                             <div key={index} className="bg-gray-700/30 rounded-xl p-6 border border-gray-600 hover:border-gray-500 transition-all duration-300">
                                 <div className="flex items-center justify-between mb-4">
@@ -1607,16 +1782,10 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                         </div>
                                         <h3 className="text-lg font-bold text-white">Scene {index + 1}</h3>
                                     </div>
-                                    <button
-                                        onClick={() => setExpandedScene(expandedScene === index ? null : index)}
-                                        className="text-gray-400 hover:text-white transition-colors"
-                                    >
-                                        {expandedScene === index ? '▼' : '▶'}
-                                    </button>
                                 </div>
                                 
                                 <div className="space-y-4">
-                                    {/* Storyboard Image - 16:9 Aspect Ratio */}
+                                    {/* Storyboard Image */}
                                     {scene.storyboardImageUrl && (
                                         <div className="relative group">
                                             <div className="flex items-center justify-between mb-2">
@@ -1643,33 +1812,14 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                                         imageUrl: scene.storyboardImageUrl 
                                                     });
                                                 }}
-                                                onMouseEnter={(e) => {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setHoveredStoryboard({
-                                                        sceneIndex: index,
-                                                        imageUrl: scene.storyboardImageUrl,
-                                                        x: rect.left + rect.width / 2,
-                                                        y: rect.top - 10
-                                                    });
-                                                }}
-                                                onMouseLeave={() => setHoveredStoryboard(null)}
                                                 title="Click to view full size"
                                             >
                                                 <img 
                                                     src={scene.storyboardImageUrl} 
                                                     alt={`Scene ${index + 1} storyboard`}
-                                                    className={`w-32 h-20 object-cover transition-transform duration-300 group-hover:scale-110 rounded-lg ${project.videoSize === '9:16' ? 'aspect-[9/16]' : 'aspect-video'}`}
+                                                    className="w-32 h-20 object-cover transition-transform duration-300 group-hover:scale-110 rounded-lg"
                                                 />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                                    <div className="text-center">
-                                                        <svg className="w-6 h-6 text-white mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                                        </svg>
-                                                        <span className="text-white text-sm font-semibold">Click to View Full</span>
-                                                    </div>
-                                                </div>
                                             </div>
-
                                         </div>
                                     )}
                                     
@@ -1744,29 +1894,38 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                 </div>
                             </div>
                         ))}
+                    </div>
                         
-                        {/* Add Scene Button */}
-                        <div className="flex justify-center mt-6">
+                    {/* Add Scene Button - Floating at the end */}
+                        <div className="flex justify-center mt-4">
                             <button
                                 onClick={addNewScene}
                                 disabled={isAddingScene}
-                                className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors duration-200 text-sm"
+                                className="inline-flex items-center px-3 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 hover:border-green-500 text-green-400 hover:text-green-300 font-medium rounded-lg transition-all duration-200 text-sm group"
                             >
                                 {isAddingScene ? (
                                     <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Adding...
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400 mr-2"></div>
+                                        Adding Scene...
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                cancelOperation('add-scene');
+                                            }}
+                                            className="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                         </svg>
-                                        Add Scene
+                                        Add New Scene
                                     </>
                                 )}
                             </button>
-                        </div>
                     </div>
                 </div>
 

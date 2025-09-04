@@ -4,6 +4,7 @@
  */
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import './index.css';
 
 // By letting Vite manage all dependencies (and removing the importmap from index.html),
 // we ensure that any necessary parsers are registered on the same PixiJS instance

@@ -101,6 +101,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         onClose();
     };
 
+
     const switchMode = (newMode: ModalMode) => {
         setError('');
         setMessage('');

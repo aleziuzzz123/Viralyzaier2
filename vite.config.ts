@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  base: "/", // Essential for Netlify asset paths
   resolve: {
     dedupe: ["@shotstack/shotstack-studio", "pixi.js"],
     preserveSymlinks: false,

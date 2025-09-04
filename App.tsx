@@ -269,11 +269,20 @@ const MainApp = () => {
     };
 
     const renderCurrentView = () => {
-        console.log('🎨 Rendering view:', currentView, { activeProjectId, hasActiveProjectDetails: !!activeProjectDetails, isProjectDetailsLoading });
+        console.log('🎨 Rendering view:', currentView, { 
+            user: user ? 'Found' : 'None', 
+            session: session ? 'Found' : 'None',
+            activeProjectId, 
+            hasActiveProjectDetails: !!activeProjectDetails, 
+            isProjectDetailsLoading 
+        });
         
         // Allow legal pages to be accessible without authentication
+        console.log('🔍 Auth check:', { user: user ? 'Found' : 'None', currentView, isLegalPage: ['privacy', 'terms', 'cookies', 'refund'].includes(currentView) });
         if (!user && !['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
-            return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white">{t('toast.loading_user')}</div>;
+            console.log('🚫 No user found, showing landing page');
+            console.log('🎯 Rendering LandingPage component');
+            return <LandingPage />;
         }
         
         // If we're on the studio-editor route, show the full-screen editor
@@ -330,6 +339,7 @@ const MainApp = () => {
 
             case 'dashboard':
             default:
+                console.log('🎯 Rendering Dashboard component');
                 return <Dashboard 
                     onSelectProject={handleSelectProject} 
                     onNewProject={handleNewProject}
@@ -337,10 +347,6 @@ const MainApp = () => {
         }
     };
     
-    // Show landing page for logged out users, except for legal pages
-    if (!user && !['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
-        return <LandingPage />;
-    }
     
     // For legal pages without authentication, show minimal layout
     if (!user && ['privacy', 'terms', 'cookies', 'refund'].includes(currentView)) {
@@ -349,6 +355,11 @@ const MainApp = () => {
                 <div className="w-full max-w-7xl mx-auto">{renderCurrentView()}</div>
             </div>
         );
+    }
+    
+    // If no user, render landing page without dashboard layout
+    if (!user) {
+        return renderCurrentView();
     }
     
     return (

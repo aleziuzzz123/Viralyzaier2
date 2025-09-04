@@ -1,4 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from './supabaseClient';
+
+// Debug the imported URL
+console.log('🔍 supabaseService imported supabaseUrl:', supabaseUrl);
 import { 
     Project, 
     User, 
@@ -136,6 +139,7 @@ export const invokeEdgeFunction = async <T>(
     }
 
     try {
+        console.log('🔗 Invoking Edge Function:', functionName, 'with URL:', `${supabaseUrl}/functions/v1/${functionName}`);
         const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
             method: 'POST',
             headers: headers,
@@ -200,6 +204,7 @@ export const signUp = async (email: string, password: string): Promise<void> => 
     if (error) throw new Error(getErrorMessage(error));
 };
 
+
 export const sendPasswordResetEmail = async (email: string): Promise<void> => {
     const { error } = await (supabase.auth as any).resetPasswordForEmail(email, { redirectTo: window.location.origin });
     if (error) throw new Error(getErrorMessage(error));
@@ -260,12 +265,22 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 const DASHBOARD_PROJECT_COLUMNS = 'id, name, topic, platform, status, last_updated, published_url, scheduled_date, workflow_step';
 
 export const getProjectsForUser = async (userId: string): Promise<Project[]> => {
+    console.log('📊 Fetching projects for user:', userId);
+    console.log('📊 Supabase client URL:', supabase.supabaseUrl);
+    console.log('📊 Supabase client key:', supabase.supabaseKey?.substring(0, 20) + '...');
+    
     const { data, error } = await supabase
         .from('projects')
         .select(DASHBOARD_PROJECT_COLUMNS)
         .eq('user_id', userId)
         .order('last_updated', { ascending: false });
-    if (error) throw new Error(getErrorMessage(error));
+    
+    if (error) {
+        console.error('❌ Error fetching projects:', error);
+        throw new Error(getErrorMessage(error));
+    }
+    
+    console.log('✅ Projects fetched successfully:', data?.length || 0, 'projects');
     return (data || []).map(p => projectRowToProject(p));
 };
 
