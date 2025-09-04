@@ -82,7 +82,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         if (hasVisuals) visualScore += 4;
         if (hasMoodboard) visualScore += 3;
         if (totalScenes >= 3) visualScore += 2;
-        if (videoStyle === 'High-Energy Viral') visualScore += 1;
+        // Default to High-Energy Viral style for scoring
+        visualScore += 1;
         
         // Cap visual score at 10
         visualScore = Math.min(visualScore, 10);
@@ -90,7 +91,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
         // Viral scoring (0-10) with caps
         if (hasHook && script.hook.includes('!')) viralScore += 2;
         if (project.title && (project.title.includes('!') || project.title.includes('?'))) viralScore += 2;
-        if (videoStyle === 'High-Energy Viral') viralScore += 3;
+        // Default to High-Energy Viral style for scoring
+        viralScore += 3;
         if (videoLength <= 60) viralScore += 2;
         if (hasCTA) viralScore += 1;
         
@@ -126,7 +128,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     const qualityAnalysis = useMemo(() => {
         if (!project.script) return null;
         return analyzeScriptQuality(project.script);
-    }, [project.script, project.title, project.moodboard, videoStyle, videoLength, project.videoSize, project.platform]);
+    }, [project.script, project.title, project.moodboard, videoLength, project.videoSize, project.platform]);
     
     useEffect(() => {
         setScript(project.script);
