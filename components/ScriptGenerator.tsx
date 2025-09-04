@@ -24,7 +24,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ project }) => {
     // New state for Blueprint generation
     const [isGeneratingBlueprint, setIsLoadingBlueprint] = useState(false);
     const [progressMessage, setProgressMessage] = useState('');
-    const [videoStyle, setVideoStyle] = useState<VideoStyle>('High-Energy Viral');
     const [videoSize, setVideoSize] = useState<'16:9' | '9:16' | '1:1'>(project.videoSize || '16:9');
     const [videoLength, setVideoLength] = useState(60);
     const [isNarratorEnabled, setIsNarratorEnabled] = useState(true);
@@ -311,15 +310,15 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
             while (retryCount < maxRetries) {
                 try {
                     blueprint = await generateVideoBlueprint(
-                        project.topic,
-                        videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
-                        videoStyle,
-                        (message) => setProgressMessage(message),
-                        videoLength,
-                        selectedBrand,
-                        shouldGenerateMoodboard,
-                        isNarratorEnabled
-                    );
+                project.topic,
+                videoSize === '16:9' ? 'youtube_long' : 'youtube_short',
+                        'High-Energy Viral', // Default style - will be changed in Blueprint Review
+                (message) => setProgressMessage(message),
+                videoLength,
+                selectedBrand,
+                shouldGenerateMoodboard,
+                isNarratorEnabled
+            );
                     break; // Success, exit retry loop
                 } catch (error: any) {
                     retryCount++;
@@ -563,15 +562,6 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
         }
     });
 
-    const styleOptions: { id: VideoStyle, name: string, icon: React.FC<{className?:string}> }[] = [
-        { id: 'High-Energy Viral', name: t('style.viral_name'), icon: SparklesIcon },
-        { id: 'Cinematic Documentary', name: t('style.cinematic_name'), icon: FilmIcon },
-        { id: 'Clean & Corporate', name: t('style.corporate_name'), icon: TypeIcon },
-        { id: 'Animation', name: 'Animation', icon: PaintBrushIcon },
-        { id: 'Vlog', name: 'Vlog Style', icon: FilmIcon },
-        { id: 'Historical Documentary', name: 'Historical Doc', icon: FilmIcon },
-        { id: 'Whiteboard', name: 'Whiteboard', icon: ScriptIcon },
-    ];
     
     const copilotActions = [
         { key: 'action_concise', label: t('script_editor.copilot.action_concise') },
@@ -599,16 +589,15 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                 <p className="text-gray-400 mb-6 max-w-xl mx-auto">Define the creative direction for your video. Our AI will use these settings to generate a tailored script and visual plan.</p>
                 <div className="space-y-6 text-left">
                     <div>
-                        <h3 className="text-xl font-bold text-white mb-3">1. Define Your Video</h3>
+                        <h3 className="text-xl font-bold text-white mb-3">1. Audio & Visuals</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="font-semibold text-white">Video Style</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">{styleOptions.map(opt => (<button key={opt.id} onClick={() => setVideoStyle(opt.id)} className={`p-3 text-center rounded-lg border-2 transition-all ${videoStyle === opt.id ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700/50 border-gray-700 hover:border-gray-600'}`}><opt.icon className={`w-6 h-6 mx-auto mb-1 ${videoStyle === opt.id ? 'text-white' : 'text-gray-400'}`} /><p className={`text-xs font-semibold ${videoStyle === opt.id ? 'text-white' : 'text-gray-300'}`}>{opt.name}</p></button>))}</div>
-                            </div>
                             <div className="space-y-6">
                                 <div>
                                     <label className="font-semibold text-white">Brand Identity (Optional)</label>
-                                    <select value={selectedBrandId || ''} onChange={e => setSelectedBrandId(e.target.value || undefined)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white"><option value="">No Brand Identity</option>{brandIdentities.map((brand: BrandIdentity) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select>
+                                    <select value={selectedBrandId || ''} onChange={e => setSelectedBrandId(e.target.value || undefined)} className="w-full mt-2 bg-gray-900 border border-gray-600 rounded-lg p-3 text-white">
+                                        <option value="">No Brand Identity</option>
+                                        {brandIdentities.map((brand: BrandIdentity) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="font-semibold text-white">Video Length: {videoLength}s</label>
@@ -623,11 +612,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-white mb-3">2. Audio & Visuals</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-6">
                              <div>
                                 <label className="font-semibold text-white">Add AI Narrator (Voice-over)</label>
                                 <div className="flex items-center justify-between mt-2 bg-gray-900 rounded-lg p-3">
@@ -653,6 +638,7 @@ Return a JSON object with: hook, scenes (array with voiceover and visual), cta`;
                                     <button onClick={() => setShouldGenerateMoodboard(!shouldGenerateMoodboard)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${shouldGenerateMoodboard ? 'bg-indigo-600' : 'bg-gray-600'}`}>
                                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${shouldGenerateMoodboard ? 'translate-x-6' : 'translate-x-1'}`} />
                                     </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
