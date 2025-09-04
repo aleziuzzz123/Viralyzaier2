@@ -2,15 +2,27 @@ import React from 'react';
 import { CrownIcon, XCircleIcon } from './Icons';
 import { useAppContext } from '../contexts/AppContext';
 
-const UpgradeModal: React.FC = () => {
+interface UpgradeModalProps {
+    onNavigateToPricing?: () => void;
+}
+
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ onNavigateToPricing }) => {
     const { isUpgradeModalOpen, setUpgradeModalOpen, upgradeReason, setActiveProjectId, t } = useAppContext();
 
     if (!isUpgradeModalOpen) return null;
 
     const handleUpgrade = () => {
         setUpgradeModalOpen(false);
-        setActiveProjectId(null); // This will navigate to pricing page via App.tsx logic if current view is project
-        // A more direct navigation method would be better, but this works with current setup
+        setActiveProjectId(null); // Clear current project
+        
+        // Use the navigation callback if provided, otherwise fallback to URL change
+        if (onNavigateToPricing) {
+            onNavigateToPricing();
+        } else {
+            // Fallback: navigate directly to pricing page
+            window.history.pushState({}, '', '/pricing');
+            window.location.reload();
+        }
     };
 
     return (

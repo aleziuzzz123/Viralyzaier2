@@ -297,7 +297,7 @@ const MainApp = () => {
                 // We're inside an iframe, render the StudioPage component directly
                 console.log('🎬 Rendering StudioPage component (inside iframe)');
                 return <WorkingShotstackStudio />;
-            } else {
+        } else {
                 // We're in the main window, render the CreativeStudio component
                 console.log('🎬 Rendering CreativeStudio component (main window)');
                 return <CreativeStudio />;
@@ -395,7 +395,7 @@ const MainApp = () => {
             </main>
             
             <ScheduleModal />
-            <UpgradeModal />
+            <UpgradeModal onNavigateToPricing={() => handleSetView('pricing')} />
             {confirmation.isOpen && (
                 <ConfirmationModal 
                     isOpen={confirmation.isOpen} 
